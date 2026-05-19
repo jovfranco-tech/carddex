@@ -39,6 +39,7 @@ import { rarityColor, rarityLabel } from '@/lib/rarity';
 import { buildCardAssistantContext } from '@/lib/cardAssistant';
 import { typeColor } from '@/components/TypeBadge';
 import { formatDateShort } from '@/lib/formatters';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import type { PokemonCard } from '@/types/pokemon';
 import type { CardCondition, CardVariant } from '@/types/collection';
 
@@ -486,6 +487,7 @@ function Detail({
             >
               {PRICE_DISCLAIMER}
             </p>
+            <PriceHistoryChart price={price.amount} />
           </Surface>
         </div>
       )}
@@ -893,6 +895,54 @@ function SelectField({
           ▾
         </span>
       </div>
-    </label>
+  );
+}
+
+function PriceHistoryChart({ price }: { price: number }) {
+  const data = useMemo(() => {
+    // Generate 6 months of mock data ending exactly at `price`
+    const points = [];
+    let current = price * (0.8 + Math.random() * 0.4); // Start somewhere nearby
+    for (let i = 0; i < 6; i++) {
+      const month = new Date();
+      month.setMonth(month.getMonth() - (5 - i));
+      points.push({
+        name: month.toLocaleDateString('es-ES', { month: 'short' }),
+        value: i === 5 ? price : current
+      });
+      current = current + (Math.random() - 0.4) * (price * 0.1); // Random walk
+    }
+    return points;
+  }, [price]);
+
+  const isUp = data[5].value >= data[0].value;
+  const color = isUp ? '#34C759' : '#FF3B30';
+
+  return (
+    <div style={{ width: '100%', height: 120, marginTop: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>
+        TENDENCIA DE 6 MESES <span style={{ color }}>{isUp ? '▲' : '▼'} {Math.abs(((data[5].value - data[0].value) / data[0].value) * 100).toFixed(1)}%</span>
+      </div>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+              <stop offset="95%" stopColor={color} stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted)' }} dy={10} />
+          <Tooltip 
+            contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+            itemStyle={{ color: 'var(--ink)', fontWeight: 'bold' }}
+            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Valor']}
+          />
+          <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
+        </AreaChart>
+      </ResponsiveContainer>
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
+        *Datos de tendencia simulados para CardDex v1.1.0
+      </div>
+    </div>
   );
 }

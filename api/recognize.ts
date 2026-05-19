@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: [
           {
             role: 'system',
-            content: 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Devuelve ÚNICAMENTE un objeto JSON con el nombre del Pokémon en "cardName" y el número de la carta impreso (ej. "4/102") en "number". No incluyas markdown, solo el JSON raw.',
+            content: 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Si la carta está en un idioma distinto al inglés (ej. japonés), TRADUCE el nombre al INGLÉS para que coincida con la base de datos oficial. Devuelve ÚNICAMENTE un objeto JSON con el nombre del Pokémon en "cardName", el número de la carta impreso (ej. "4/102") en "number", y el idioma detectado ("JP", "EN", "ES", etc) en "language". No incluyas markdown, solo el JSON raw.',
           },
           {
             role: 'user',
