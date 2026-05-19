@@ -1,0 +1,28 @@
+{
+  "name": "CardDex — Pokémon TCG Collection",
+  "short_name": "CardDex",
+  "description": "Mi colección personal de Pokémon TCG: binder digital, escáner, librería, expansiones y asistente de carta.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F8FB",
+  "theme_color": "#2F6FE0",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["entertainment", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

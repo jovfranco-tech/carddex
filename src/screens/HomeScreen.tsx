@@ -1,0 +1,753 @@
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Surface from '@/components/Surface';
+import Chip from '@/components/Chip';
+import SearchBar from '@/components/SearchBar';
+import StatCard from '@/components/StatCard';
+import CardTile from '@/components/CardTile';
+import RarityBadge from '@/components/RarityBadge';
+import EmptyState from '@/components/EmptyState';
+import LoadingState from '@/components/LoadingState';
+import ErrorState from '@/components/ErrorState';
+import { Section, ActionLink } from '@/components/Section';
+import {
+  BellIcon,
+  ChevronIcon,
+  SortIcon,
+  BookIcon,
+  ScanIcon,
+  SearchIcon,
+} from '@/components/icons';
+import {
+  useAsync,
+  useCollection,
+  useCollectionSummary,
+  useDebounced,
+} from '@/lib/hooks';
+import {
+  getCardsByIds,
+  searchCards,
+} from '@/lib/pokemonTcgApi';
+import {
+  getEstimatedPrice,
+  sumCollectionValue,
+  formatCollectionValue,
+  formatPrice,
+} from '@/lib/pricing';
+import {
+  RARITY_FILTERS,
+  rarityMatchesFilter,
+  raritySortWeight,
+  rarityLabel,
+} from '@/lib/rarity';
+import { formatInt } from '@/lib/formatters';
+import type { PokemonCard } from '@/types/pokemon';
+
+export default function HomeScreen() {
+  const navigate = useNavigate();
+  const collection = useCollection();
+  const summary = useCollectionSummary();
+  const [query, setQuery] = useState('');
+  const [rarityFilter, setRarityFilter] = useState('all');
+  const debouncedQuery = useDebounced(query, 320);
+
+  const collectionIds = useMemo(
+    () =>
+      Object.values(collection.cards)
+        .filter((c) => c.owned)
+        .map((c) => c.cardId),
+    [collection],
+  );
+
+  // Fetch owned card data so we can compute estimated value & featured set.
+  const owned = useAsync(
+    (signal) => getCardsByIds(collectionIds.slice(0, 60), { signal }),
+    [collectionIds.join(',')],
+  );
+
+  // Search results — only if the user types something.
+  const trimmed = debouncedQuery.trim();
+  const search = useAsync(async (signal) => {
+    if (!trimmed) return [];
+    const { data } = await searchCards(
+      {
+        name: trimmed,
+        pageSize: 18,
+        orderBy: '-set.releaseDate',
+      },
+      { signal },
+    );
+    return data;
+  }, [trimmed]);
+
+  /* --------------------------------------------------------------------- */
+  /* Derived data                                                           */
+  /* --------------------------------------------------------------------- */
+
+  const totalValue = useMemo(() => {
+    if (!owned.data) return null;
+    const list = owned.data
+      .filter((c) => collection.cards[c.id]?.owned)
+      .map((c) => ({ card: c, quantity: collection.cards[c.id]?.quantity ?? 1 }));
+    return sumCollectionValue(list);
+  }, [owned.data, collection]);
+
+  const featured = useMemo(() => {
+    if (!owned.data) return [];
+    return [...owned.data]
+      .filter((c) => raritySortWeight(c.rarity) >= 60)
+      .sort((a, b) => {
+        const av = getEstimatedPrice(a)?.value ?? 0;
+        const bv = getEstimatedPrice(b)?.value ?? 0;
+        if (bv !== av) return bv - av;
+        return raritySortWeight(b.rarity) - raritySortWeight(a.rarity);
+      })
+      .slice(0, 8);
+  }, [owned.data]);
+
+  /**
+   * Lightweight collection insights. We compute the rarest owned card,
+   * the most valuable one, the most-progressed expansion, and the duplicate
+   * count. Always defensive — fall back to nulls when data is missing.
+   */
+  const insights = useMemo(() => {
+    if (!owned.data || owned.data.length === 0) return null;
+    const ownedCards = owned.data.filter((c) => collection.cards[c.id]?.owned);
+    if (ownedCards.length === 0) return null;
+
+    const rarest = [...ownedCards].sort(
+      (a, b) => raritySortWeight(b.rarity) - raritySortWeight(a.rarity),
+    )[0];
+
+    let mostValuable: PokemonCard | null = null;
+    let bestValue = 0;
+    for (const c of ownedCards) {
+      const p = getEstimatedPrice(c);
+      if (p && p.value > bestValue) {
+        bestValue = p.value;
+        mostValuable = c;
+      }
+    }
+
+    // Most-progressed set by owned count relative to printedTotal.
+    const setCounts = new Map<
+      string,
+      { name: string; owned: number; total: number }
+    >();
+    for (const c of ownedCards) {
+      if (!c.set?.id) continue;
+      const cur = setCounts.get(c.set.id) ?? {
+        name: c.set.name,
+        owned: 0,
+        total: c.set.printedTotal ?? c.set.total ?? 0,
+      };
+      cur.owned += 1;
+      setCounts.set(c.set.id, cur);
+    }
+    const bestSet = Array.from(setCounts.values())
+      .filter((s) => s.total > 0)
+      .sort((a, b) => b.owned / b.total - a.owned / a.total)[0];
+
+    const duplicates = Object.values(collection.cards).filter(
+      (m) => m.owned && m.quantity > 1,
+    ).length;
+
+    return { rarest, mostValuable, bestSet, duplicates };
+  }, [owned.data, collection.cards]);
+
+  const searchFiltered = useMemo(() => {
+    if (!search.data) return [];
+    return search.data.filter((c) => rarityMatchesFilter(c.rarity, rarityFilter));
+  }, [search.data, rarityFilter]);
+
+  /* --------------------------------------------------------------------- */
+  /* Empty state — no collection AND no active search                       */
+  /* --------------------------------------------------------------------- */
+
+  const isEmpty =
+    !owned.loading &&
+    collectionIds.length === 0 &&
+    !trimmed;
+
+  /* --------------------------------------------------------------------- */
+  /* Render                                                                 */
+  /* --------------------------------------------------------------------- */
+
+  return (
+    <div style={{ paddingBottom: 'var(--bottom-nav-clearance)' }}>
+      {/* Top Logo */}
+      <div style={{ paddingTop: 54, display: 'flex', justifyContent: 'center' }}>
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Pok%C3%A9mon_Trading_Card_Game_logo.svg"
+          alt="Pokémon Trading Card Game"
+          style={{ height: 68 }}
+        />
+      </div>
+
+      {/* Header */}
+      <header
+        style={{
+          padding: '16px 18px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              margin: '2px 0 0',
+              fontSize: 30,
+              fontWeight: 800,
+              color: 'var(--ink)',
+              letterSpacing: -0.8,
+            }}
+          >
+            Mi Colección
+          </h1>
+        </div>
+        <button
+          aria-label="Notificaciones"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 13,
+            background: 'var(--surface)',
+            border: '0.5px solid var(--border)',
+            boxShadow: '0 1px 3px rgba(15,20,40,0.05)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--ink-2)',
+            position: 'relative',
+          }}
+        >
+          <BellIcon size={20} />
+          {(summary.wishlistCount > 0 || summary.missingCount > 0) && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 9,
+                right: 10,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'var(--error)',
+                border: '1.5px solid #fff',
+              }}
+            />
+          )}
+        </button>
+      </header>
+
+      {/* Search */}
+      <div style={{ padding: '0 18px 16px' }}>
+        <SearchBar value={query} onChange={setQuery} />
+      </div>
+
+      {/* Empty path */}
+      {isEmpty ? (
+        <HomeEmpty
+          onScan={() => navigate('/scan')}
+          onSearch={() => {
+            const input = document.querySelector<HTMLInputElement>(
+              'input[aria-label="Buscar cartas"], input[type="search"]',
+            );
+            input?.focus();
+          }}
+        />
+      ) : (
+        <>
+          {/* Stats grid */}
+          <div
+            style={{
+              padding: '0 18px',
+              display: 'grid',
+              gap: 10,
+              gridTemplateColumns: '1fr 1fr',
+              marginBottom: 22,
+            }}
+          >
+            <StatCard
+              label="Total de cartas"
+              value={formatInt(summary.totalQuantity)}
+              accent="#2F80ED"
+              glyph={<BookIcon size={16} />}
+            />
+            <StatCard
+              label="Únicas"
+              value={formatInt(summary.uniqueCount)}
+              accent="#27AE60"
+              glyph="⬇"
+            />
+            <StatCard
+              label="Completado"
+              value={insights?.bestSet ? `${((insights.bestSet.owned / insights.bestSet.total) * 100).toFixed(1)}%` : '0.0%'}
+              suffix="de la colección"
+              accent="#9b51e0"
+              glyph="↺"
+            />
+            <StatCard
+              label="Valor estimado"
+              value={totalValue ? formatCollectionValue(totalValue) : '—'}
+              accent="#F2994A"
+              glyph="🛡"
+            />
+          </div>
+
+          {/* Active search results */}
+          {trimmed ? (
+            <Section title={`Resultados para “${trimmed}”`}>
+              {/* Rarity chips */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  overflowX: 'auto',
+                  padding: '0 18px 12px',
+                }}
+                className="no-scrollbar"
+              >
+                {RARITY_FILTERS.map((f) => (
+                  <Chip
+                    key={f.key}
+                    active={rarityFilter === f.key}
+                    onClick={() => setRarityFilter(f.key)}
+                  >
+                    {f.label}
+                  </Chip>
+                ))}
+              </div>
+
+              {search.loading ? (
+                <LoadingState variant="grid" count={6} />
+              ) : search.error ? (
+                <ErrorState message={search.error} onRetry={search.reload} />
+              ) : searchFiltered.length === 0 ? (
+                <EmptyState
+                  title="Sin resultados"
+                  description={`No encontramos cartas que coincidan con “${trimmed}”.`}
+                />
+              ) : (
+                <div
+                  style={{
+                    padding: '0 18px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 12,
+                    justifyItems: 'center',
+                  }}
+                >
+                  {searchFiltered.map((c) => (
+                    <CardTile
+                      key={c.id}
+                      card={c}
+                      meta={collection.cards[c.id]}
+                      width={104}
+                      onClick={() => navigate(`/card/${c.id}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </Section>
+          ) : (
+            <>
+              {/* Featured */}
+              <Section
+                title="Cartas destacadas"
+                action={
+                  <ActionLink onClick={() => navigate('/library')}>Ver todas</ActionLink>
+                }
+              >
+                {owned.loading ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 14,
+                      padding: '4px 18px 12px',
+                      overflowX: 'auto',
+                    }}
+                    className="no-scrollbar"
+                  >
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: 110,
+                          height: 154,
+                          borderRadius: 8,
+                          background:
+                            'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer 1.4s linear infinite',
+                          flexShrink: 0,
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : featured.length === 0 ? (
+                  <div style={{ padding: '0 18px 8px', fontSize: 13, color: 'var(--muted)' }}>
+                    Guarda cartas raras para verlas destacadas aquí.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 14,
+                      overflowX: 'auto',
+                      padding: '4px 18px 12px',
+                    }}
+                    className="no-scrollbar"
+                  >
+                    {featured.map((c) => (
+                      <div
+                        key={c.id}
+                        style={{ width: 110, flexShrink: 0, cursor: 'pointer' }}
+                        onClick={() => navigate(`/card/${c.id}`)}
+                      >
+                        <CardTile
+                          card={c}
+                          meta={collection.cards[c.id]}
+                          width={110}
+                        />
+                        <div
+                          style={{
+                            marginTop: 8,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: 'var(--ink)',
+                            letterSpacing: -0.2,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {c.name}
+                        </div>
+                        <div style={{ marginTop: 2 }}>
+                          <RarityBadge rarity={c.rarity} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Section>
+
+              {/* Rarity chips (Mockup layout) */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  overflowX: 'auto',
+                  padding: '4px 18px 20px',
+                }}
+                className="no-scrollbar"
+              >
+                {RARITY_FILTERS.map((f) => (
+                  <Chip
+                    key={f.key}
+                    active={rarityFilter === f.key}
+                    onClick={() => setRarityFilter(f.key)}
+                  >
+                    {f.label}
+                  </Chip>
+                ))}
+              </div>
+
+              {/* Insights — collector summary */}
+              {insights && (
+                <Section title="Datos de tu colección" tight>
+                  <div
+                    style={{
+                      padding: '0 18px',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 10,
+                    }}
+                  >
+                    {insights.rarest && (
+                      <InsightCard
+                        label="Carta más rara"
+                        title={insights.rarest.name}
+                        sub={rarityLabel(insights.rarest.rarity)}
+                        onClick={() =>
+                          navigate(`/card/${insights.rarest!.id}`)
+                        }
+                      />
+                    )}
+                    {insights.mostValuable && (
+                      <InsightCard
+                        label="Mayor valor"
+                        title={insights.mostValuable.name}
+                        sub={(() => {
+                          const p = getEstimatedPrice(insights.mostValuable);
+                          return p ? formatPrice(p) : '—';
+                        })()}
+                        onClick={() =>
+                          navigate(`/card/${insights.mostValuable!.id}`)
+                        }
+                      />
+                    )}
+                    {insights.bestSet && (
+                      <InsightCard
+                        label="Set más avanzado"
+                        title={insights.bestSet.name}
+                        sub={`${insights.bestSet.owned}/${insights.bestSet.total} cartas`}
+                        onClick={() => navigate('/sets')}
+                      />
+                    )}
+                    <InsightCard
+                      label="Duplicadas"
+                      title={`${insights.duplicates}`}
+                      sub={
+                        insights.duplicates === 1
+                          ? 'carta con copias'
+                          : 'cartas con copias'
+                      }
+                      onClick={() => navigate('/library')}
+                    />
+                  </div>
+                </Section>
+              )}
+
+              {/* Action rows */}
+              <div
+                style={{
+                  padding: '0 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                <Surface
+                  onClick={() => navigate('/library')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14 }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      background: 'var(--accent-tint)',
+                      color: 'var(--accent)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <SortIcon size={20} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: 'var(--ink)',
+                        letterSpacing: -0.2,
+                      }}
+                    >
+                      Ordenar por rareza
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      Mira tus cartas más raras primero
+                    </div>
+                  </div>
+                  <span style={{ color: 'var(--muted-3)' }}>
+                    <ChevronIcon size={16} />
+                  </span>
+                </Surface>
+                <Surface
+                  onClick={() => navigate('/sets')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14 }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      background: 'rgba(242, 153, 74, 0.18)',
+                      color: '#F2994A',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <BookIcon size={20} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: 'var(--ink)',
+                        letterSpacing: -0.2,
+                      }}
+                    >
+                      Expansiones
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      Ver todas las series
+                    </div>
+                  </div>
+                  <span style={{ color: 'var(--muted-3)' }}>
+                    <ChevronIcon size={16} />
+                  </span>
+                </Surface>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------- */
+/* Empty home — first-launch experience                                       */
+/* ------------------------------------------------------------------------- */
+
+function HomeEmpty({
+  onScan,
+  onSearch,
+}: {
+  onScan: () => void;
+  onSearch: () => void;
+}) {
+  return (
+    <div style={{ padding: '8px 24px 40px' }}>
+      <EmptyState
+        large
+        icon={<ScanIcon size={42} />}
+        title="Aún no tienes cartas"
+        description="Escanea tu primera carta o búscala por nombre para empezar a construir tu binder digital."
+        action={
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <button
+              onClick={onScan}
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 14,
+                padding: '13px 24px',
+                fontSize: 15,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                letterSpacing: -0.1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                boxShadow: 'var(--shadow-accent)',
+              }}
+            >
+              <ScanIcon size={18} color="#fff" />
+              Escanear carta
+            </button>
+            <button
+              onClick={onSearch}
+              style={{
+                background: 'transparent',
+                color: 'var(--accent)',
+                border: '0.5px solid var(--border)',
+                borderRadius: 14,
+                padding: '12px 22px',
+                fontSize: 14,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                letterSpacing: -0.1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <SearchIcon size={16} />
+              Buscar cartas
+            </button>
+          </div>
+        }
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------- */
+/* Insight tile                                                              */
+/* ------------------------------------------------------------------------- */
+
+function InsightCard({
+  label,
+  title,
+  sub,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        textAlign: 'left',
+        padding: 14,
+        background: 'var(--surface)',
+        border: '0.5px solid var(--border)',
+        borderRadius: 16,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        minHeight: 84,
+        boxShadow: 'var(--shadow-1)',
+        transition: 'transform 120ms, box-shadow 200ms',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 10.5,
+          color: 'var(--muted)',
+          fontWeight: 700,
+          letterSpacing: 0.3,
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 14,
+          color: 'var(--ink)',
+          fontWeight: 700,
+          letterSpacing: -0.2,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {title}
+      </span>
+      <span
+        style={{
+          fontSize: 12,
+          color: 'var(--muted)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {sub}
+      </span>
+    </button>
+  );
+}
