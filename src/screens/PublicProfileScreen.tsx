@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import Surface from '@/components/Surface';
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
@@ -19,6 +19,11 @@ export default function PublicProfileScreen() {
   useEffect(() => {
     async function fetchProfile() {
       if (!userId) return;
+      if (!isSupabaseConfigured()) {
+        setError('El perfil público requiere la base de datos de Supabase, la cual no está configurada.');
+        setLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from('collections')

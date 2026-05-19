@@ -20,9 +20,9 @@ import { hasApiKey, clearApiCache } from '@/lib/pokemonTcgApi';
 import { formatInt } from '@/lib/formatters';
 import { prefersMXN, setPrefersMXN } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 
 /**
  * Profile / Settings — info, export/import, clear local data, disclaimer.
@@ -200,7 +200,17 @@ export default function ProfileScreen() {
       {/* Profile card */}
       <div style={{ padding: '0 14px 14px' }}>
         <Surface style={{ padding: 20, textAlign: 'center' }}>
-          {!user ? (
+          {!isSupabaseConfigured() ? (
+            <div style={{ padding: '20px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>☁️</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>Sincronización en la Nube</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, lineHeight: 1.5 }}>
+                Esta funcionalidad (perfiles y wishlist pública) es experimental. 
+                Requiere configurar las variables de entorno de Supabase en tu servidor.
+                Actualmente tu colección solo se guarda de forma local.
+              </div>
+            </div>
+          ) : !user ? (
             <div>
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
                 {isLoginMode ? 'Accede a tu cuenta' : 'Crea una cuenta'}

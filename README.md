@@ -1,6 +1,6 @@
 # CardDex
 
-**v1.0.1**
+**v1.1.0**
 
 Production URL: [https://carddex-coral.vercel.app](https://carddex-coral.vercel.app)
 A mobile-first personal Pokémon TCG collection app. CardDex is a digital binder, scanner, library, set browser, and contextual card assistant — built as a single React + Vite + TypeScript SPA. Card data comes from the public [Pokémon TCG API](https://pokemontcg.io/); your collection lives in your browser's LocalStorage.
@@ -15,33 +15,33 @@ A mobile-first personal Pokémon TCG collection app. CardDex is a digital binder
 - Card search via the Pokémon TCG API
 - Card detail (attacks, abilities, weaknesses, resistances, retreat cost, flavor text, artist, …)
 - Set list, set symbol, set series, release date, printed total
-- Set completion progress derived from your collection
+- Set completion progress derived from your collection (viewable in the new "By Expansion" library mode)
 - LocalStorage collection — favorites, wishlist, quantity, foil, condition, variant, language, notes
 - Recently viewed list
 - Estimated value from TCGPlayer (USD) with Cardmarket (EUR) as fallback
+- Real-time scanner via OpenAI Vision API (if `OPENAI_API_KEY` is configured).
 
 **Simulated / assisted**
-- Scanner recognition — `lib/cardRecognition.ts` rotates through a small set of popular card names and queries the real API for each result. UI, confidence score, category badge, type chips and set/number are all derived from the real card returned by the API. The architecture is ready for a real OCR + image-hashing pipeline in v2 without changing the UI's contract.
-- Card Assistant — `lib/cardAssistant.ts` is a deterministic, rule-based answer engine grounded in card data, collection metadata, and pricing. **No LLM is called.** Every answer maps to a specific field on `CardAssistantContext`; missing data is reported as missing, never invented.
+- Scanner fallback — If the OpenAI API key is missing or fails, the scanner falls back to an assisted demo mode that rotates through a small set of popular card names and queries the real API. UI clearly labels when this happens so it does not falsely present simulated recognition as real OCR.
+- Card Assistant — `lib/cardAssistant.ts` is a deterministic, rule-based answer engine grounded in card data, collection metadata, and pricing. **No LLM is called from the frontend.** Every answer maps to a specific field on `CardAssistantContext`; missing data is reported as missing, never invented.
+- Price Trends — The 6-month historical chart generates a deterministic curve based on the card's ID, visually simulating a market trend using current price data.
 
 **Future (v2)**
-- Real camera capture + on-device OCR for card number / name
-- Image-hash matching against a precomputed catalog
-- Optional serverless `/api/card-assistant` endpoint for a real LLM, with the same `CardAssistantContext` as the grounding input
-- Cloud sync of LocalStorage data
-- Multi-language card support (ES / JP / IT)
-- Set completion checklist with missing-card placeholders inside Library
-- PWA shell + install prompt
+- On-device image-hash matching against a precomputed catalog.
+- Optional serverless `/api/card-assistant` endpoint for a real LLM, with the same `CardAssistantContext` as the grounding input.
+- Multi-language card support (ES / JP / IT).
+- PWA shell + install prompt.
 
 ---
 
 ## Tech stack
 
 - React 18 + TypeScript 5
-- Vite 5
+- Vite 5 + Vitest
 - React Router 6
-- No CSS framework — design tokens in `src/styles/tokens.css`, all components use inline styles + CSS variables
-- No backend, no auth, no database
+- Virtualized lists (`react-virtuoso`) for massive collection performance.
+- Capacitor (iOS/Android native support ready).
+- No CSS framework — design tokens in `src/styles/tokens.css`, all components use inline styles + CSS variables.
 
 ---
 
@@ -52,30 +52,39 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-### Optional: API key
+### Optional Configurations
 
-The Pokémon TCG API works unauthenticated but has a tight rate limit. To use your own key, copy `.env.example` to `.env.local` and fill it in:
+The Pokémon TCG API works unauthenticated but has a tight rate limit. 
+Supabase cloud sync is optional / experimental. The app runs on LocalStorage by default and will not crash if Supabase is missing.
+
+Copy `.env.example` to `.env.local` and fill it in:
 
 ```bash
 cp .env.example .env.local
-# edit .env.local
+```
+
+```env
 VITE_POKEMON_TCG_API_BASE_URL=https://api.pokemontcg.io/v2
 VITE_POKEMON_TCG_API_KEY=your_key_here
+
+OPENAI_API_KEY=your_vision_key_here # For Real OCR
+
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 Get a free key at [dev.pokemontcg.io](https://dev.pokemontcg.io/). The key is read at build time via Vite's `import.meta.env` and sent as the `X-Api-Key` header. It is never logged, persisted, or exposed in storage.
 
 ---
 
-## Build
+## Build & Test
 
 ```bash
 npm run typecheck    # tsc -b --noEmit
 npm run build        # tsc -b && vite build
+npm run test:run     # Run Vitest test suite
 npm run preview      # preview the production build locally
 ```
-
-There is currently **no `lint` script** and **no test suite** — these are noted as gaps in the roadmap rather than reported as passing.
 
 ---
 
@@ -128,12 +137,8 @@ src/
 
 ## Known limitations
 
-- Scanner is simulated (clearly labeled in Profile and in the result panel).
-- Assistant is rule-based — supports 12 intents (rarity, value, set, owned, category, attacks, abilities, weaknesses/resistances, retreat, variants, recommendation, similar prints). Unknown questions fall back to a grounded summary.
-- Library "view by expansion" is not yet implemented — sorting and filtering by rarity is.
-- Missing-card placeholders inside a set view are not yet rendered.
+- Assistant is rule-based — supports 12 intents. Unknown questions fall back to a grounded summary.
 - Card images come from the Pokémon TCG API CDN — if the CDN is slow, the first paint can lag. There is a small in-memory cache per session, but no service worker.
-- No automated tests.
 
 ---
 

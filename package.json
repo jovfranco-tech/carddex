@@ -1,7 +1,7 @@
 {
   "name": "carddex",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "description": "Personal Pokémon TCG collection app (non-commercial fan project).",
   "scripts": {
