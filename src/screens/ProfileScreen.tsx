@@ -39,6 +39,10 @@ export default function ProfileScreen() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!authEmail || !authPassword) {
+      showToast('Ingresa correo y contraseña');
+      return;
+    }
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
     setAuthLoading(false);
@@ -48,6 +52,10 @@ export default function ProfileScreen() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!authEmail || !authPassword) {
+      showToast('Ingresa correo y contraseña para registrarte');
+      return;
+    }
     setAuthLoading(true);
     const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
     setAuthLoading(false);
