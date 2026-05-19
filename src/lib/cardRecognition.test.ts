@@ -6,6 +6,9 @@ import {
   classifyPokemonTypes,
   getRecognitionConfidence,
   HIGH_CONFIDENCE_THRESHOLD,
+  hashString,
+  getOfflineRecognitionResult,
+  OFFLINE_CARD_CATALOG,
 } from './cardRecognition';
 
 function makeCard(over: Partial<PokemonCard> = {}): PokemonCard {
@@ -168,5 +171,40 @@ describe('getRecognitionConfidence', () => {
       possibleSet: 'base1',
     });
     expect(score).toBeGreaterThanOrEqual(HIGH_CONFIDENCE_THRESHOLD);
+  });
+});
+
+describe('Offline Fallback and Hashing', () => {
+  it('hashString computes stable base36 hashes', () => {
+    const hash1 = hashString('test-string-123');
+    const hash2 = hashString('test-string-123');
+    const hash3 = hashString('different-string');
+    expect(hash1).toBe(hash2);
+    expect(hash1).not.toBe(hash3);
+    expect(typeof hash1).toBe('string');
+    expect(hash1.length).toBeGreaterThan(0);
+  });
+
+  it('getOfflineRecognitionResult deterministically maps hashes to valid cards', () => {
+    const hash1 = hashString('some-captured-image-bytes-1');
+    const hash2 = hashString('some-captured-image-bytes-2');
+
+    const result1 = getOfflineRecognitionResult(hash1);
+    const result2 = getOfflineRecognitionResult(hash2);
+
+    expect(result1.card).not.toBeNull();
+    expect(result2.card).not.toBeNull();
+    expect(OFFLINE_CARD_CATALOG).toContain(result1.card);
+    expect(OFFLINE_CARD_CATALOG).toContain(result2.card);
+
+    expect(result1.confidence).toBe(0.85);
+    expect(result1.highConfidence).toBe(true);
+    expect(result1.source).toBe('offline_fallback');
+    expect(result1.simulated).toBe(true);
+    expect(result1.detectedLanguage).toBe('EN');
+
+    // Repeated call with same hash gives identical result
+    const repeatResult = getOfflineRecognitionResult(hash1);
+    expect(repeatResult.card!.id).toBe(result1.card!.id);
   });
 });

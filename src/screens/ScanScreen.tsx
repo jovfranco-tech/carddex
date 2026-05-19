@@ -20,6 +20,7 @@ import {
   type RecognitionResult,
 } from '@/lib/cardRecognition';
 import type { PokemonCard } from '@/types/pokemon';
+import { saveCardMeta } from '@/lib/collectionStorage';
 
 type ScanState = 'idle' | 'scanning' | 'detected' | 'lowConf';
 type CameraStatus = 'idle' | 'starting' | 'live' | 'denied' | 'unsupported' | 'error';
@@ -108,6 +109,68 @@ export default function ScanScreen() {
   const [error, setError] = useState<string | null>(null);
   const [correctOpen, setCorrectOpen] = useState(false);
   const [blurWarning, setBlurWarning] = useState(false);
+
+  // Advanced Batch Mode States
+  const [isBatchMode, setIsBatchMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('carddex.scanner.isBatchMode') === 'true';
+    }
+    return false;
+  });
+  const [scannedBatch, setScannedBatch] = useState<RecognitionResult[]>([]);
+  const [justAddedToBatch, setJustAddedToBatch] = useState(false);
+  const [showBatchSaveToast, setShowBatchSaveToast] = useState(false);
+  const [batchToastCount, setBatchToastCount] = useState(0);
+
+  const handleToggleBatchMode = () => {
+    setIsBatchMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('carddex.scanner.isBatchMode', String(next));
+      return next;
+    });
+    // Reset result state to prevent UI conflicts
+    setState('idle');
+    setConfidence(0);
+    setResult(null);
+    setBlurWarning(false);
+    if (navigator.vibrate) navigator.vibrate(40);
+  };
+
+  const handleSaveBatch = () => {
+    if (scannedBatch.length === 0) return;
+    
+    // Sequence-save all cards to LocalStorage / Cloud
+    scannedBatch.forEach((item) => {
+      if (item.card) {
+        saveCardMeta(item.card.id, {
+          quantity: 1,
+          owned: true,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    // Show beautiful success Toast
+    setBatchToastCount(scannedBatch.length);
+    setShowBatchSaveToast(true);
+    setTimeout(() => {
+      setShowBatchSaveToast(false);
+    }, 3000);
+
+    // Vibrate and clear batch
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    setScannedBatch([]);
+  };
+
+  const handleClearBatch = () => {
+    setScannedBatch([]);
+    if (navigator.vibrate) navigator.vibrate(30);
+  };
+
+  const handleRemoveFromBatch = (cardId: string) => {
+    setScannedBatch((prev) => prev.filter((item) => item.card?.id !== cardId));
+    if (navigator.vibrate) navigator.vibrate(30);
+  };
 
   // Refs for media-capture plumbing.
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -225,9 +288,28 @@ export default function ScanScreen() {
       }
 
       setConfidence(Math.round(recognition.confidence * 100));
-      setResult(recognition);
-      setState('detected');
-      if (navigator.vibrate) navigator.vibrate(100); // Success vibration
+
+      if (isBatchMode) {
+        // Mode Lote: add to batch, trigger feedback, and auto-reset
+        setScannedBatch((prev) => {
+          const exists = prev.some((item) => item.card?.id === recognition.card?.id);
+          if (exists) return prev;
+          return [...prev, recognition];
+        });
+        setJustAddedToBatch(true);
+        setTimeout(() => setJustAddedToBatch(false), 800);
+        if (navigator.vibrate) navigator.vibrate(120);
+
+        setState('idle');
+        setConfidence(0);
+        setResult(null);
+        setBlurWarning(false);
+      } else {
+        // Mode Único: show single card detected panel
+        setResult(recognition);
+        setState('detected');
+        if (navigator.vibrate) navigator.vibrate(100); // Success vibration
+      }
     } catch (err) {
       window.clearInterval(tick);
       setConfidence(0);
@@ -239,7 +321,7 @@ export default function ScanScreen() {
       );
       setState('lowConf');
     }
-  }, []);
+  }, [isBatchMode]);
 
   useEffect(() => {
     if (state === 'scanning') {
@@ -332,6 +414,69 @@ export default function ScanScreen() {
         <DarkPillButton onClick={handleClose} aria="Cerrar">
           <CloseIcon size={20} />
         </DarkPillButton>
+
+        {/* Sliding glassmorphic mode selector */}
+        <div
+          style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            borderRadius: 999,
+            padding: 2,
+            border: '0.5px solid rgba(255, 255, 255, 0.12)',
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+          }}
+        >
+          <button
+            onClick={() => {
+              if (isBatchMode) handleToggleBatchMode();
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 999,
+              border: 'none',
+              background: !isBatchMode ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+              color: !isBatchMode ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+              fontSize: 11.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 200ms ease',
+              fontFamily: 'inherit',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <span>📷 Único</span>
+          </button>
+          <button
+            onClick={() => {
+              if (!isBatchMode) handleToggleBatchMode();
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 999,
+              border: 'none',
+              background: isBatchMode ? 'var(--accent)' : 'transparent',
+              color: isBatchMode ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+              fontSize: 11.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 200ms ease',
+              fontFamily: 'inherit',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <span>📦 Lote</span>
+          </button>
+        </div>
+
         <div style={{ display: 'flex', gap: 10 }}>
           <DarkPillButton onClick={() => setCorrectOpen(true)} aria="Información">
             <InfoIcon size={20} />
@@ -357,7 +502,7 @@ export default function ScanScreen() {
             transition: 'opacity 200ms',
           }}
         >
-          {state === 'idle' && 'Toma una foto de la carta'}
+          {state === 'idle' && (isBatchMode ? 'Escaneo continuo en lote' : 'Toma una foto de la carta')}
           {state === 'scanning' && 'Identificando carta…'}
           {state === 'detected' && '¡Carta detectada!'}
           {state === 'lowConf' && 'Detección poco fiable'}
@@ -370,7 +515,7 @@ export default function ScanScreen() {
             letterSpacing: -0.1,
           }}
         >
-          {state === 'idle' && 'Alinea la carta dentro del marco'}
+          {state === 'idle' && (isBatchMode ? `Acumuladas: ${scannedBatch.length} cartas en bandeja` : 'Alinea la carta dentro del marco')}
           {state === 'scanning' && 'Mantén la cámara estable'}
           {state === 'detected' && 'Revisa los detalles antes de guardar'}
           {state === 'lowConf' &&
@@ -443,15 +588,16 @@ export default function ScanScreen() {
             />
           )}
 
-          {/* Ambient light glow behind the card guide when detected */}
-          {state === 'detected' && (
+          {/* Ambient light glow behind the card guide when detected or added to batch */}
+          {(state === 'detected' || justAddedToBatch) && (
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'radial-gradient(circle at center, rgba(52, 199, 89, 0.15) 0%, transparent 60%)',
+                background: 'radial-gradient(circle at center, rgba(52, 199, 89, 0.25) 0%, transparent 70%)',
                 zIndex: 2,
                 pointerEvents: 'none',
+                animation: justAddedToBatch ? 'flashGreen 800ms ease-out' : 'none',
               }}
             />
           )}
@@ -574,9 +720,12 @@ export default function ScanScreen() {
 
       {/* Bottom result / status panel */}
       <div style={{ padding: '0 14px 12px' }}>
-        {state === 'idle' && <IdleHint cameraStatus={cameraStatus} />}
+        {state === 'idle' && !isBatchMode && <IdleHint cameraStatus={cameraStatus} />}
+        {state === 'idle' && isBatchMode && scannedBatch.length === 0 && (
+          <IdleHint cameraStatus={cameraStatus} />
+        )}
         {state === 'scanning' && <ScanningPanel confidence={confidence} />}
-        {state === 'detected' && result?.card && (
+        {state === 'detected' && result?.card && !isBatchMode && (
           <DetectedPanel
             result={result}
             confidence={confidence}
@@ -595,6 +744,147 @@ export default function ScanScreen() {
             onManual={() => setCorrectOpen(true)}
             message={error}
           />
+        )}
+
+        {/* Tray when batch has items */}
+        {isBatchMode && scannedBatch.length > 0 && (
+          <div
+            className="batch-tray-enter"
+            style={{
+              background: 'rgba(20,22,30,0.7)',
+              backdropFilter: 'blur(20px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+              border: '0.5px solid rgba(255,255,255,0.12)',
+              borderRadius: 22,
+              padding: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              animation: 'slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0 2px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    boxShadow: '0 0 8px var(--accent)',
+                  }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2 }}>
+                  Lote actual ({scannedBatch.length})
+                </span>
+              </div>
+              <button
+                onClick={handleClearBatch}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  transition: 'color 150ms',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
+              >
+                Limpiar lote
+              </button>
+            </div>
+
+            {/* Scrollable list of cards in batch */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                overflowX: 'auto',
+                paddingBottom: 4,
+                scrollbarWidth: 'none',
+              }}
+            >
+              {scannedBatch.map((item, idx) => {
+                const card = item.card!;
+                return (
+                  <div
+                    key={`${card.id}-${idx}`}
+                    style={{
+                      position: 'relative',
+                      flexShrink: 0,
+                      borderRadius: 8,
+                      overflow: 'visible',
+                      animation: 'popIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    }}
+                  >
+                    <TcgCardImage card={card} width={50} />
+                    <button
+                      onClick={() => handleRemoveFromBatch(card.id)}
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: '#FF3B30',
+                        border: '1.5px solid #14161e',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        fontSize: 9,
+                        fontWeight: 900,
+                      }}
+                      title="Eliminar del lote"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveBatch}
+              style={{
+                width: '100%',
+                padding: '11px',
+                background: 'linear-gradient(135deg, var(--accent) 0%, #E07A25 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                letterSpacing: -0.1,
+                boxShadow: '0 4px 16px rgba(242, 153, 74, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 200ms',
+              }}
+            >
+              <span>📥 Guardar Lote en Biblioteca</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -684,6 +974,47 @@ export default function ScanScreen() {
         </button>
       </div>
 
+      {/* Toast de Guardado Exitoso en Lote */}
+      {showBatchSaveToast && (
+        <div style={{
+          position: 'absolute',
+          top: 110,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(52, 199, 89, 0.15)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(52, 199, 89, 0.4)',
+          borderRadius: 14,
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          zIndex: 100,
+          boxShadow: '0 8px 32px rgba(52, 199, 89, 0.2)',
+          animation: 'toastEnter 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+        }}>
+          <div style={{
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: '#34C759',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <CheckIcon size={12} color="#fff" />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>¡Lote Guardado!</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>
+              Se agregaron {batchToastCount} cartas a tu colección
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Manual correction sheet */}
       {correctOpen && (
         <CorrectionSheet
@@ -715,6 +1046,23 @@ export default function ScanScreen() {
           0% { transform: translate(-50%, 0) scale(1); }
           50% { transform: translate(-50%, 0) scale(1.02); box-shadow: 0 8px 32px rgba(255, 214, 10, 0.2); }
           100% { transform: translate(-50%, 0) scale(1); }
+        }
+        @keyframes toastEnter {
+          0% { transform: translate(-50%, -20px); opacity: 0; }
+          100% { transform: translate(-50%, 0); opacity: 1; }
+        }
+        @keyframes flashGreen {
+          0% { opacity: 0; }
+          20% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        @keyframes slideUp {
+          0% { transform: translateY(20px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes popIn {
+          0% { transform: scale(0.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </div>
