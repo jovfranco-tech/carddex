@@ -166,3 +166,9 @@ export const UploadIcon: SvgIcon = makeIcon(
 export const StarIcon: SvgIcon = makeIcon(
   <path d="m12 3 2.9 6 6.6.9-4.8 4.7 1.1 6.5L12 18l-5.8 3.1L7.3 14.6 2.5 9.9l6.6-.9L12 3z" />,
 );
+export const DecksIcon: SvgIcon = makeIcon(
+  <>
+    <rect x="2" y="6" width="16" height="14" rx="2" />
+    <path d="M22 18V4a2 2 0 0 0-2-2H6" />
+  </>,
+);

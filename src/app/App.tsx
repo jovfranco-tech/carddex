@@ -7,6 +7,8 @@ import DetailScreen from '@/screens/DetailScreen';
 import LibraryScreen from '@/screens/LibraryScreen';
 import SetsScreen from '@/screens/SetsScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
+import DecksScreen from '@/screens/DecksScreen';
+import DeckDetailScreen from '@/screens/DeckDetailScreen';
 import { ROUTES } from './routes';
 import { AuthProvider } from '@/lib/authContext';
 
@@ -120,6 +122,8 @@ export default function App() {
               <Route path={ROUTES.library} element={<LibraryScreen />} />
               <Route path={ROUTES.sets} element={<SetsScreen />} />
               <Route path={ROUTES.profile} element={<ProfileScreen />} />
+              <Route path={ROUTES.decks} element={<DecksScreen />} />
+              <Route path={ROUTES.deckDetailPattern} element={<DeckDetailScreen />} />
               <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </AppShell>

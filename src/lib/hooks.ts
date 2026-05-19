@@ -11,6 +11,7 @@ import {
   type CollectionSummary,
 } from '@/lib/collectionStorage';
 import { isAbortError } from '@/lib/pokemonTcgApi';
+import { getDecksState, subscribeDecks } from '@/lib/deckStorage';
 
 /* ------------------------------------------------------------------------- */
 /* Reactive collection state                                                  */
@@ -121,4 +122,15 @@ export function useDebounced<T>(value: T, delay = 320): T {
     return () => window.clearTimeout(id);
   }, [value, delay]);
   return v;
+}
+
+export function useDecks() {
+  const [decksState, setDecksState] = useState(() => getDecksState());
+
+  useEffect(() => {
+    const unsub = subscribeDecks(() => setDecksState(getDecksState()));
+    return unsub;
+  }, []);
+
+  return decksState;
 }

@@ -7,6 +7,9 @@ export const ROUTES = {
   profile: '/profile',
   cardDetail: (id: string) => `/card/${encodeURIComponent(id)}`,
   cardDetailPattern: '/card/:cardId',
+  decks: '/decks',
+  deckDetail: (id: string) => `/deck/${encodeURIComponent(id)}`,
+  deckDetailPattern: '/deck/:deckId',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

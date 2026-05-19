@@ -14,11 +14,11 @@ export interface AppShellProps {
  */
 export default function AppShell({ children }: AppShellProps) {
   const { pathname } = useLocation();
-  // Hide bottom nav on scanner and card detail to mirror the prototype.
   const hideNav =
     pathname === '/scan' ||
     pathname.startsWith('/card/') ||
-    pathname.startsWith('/scan/');
+    pathname.startsWith('/scan/') ||
+    pathname.startsWith('/deck/');
 
   return (
     <div className="shell-wrap">

@@ -4,7 +4,7 @@ import {
   HomeIcon,
   ScanIcon,
   LayersIcon,
-  BookIcon,
+  DecksIcon,
   UserIcon,
   type IconProps,
 } from './icons';
@@ -20,7 +20,7 @@ const TABS: Tab[] = [
   { key: 'home', label: 'Inicio', path: '/', icon: HomeIcon },
   { key: 'scan', label: 'Escanear', path: '/scan', icon: ScanIcon },
   { key: 'library', label: 'Colección', path: '/library', icon: LayersIcon },
-  { key: 'sets', label: 'Expansiones', path: '/sets', icon: BookIcon },
+  { key: 'decks', label: 'Mazos', path: '/decks', icon: DecksIcon },
   { key: 'profile', label: 'Perfil', path: '/profile', icon: UserIcon },
 ];
 
