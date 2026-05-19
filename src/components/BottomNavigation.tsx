@@ -51,6 +51,7 @@ export default function BottomNavigation() {
         alignItems: 'flex-end',
       }}
       aria-label="Navegación principal"
+      className="bottom-nav-fixed"
     >
       {TABS.map((t) => {
         const active = isActive(t.path);

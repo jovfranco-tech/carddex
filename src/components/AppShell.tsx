@@ -25,24 +25,33 @@ export default function AppShell({ children }: AppShellProps) {
       <div className="shell-frame">
         <div className="shell-screen">
           {children}
-          {!hideNav && <BottomNavigation />}
         </div>
+        {!hideNav && <BottomNavigation />}
       </div>
       <style>{`
+        .shell-wrap {
+          display: flex;
+          justify-content: center;
+        }
         .shell-frame {
           width: 100%;
-          max-width: var(--shell-max);
-          min-height: 100vh;
+          max-width: var(--shell-max, 100%);
+          height: 100vh;
+          height: 100dvh;
           background: var(--bg);
           position: relative;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
         .shell-screen {
           position: relative;
           width: 100%;
-          min-height: 100vh;
+          flex: 1;
           background: var(--bg);
           overflow-x: hidden;
+          overflow-y: auto;
+          padding-bottom: ${hideNav ? '0' : '80px'};
         }
         @media (min-width: 481px) {
           .shell-wrap {
@@ -51,20 +60,14 @@ export default function AppShell({ children }: AppShellProps) {
           }
           .shell-frame {
             max-width: 402px;
+            height: calc(100vh - 64px);
             min-height: min(874px, calc(100vh - 64px));
-            max-height: calc(100vh - 64px);
             border-radius: 44px;
             box-shadow:
               0 0 0 1px rgba(255, 255, 255, 0.04),
               0 2px 0 1px rgba(255, 255, 255, 0.05) inset,
               0 24px 60px rgba(0, 0, 0, 0.45);
             border: 8px solid #1c1f27;
-            overflow: hidden;
-          }
-          .shell-screen {
-            min-height: min(858px, calc(100vh - 80px));
-            max-height: calc(100vh - 80px);
-            overflow-y: auto;
           }
         }
       `}</style>
