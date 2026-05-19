@@ -48,6 +48,18 @@ export default function LibraryScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const collection = useCollection();
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (containerRef.current) {
+      const parent = containerRef.current.closest('.shell-screen') as HTMLElement;
+      if (parent) {
+        setScrollParent(parent);
+      }
+    }
+  }, []);
+
   const setFilter = searchParams.get('set') ?? '';
   const [view, setView] = useState<'grid' | 'list' | 'sets'>('grid');
   const [onlyMine, setOnlyMine] = useState(true);
@@ -255,7 +267,7 @@ export default function LibraryScreen() {
   /* --------------------------------------------------------------------- */
 
   return (
-    <div style={{ paddingBottom: 110 }}>
+    <div ref={containerRef} style={{ paddingBottom: 110 }}>
       <Header
         onSet={!!setFilter}
         setName={setFilter}
@@ -517,7 +529,7 @@ export default function LibraryScreen() {
               </div>
             ) : view === 'grid' ? (
               <VirtuosoGrid
-                useWindowScroll
+                {...(scrollParent ? { customScrollParent: scrollParent } : { useWindowScroll: true })}
                 data={filteredCards}
                 listClassName="virtual-grid-list"
                 itemClassName="virtual-grid-item"
