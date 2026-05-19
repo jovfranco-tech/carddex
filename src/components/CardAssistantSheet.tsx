@@ -72,45 +72,67 @@ export default function CardAssistantSheet({
   }, [messages, thinking]);
 
   const ask = useCallback(
-    (question: string, answerOverride?: AssistantAnswer) => {
+    async (question: string) => {
       if (!context) return;
       const trimmed = question.trim();
       if (!trimmed) return;
 
       const userId = `u${Date.now()}`;
-      setMessages((prev) => [
-        ...prev,
-        { id: userId, role: 'user', text: trimmed },
-      ]);
+      const newMessages = [...messages, { id: userId, role: 'user' as const, text: trimmed }];
+      setMessages(newMessages);
       setInput('');
       setThinking(true);
 
-      // Short artificial delay so the typing indicator is visible — gives the
-      // assistant a less abrupt feel without ever feeling slow.
-      window.setTimeout(() => {
-        const answer =
-          answerOverride ?? answerCardQuestion(trimmed, context);
+      try {
+        const apiMessages = newMessages.map(m => ({ role: m.role, content: m.text }));
+        
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: apiMessages,
+            collectionStats: {
+              cardName: context.card.name,
+              setName: context.card.set?.name,
+              estimatedPrice: context.estimatedPrice,
+              collectionMeta: context.collectionMeta
+            }
+          })
+        });
+        const data = await res.json();
+        
         setMessages((prev) => [
           ...prev,
           {
             id: `a${Date.now()}`,
             role: 'assistant',
-            text: answer.text,
-            sources: answer.sources,
-            unknown: answer.unknown,
-            intent: answer.intent,
+            text: data.reply || 'Lo siento, no pude procesar eso.',
+            sources: ['OpenAI gpt-4o-mini'],
+            unknown: false,
           },
         ]);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a${Date.now()}`,
+            role: 'assistant',
+            text: 'Hubo un error de conexión con la IA. Intenta de nuevo más tarde.',
+            sources: ['Error de red'],
+            unknown: true,
+          },
+        ]);
+      } finally {
         setThinking(false);
-      }, 380);
+      }
     },
-    [context],
+    [context, messages],
   );
 
   const askPrompt = useCallback(
     (prompt: SuggestedPrompt) => {
       if (!context) return;
-      ask(prompt.label, answerSuggestedPrompt(prompt, context));
+      ask(prompt.label);
     },
     [ask, context],
   );
@@ -314,7 +336,7 @@ export default function CardAssistantSheet({
         >
           <InfoIcon size={12} />
           <span>
-            Asistente local. Solo responde con datos disponibles — no inventa precios ni rareza.
+            Asistente IA (OpenAI). Las respuestas sobre mercado son estimaciones.
           </span>
         </div>
 
