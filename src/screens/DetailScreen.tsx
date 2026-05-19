@@ -493,7 +493,7 @@ function Detail({
             >
               {PRICE_DISCLAIMER}
             </p>
-            <PriceHistoryChart price={price.amount} cardId={card.id} />
+            <PriceHistoryChart price={price.value} cardId={card.id} />
           </Surface>
         </div>
       )}
@@ -961,6 +961,7 @@ function SelectField({
           ▾
         </span>
       </div>
+    </label>
   );
 }
 
@@ -1009,7 +1010,7 @@ function PriceHistoryChart({ price, cardId }: { price: number; cardId: string })
           <Tooltip 
             contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
             itemStyle={{ color: 'var(--ink)', fontWeight: 'bold' }}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Valor']}
+            formatter={(value: any) => [`$${value.toFixed(2)}`, 'Valor']}
           />
           <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
         </AreaChart>

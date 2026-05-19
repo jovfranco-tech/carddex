@@ -474,7 +474,7 @@ export default function LibraryScreen() {
                   width: '100%',
                 }}
                 components={{
-                  List: React.forwardRef((props, ref) => (
+                  List: React.forwardRef((props: any, ref) => (
                     <div
                       {...props}
                       ref={ref}
@@ -488,7 +488,7 @@ export default function LibraryScreen() {
                       }}
                     />
                   )),
-                  Item: ({ children, ...props }) => (
+                  Item: ({ children, ...props }: any) => (
                     <div {...props} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                       {children}
                     </div>
