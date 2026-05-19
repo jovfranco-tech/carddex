@@ -247,6 +247,72 @@ function buildEmptyResult(reason: 'low_confidence' | 'network' | 'no_match'): Re
 /* ------------------------------------------------------------------------- */
 
 /**
+ * 32-bit FNV-1a hash function to compute a short, stable signature for the Base64 image.
+ */
+export function hashString(str: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+interface OcrCacheEntry {
+  hash: string;
+  data: {
+    cardName: string;
+    number?: string;
+    language?: string;
+    englishNumber?: string;
+    englishSetHint?: string;
+  };
+  timestamp: number;
+}
+
+function getOcrCache(): Record<string, OcrCacheEntry> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem('carddex.ocr_cache.v1');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Error reading OCR cache:', e);
+    return {};
+  }
+}
+
+function setOcrCache(cache: Record<string, OcrCacheEntry>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('carddex.ocr_cache.v1', JSON.stringify(cache));
+  } catch (e) {
+    console.error('Error writing OCR cache:', e);
+  }
+}
+
+function saveToOcrCache(hash: string, data: any): void {
+  const cache = getOcrCache();
+  const keys = Object.keys(cache);
+  
+  if (keys.length >= 100) {
+    const sorted = keys
+      .map((k) => cache[k])
+      .sort((a, b) => a.timestamp - b.timestamp);
+    const evictCount = Math.max(1, keys.length - 99);
+    for (let i = 0; i < evictCount; i++) {
+      delete cache[sorted[i].hash];
+    }
+  }
+
+  cache[hash] = {
+    hash,
+    data,
+    timestamp: Date.now(),
+  };
+  setOcrCache(cache);
+}
+
+/**
  * Main entry point. Returns a believable RecognitionResult.
  *
  * MVP behaviour (no real CV):
@@ -285,19 +351,38 @@ export async function recognizeCardFromImage(
           reader.onerror = error => reject(error);
         });
 
-        // 2. Send to Vercel Serverless Function
-        const ocrRes = await fetch('/api/recognize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64 }),
-          signal: opts.signal,
-        });
+        // 1.5. Calculate hash & check Cache
+        const imageHash = hashString(base64);
+        const localCache = getOcrCache();
+        let ocrData: any;
 
-        if (!ocrRes.ok) {
-           throw new Error(await ocrRes.text());
+        if (localCache[imageHash]) {
+          console.log('[OCR Cache] Hit for image hash:', imageHash);
+          ocrData = localCache[imageHash].data;
+          
+          // Refresh access timestamp (LRU update)
+          localCache[imageHash].timestamp = Date.now();
+          setOcrCache(localCache);
+        } else {
+          console.log('[OCR Cache] Miss for image hash:', imageHash);
+          // 2. Send to Vercel Serverless Function
+          const ocrRes = await fetch('/api/recognize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 }),
+            signal: opts.signal,
+          });
+
+          if (!ocrRes.ok) {
+             throw new Error(await ocrRes.text());
+          }
+
+          ocrData = await ocrRes.json();
+          if (ocrData.cardName) {
+            saveToOcrCache(imageHash, ocrData);
+          }
         }
 
-        const ocrData = await ocrRes.json();
         if (!ocrData.cardName) {
            return buildEmptyResult('no_match');
         }

@@ -41,6 +41,64 @@ type CameraStatus = 'idle' | 'starting' | 'live' | 'denied' | 'unsupported' | 'e
  * Recognition itself is still assisted/simulated in v1 — the file/frame is
  * not yet analyzed pixel-by-pixel. See `cardRecognition.ts` for the v2 TODO.
  */
+
+/**
+ * Lightweight, zero-dependency client-side image sharpness analyzer.
+ * Uses pixel-intensity gradients of adjacent pixels on a scaled down canvas.
+ */
+async function checkImageBlur(file: File): Promise<{ isBlurry: boolean; score: number }> {
+  return new Promise<{ isBlurry: boolean; score: number }>((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = 150;
+      canvas.height = 150;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve({ isBlurry: false, score: 99 });
+        return;
+      }
+      ctx.drawImage(img, 0, 0, 150, 150);
+      const imgData = ctx.getImageData(0, 0, 150, 150);
+      const data = imgData.data;
+      
+      const grayscale = new Uint8Array(150 * 150);
+      for (let i = 0; i < data.length; i += 4) {
+        grayscale[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
+      }
+
+      let diffSum = 0;
+      let count = 0;
+      for (let y = 0; y < 150; y++) {
+        for (let x = 0; x < 150; x++) {
+          const idx = y * 150 + x;
+          const val = grayscale[idx];
+          
+          if (x < 149) {
+            diffSum += Math.abs(val - grayscale[idx + 1]);
+            count++;
+          }
+          if (y < 149) {
+            diffSum += Math.abs(val - grayscale[idx + 150]);
+            count++;
+          }
+        }
+      }
+
+      const score = count > 0 ? diffSum / count : 99;
+      // Sharpness threshold of 8 (below is considered blurry)
+      resolve({ isBlurry: score < 8, score });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ isBlurry: false, score: 99 });
+    };
+    img.src = url;
+  });
+}
+
 export default function ScanScreen() {
   const navigate = useNavigate();
   const [state, setState] = useState<ScanState>('idle');
@@ -49,6 +107,7 @@ export default function ScanScreen() {
   const [result, setResult] = useState<RecognitionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [correctOpen, setCorrectOpen] = useState(false);
+  const [blurWarning, setBlurWarning] = useState(false);
 
   // Refs for media-capture plumbing.
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -193,18 +252,28 @@ export default function ScanScreen() {
       setState('idle');
       setConfidence(0);
       setResult(null);
+      setBlurWarning(false);
       if (navigator.vibrate) navigator.vibrate(50);
       return;
     }
     if (state === 'scanning') return;
     
     if (navigator.vibrate) navigator.vibrate(50); // Tap vibration
+    setBlurWarning(false);
 
     // Pre-arm the input for runScan. If the camera is live we grab a frame
     // and forward it as a File; otherwise we use the demo path.
     if (cameraLive) {
       const file = await captureFrame();
-      pendingInputRef.current = file ? { type: 'file', file } : { type: 'none' };
+      if (file) {
+        const blurCheck = await checkImageBlur(file);
+        if (blurCheck.isBlurry) {
+          setBlurWarning(true);
+        }
+        pendingInputRef.current = { type: 'file', file };
+      } else {
+        pendingInputRef.current = { type: 'none' };
+      }
     } else {
       pendingInputRef.current = { type: 'none' };
     }
@@ -214,11 +283,18 @@ export default function ScanScreen() {
   /** Open the hidden file picker (works as gallery + as system camera on iOS). */
   const openFilePicker = () => fileInputRef.current?.click();
 
-  const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     // Reset so the same file can be re-selected later.
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
+
+    setBlurWarning(false);
+    const blurCheck = await checkImageBlur(file);
+    if (blurCheck.isBlurry) {
+      setBlurWarning(true);
+    }
+
     pendingInputRef.current = { type: 'file', file };
     setState('scanning');
   };
@@ -350,6 +426,74 @@ export default function ScanScreen() {
               mixBlendMode: cameraLive ? 'overlay' : 'normal',
             }}
           />
+
+          {/* Pulsing glassmorphic overlay during analysis */}
+          {state === 'scanning' && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(255, 255, 255, 0.03)',
+                backdropFilter: 'blur(3px)',
+                WebkitBackdropFilter: 'blur(3px)',
+                animation: 'pulseGlass 2s ease-in-out infinite',
+                zIndex: 2,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
+          {/* Ambient light glow behind the card guide when detected */}
+          {state === 'detected' && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'radial-gradient(circle at center, rgba(52, 199, 89, 0.15) 0%, transparent 60%)',
+                zIndex: 2,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
+          {/* Gentle dynamic blur warning inside the viewport */}
+          {blurWarning && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 20,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(255, 214, 10, 0.15)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255, 214, 10, 0.3)',
+                borderRadius: 12,
+                padding: '10px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                zIndex: 15,
+                width: '85%',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                animation: 'pulseWarning 2s infinite',
+                pointerEvents: 'none',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>⚠️</span>
+              <span
+                style={{
+                  fontSize: 11.5,
+                  color: '#FFD60A',
+                  fontWeight: 600,
+                  letterSpacing: -0.1,
+                  lineHeight: 1.3,
+                }}
+              >
+                Foto borrosa detectada. Enfoca mejor para mayor precisión.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* corner brackets */}
@@ -417,10 +561,10 @@ export default function ScanScreen() {
               position: 'absolute',
               left: 40,
               right: 40,
-              height: 3,
-              background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-              boxShadow: `0 0 24px 2px ${accent}`,
-              animation: 'scanLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+              height: 4,
+              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.3) 20%, ${accent} 50%, rgba(255,255,255,0.3) 80%, transparent)`,
+              boxShadow: `0 0 15px 3px ${accent}, 0 0 30px 6px ${accent}88`,
+              animation: 'scanLine 2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
               pointerEvents: 'none',
               zIndex: 10,
             }}
@@ -444,7 +588,10 @@ export default function ScanScreen() {
         )}
         {state === 'lowConf' && (
           <LowConfidencePanel
-            onRetry={() => setState('idle')}
+            onRetry={() => {
+              setBlurWarning(false);
+              setState('idle');
+            }}
             onManual={() => setCorrectOpen(true)}
             message={error}
           />
@@ -549,15 +696,25 @@ export default function ScanScreen() {
       )}
       <style>{`
         @keyframes scanLine {
-          0% { transform: translateY(-130px); opacity: 0; }
+          0% { transform: translateY(-140px); opacity: 0; }
           10% { opacity: 1; }
           90% { opacity: 1; }
-          100% { transform: translateY(130px); opacity: 0; }
+          100% { transform: translateY(140px); opacity: 0; }
         }
         @keyframes pulseBracket {
           0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.08); opacity: 0.6; }
+          50% { transform: scale(1.04); opacity: 0.7; }
           100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes pulseGlass {
+          0% { opacity: 0.35; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+          50% { opacity: 0.75; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+          100% { opacity: 0.35; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+        }
+        @keyframes pulseWarning {
+          0% { transform: translate(-50%, 0) scale(1); }
+          50% { transform: translate(-50%, 0) scale(1.02); box-shadow: 0 8px 32px rgba(255, 214, 10, 0.2); }
+          100% { transform: translate(-50%, 0) scale(1); }
         }
       `}</style>
     </div>

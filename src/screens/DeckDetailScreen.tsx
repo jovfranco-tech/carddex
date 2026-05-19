@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import { useDecks, useAsync, useCollection } from '@/lib/hooks';
@@ -6,7 +7,68 @@ import { removeCardFromDeck } from '@/lib/deckStorage';
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
-import { BackIcon, TrashIcon, LayersIcon } from '@/components/icons';
+import { BackIcon, TrashIcon, LayersIcon, ShareIcon } from '@/components/icons';
+import { Toast } from '@/components/Section';
+import type { PokemonCard } from '@/types/pokemon';
+
+/**
+ * Maps a list of cards to official Pokémon TCG Live (PTCGL) export format.
+ * Format: [Qty] [Name] [SetCode] [Number]
+ */
+function exportDeckToPTCGL(deckCards: PokemonCard[], deckCardIds: string[]): string {
+  const counts: Record<string, number> = {};
+  for (const id of deckCardIds) {
+    counts[id] = (counts[id] || 0) + 1;
+  }
+
+  const uniqueCards = deckCards.filter(
+    (card, index, self) => self.findIndex((c) => c.id === card.id) === index
+  );
+
+  const pokemonList: string[] = [];
+  const trainerList: string[] = [];
+  const energyList: string[] = [];
+
+  let pokemonQty = 0;
+  let trainerQty = 0;
+  let energyQty = 0;
+
+  for (const card of uniqueCards) {
+    const qty = counts[card.id] || 0;
+    const name = card.name;
+    const setCode = (card.set.ptcgoCode || card.set.id).toUpperCase();
+    const number = card.number;
+    const line = `${qty} ${name} ${setCode} ${number}`;
+
+    const supertype = card.supertype?.toLowerCase() || '';
+    if (supertype.includes('pokemon') || supertype.includes('pokémon')) {
+      pokemonList.push(line);
+      pokemonQty += qty;
+    } else if (supertype.includes('trainer')) {
+      trainerList.push(line);
+      trainerQty += qty;
+    } else if (supertype.includes('energy')) {
+      energyList.push(line);
+      energyQty += qty;
+    } else {
+      pokemonList.push(line);
+      pokemonQty += qty;
+    }
+  }
+
+  const sections: string[] = [];
+  if (pokemonList.length > 0) {
+    sections.push(`Pokémon: ${pokemonQty}\n${pokemonList.join('\n')}`);
+  }
+  if (trainerList.length > 0) {
+    sections.push(`Trainer: ${trainerQty}\n${trainerList.join('\n')}`);
+  }
+  if (energyList.length > 0) {
+    sections.push(`Energy: ${energyQty}\n${energyList.join('\n')}`);
+  }
+
+  return sections.join('\n\n');
+}
 
 export default function DeckDetailScreen() {
   const { deckId } = useParams<{ deckId: string }>();
@@ -30,6 +92,30 @@ export default function DeckDetailScreen() {
     (signal) => getCardsByIds(deck?.cards ?? [], { signal }),
     [(deck?.cards ?? []).join(',')]
   );
+
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+  };
+
+  const handleExport = () => {
+    if (!deckCards.data || !deck || deck.cards.length === 0) return;
+    try {
+      const ptcglText = exportDeckToPTCGL(deckCards.data, deck.cards);
+      navigator.clipboard.writeText(ptcglText)
+        .then(() => {
+          showToast('Lista de mazo copiada en formato PTCGL');
+        })
+        .catch((err) => {
+          console.error('Failed to copy deck list:', err);
+          showToast('Error al copiar la lista del mazo');
+        });
+    } catch (err) {
+      console.error('Failed to export deck:', err);
+      showToast('Error al exportar el mazo');
+    }
+  };
 
   return (
     <div style={{ paddingBottom: 110 }}>
@@ -75,7 +161,27 @@ export default function DeckDetailScreen() {
         >
           {deck.name}
         </div>
-        <div style={{ width: 38 }} />
+        <button
+          onClick={handleExport}
+          disabled={deckCards.loading || deck.cards.length === 0}
+          title="Exportar mazo a PTCGL"
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            background: 'var(--surface)',
+            border: '0.5px solid var(--border)',
+            color: 'var(--ink-2)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: deckCards.loading || deck.cards.length === 0 ? 'default' : 'pointer',
+            opacity: deckCards.loading || deck.cards.length === 0 ? 0.4 : 1,
+            transition: 'all 200ms',
+          }}
+        >
+          <ShareIcon size={18} />
+        </button>
       </div>
 
       <div style={{ padding: '0 14px 14px' }}>
@@ -144,6 +250,14 @@ export default function DeckDetailScreen() {
           </div>
         )}
       </div>
+
+      {/* Toast feedback */}
+      <Toast
+        message={toast ?? ''}
+        visible={!!toast}
+        onHide={() => setToast(null)}
+        duration={2000}
+      />
     </div>
   );
 }
