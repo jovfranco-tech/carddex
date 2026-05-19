@@ -149,10 +149,11 @@ export default function ScanScreen() {
     try {
       const recognition = await recognizeCardFromImage(input);
 
-      // Ensure at least 1.8s have elapsed for the visual.
+      // We still use a minimum of 800ms to ensure the visual feedback shows 
+      // up briefly even if the network is extremely fast, but we drop the 1.8s.
       const elapsed = Date.now() - start;
-      if (elapsed < 1800) {
-        await new Promise((r) => window.setTimeout(r, 1800 - elapsed));
+      if (elapsed < 800) {
+        await new Promise((r) => window.setTimeout(r, 800 - elapsed));
       }
       window.clearInterval(tick);
 
@@ -160,12 +161,14 @@ export default function ScanScreen() {
         setConfidence(Math.round(recognition.confidence * 100));
         setResult(recognition);
         setState('lowConf');
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Error vibration pattern
         return;
       }
 
       setConfidence(Math.round(recognition.confidence * 100));
       setResult(recognition);
       setState('detected');
+      if (navigator.vibrate) navigator.vibrate(100); // Success vibration
     } catch (err) {
       window.clearInterval(tick);
       setConfidence(0);
@@ -190,9 +193,13 @@ export default function ScanScreen() {
       setState('idle');
       setConfidence(0);
       setResult(null);
+      if (navigator.vibrate) navigator.vibrate(50);
       return;
     }
     if (state === 'scanning') return;
+    
+    if (navigator.vibrate) navigator.vibrate(50); // Tap vibration
+
     // Pre-arm the input for runScan. If the camera is live we grab a frame
     // and forward it as a File; otherwise we use the demo path.
     if (cameraLive) {
@@ -408,13 +415,14 @@ export default function ScanScreen() {
           <div
             style={{
               position: 'absolute',
-              left: 60,
-              right: 60,
-              height: 2,
+              left: 40,
+              right: 40,
+              height: 3,
               background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-              boxShadow: `0 0 18px ${accent}`,
-              animation: 'scanLine 2.4s ease-in-out infinite',
+              boxShadow: `0 0 24px 2px ${accent}`,
+              animation: 'scanLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite',
               pointerEvents: 'none',
+              zIndex: 10,
             }}
           />
         )}
@@ -539,6 +547,19 @@ export default function ScanScreen() {
           }}
         />
       )}
+      <style>{`
+        @keyframes scanLine {
+          0% { transform: translateY(-130px); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(130px); opacity: 0; }
+        }
+        @keyframes pulseBracket {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.08); opacity: 0.6; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -619,6 +640,7 @@ function ScanBrackets({ state }: { state: ScanState }) {
         inset: '20px 50px',
         pointerEvents: 'none',
         transition: 'all 220ms',
+        animation: state === 'scanning' ? 'pulseBracket 1s ease-in-out infinite' : 'none',
       }}
     >
       {corners.map((c, i) => (
@@ -640,7 +662,8 @@ function ScanBrackets({ state }: { state: ScanState }) {
             borderTopRightRadius: c.brtr,
             borderBottomLeftRadius: c.brbl,
             borderBottomRightRadius: c.brbr,
-            boxShadow: state === 'detected' ? `0 0 18px ${color}88` : 'none',
+            boxShadow: state === 'detected' ? `0 0 24px ${color}88` : 'none',
+            transition: 'border-color 200ms ease, box-shadow 200ms ease',
           }}
         />
       ))}
