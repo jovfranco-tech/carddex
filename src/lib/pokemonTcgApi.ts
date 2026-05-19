@@ -235,21 +235,93 @@ export function translateSpanishQuery(query: string): string {
   return replacedAny ? translated : query;
 }
 
+export interface ParsedQuery {
+  name: string;
+  number?: string;
+  setId?: string;
+}
+
+export function parseSearchQuery(query: string): ParsedQuery {
+  const translated = translateSpanishQuery(query);
+  const words = translated.split(/\s+/).filter(Boolean);
+  
+  let numberVal: string | undefined = undefined;
+  let setIdVal: string | undefined = undefined;
+  const nameWords: string[] = [];
+
+  for (const word of words) {
+    const cleanWord = word.replace(/["\\]/g, '').trim();
+    if (!cleanWord) continue;
+
+    // Detect card number fraction (e.g., "026/071", "120/165")
+    if (cleanWord.includes('/')) {
+      const parts = cleanWord.split('/');
+      if (parts[0] && /^\d+$/.test(parts[0])) {
+        numberVal = parts[0];
+        continue;
+      }
+    }
+
+    // Detect pure digit card number (e.g., "120", "2")
+    if (/^\d+$/.test(cleanWord)) {
+      numberVal = cleanWord;
+      continue;
+    }
+
+    // Detect TG/GG gallery numbers or special numbering formats (e.g. "TG12", "GG05", "RC01")
+    if (/^(tg|gg|rc)\d+$/i.test(cleanWord)) {
+      numberVal = cleanWord;
+      continue;
+    }
+
+    // Detect set ID codes (e.g., "sv3", "swsh12", "xy1", "base4")
+    if (/^(sv|swsh|sm|xy|bw|col|hgss|pl|dp|ex|np|pop)\d+[a-z0-9]*$/i.test(cleanWord)) {
+      setIdVal = cleanWord.toLowerCase();
+      continue;
+    }
+
+    nameWords.push(cleanWord);
+  }
+
+  return {
+    name: nameWords.join(' '),
+    number: numberVal,
+    setId: setIdVal,
+  };
+}
+
 /**
  * Compose a Pokémon TCG API `q` query from structured filters.
- * Example output:  name:"char*" rarity:"Rare Holo" set.id:swsh1
+ * Example output:  name:*char* AND name:*ex* rarity:"Rare Holo" set.id:swsh1
  */
 function composeQuery(opts: SearchCardsParams): string | undefined {
   const fragments: string[] = [];
   const raw = opts.q?.trim();
   if (raw) fragments.push(raw);
+  
   if (opts.name) {
-    const translatedName = translateSpanishQuery(opts.name);
-    // Strip characters that would break the q-syntax. Names can include
-    // apostrophes ("Farfetch'd") and accents — keep them but quote-escape.
-    const safe = translatedName.replace(/["\\]/g, '').trim();
-    if (safe) fragments.push(`name:"*${safe}*"`);
+    const parsed = parseSearchQuery(opts.name);
+    
+    if (parsed.name) {
+      const words = parsed.name.split(/\s+/).filter(Boolean);
+      if (words.length > 0) {
+        const queryTerms = words.map((w) => `name:*${w}*`);
+        fragments.push(queryTerms.join(' AND '));
+      }
+    }
+    
+    if (parsed.number) {
+      const cleanNum = parsed.number.replace(/^[0]+/, '').trim();
+      if (cleanNum) {
+        fragments.push(`number:"${cleanNum}"`);
+      }
+    }
+    
+    if (parsed.setId) {
+      fragments.push(`set.id:${parsed.setId}`);
+    }
   }
+  
   if (opts.setId) fragments.push(`set.id:${opts.setId}`);
   if (opts.rarity) fragments.push(`rarity:"${opts.rarity}"`);
   if (opts.type) fragments.push(`types:${opts.type}`);

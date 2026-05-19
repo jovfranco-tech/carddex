@@ -345,6 +345,8 @@ export async function recognizeCardFromImage(
       targetNumber = englishNumber;
     }
 
+    const cleanNum = targetNumber ? targetNumber.split('/')[0].replace(/^[0]+/, '').trim() : '';
+
     // Si identificamos un set equivalente, intentamos buscar su ID oficial
     let targetSetId: string | null = null;
     if (englishSetHint) {
@@ -365,35 +367,35 @@ export async function recognizeCardFromImage(
       }
     }
 
-    const searchParams: any = { name: seed, pageSize: 4, orderBy: '-set.releaseDate' };
-    const queryParts: string[] = [];
+    const cleanSeed = seed.replace(/["\\]/g, '').trim();
+    const seedWords = cleanSeed.split(/\s+/).filter(Boolean);
+    const nameQuery = seedWords.length > 0 ? seedWords.map((w) => `name:*${w}*`).join(' AND ') : '';
+    const firstWordQuery = seedWords.length > 0 ? `name:*${seedWords[0]}*` : '';
 
-    if (targetSetId) {
-      searchParams.setId = targetSetId;
+    let res: any = { data: [] };
+
+    // Capa 1: Búsqueda precisa (Nombre + Número + Set)
+    if (nameQuery && cleanNum && targetSetId) {
+      const q = `${nameQuery} AND number:"${cleanNum}" AND set.id:${targetSetId}`;
+      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
-    if (targetNumber) {
-      const cleanNum = targetNumber.split('/')[0].replace(/^[0]+/, '').trim();
-      if (cleanNum) {
-        queryParts.push(`number:"${cleanNum}"`);
-      }
+    // Capa 2: Nombre + Número (Si falló la Capa 1 o no teníamos Set)
+    if (res.data.length === 0 && nameQuery && cleanNum) {
+      const q = `${nameQuery} AND number:"${cleanNum}"`;
+      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
-    if (queryParts.length > 0) {
-      queryParts.unshift(`name:"*${seed.split(' ')[0]}*"`);
-      searchParams.q = queryParts.join(' ');
-    } else if (ocrNumber) {
-      searchParams.q = `name:"*${seed.split(' ')[0]}*" number:"${ocrNumber.replace(/\/.*/, '')}"`;
+    // Capa 3: Nombre completo (Si falló la Capa 2 o no teníamos Número)
+    if (res.data.length === 0 && nameQuery) {
+      const q = nameQuery;
+      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
-    let res = await searchCards(searchParams, { signal: opts.signal });
-    
-    // Si la búsqueda precisa falla, hacemos fallback a buscar solo por nombre traducido en inglés
-    if (res.data.length === 0 && (ocrNumber || englishNumber || targetSetId)) {
-      res = await searchCards(
-        { name: seed, pageSize: 4, orderBy: '-set.releaseDate' },
-        { signal: opts.signal }
-      );
+    // Capa 4: Primer término del nombre (Si falló la Capa 3 - súper robusto)
+    if (res.data.length === 0 && firstWordQuery) {
+      const q = firstWordQuery;
+      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
     if (res.data.length === 0) return buildEmptyResult('no_match');
@@ -401,7 +403,7 @@ export async function recognizeCardFromImage(
     // Prefer a card that has a market price + a usable image
     const detected =
       res.data.find(
-        (c) =>
+        (c: any) =>
           Boolean(c.images?.large || c.images?.small) &&
           Boolean(c.tcgplayer || c.cardmarket),
       ) ?? res.data[0];

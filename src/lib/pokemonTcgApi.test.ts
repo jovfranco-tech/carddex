@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { translateSpanishQuery } from './pokemonTcgApi';
+import { translateSpanishQuery, parseSearchQuery } from './pokemonTcgApi';
 
 describe('translateSpanishQuery', () => {
   it('translates exact matches successfully', () => {
@@ -21,5 +21,56 @@ describe('translateSpanishQuery', () => {
   it('keeps English terms unchanged', () => {
     expect(translateSpanishQuery('Pikachu')).toBe('Pikachu');
     expect(translateSpanishQuery('Charizard VMAX')).toBe('Charizard VMAX');
+  });
+});
+
+describe('parseSearchQuery', () => {
+  it('parses pure name queries correctly', () => {
+    const parsed = parseSearchQuery('Pikachu VMAX');
+    expect(parsed.name).toBe('Pikachu VMAX');
+    expect(parsed.number).toBeUndefined();
+    expect(parsed.setId).toBeUndefined();
+  });
+
+  it('extracts pure digit card numbers', () => {
+    const parsed = parseSearchQuery('Charizard 223');
+    expect(parsed.name).toBe('Charizard');
+    expect(parsed.number).toBe('223');
+    expect(parsed.setId).toBeUndefined();
+  });
+
+  it('extracts fractional card numbers', () => {
+    const parsed = parseSearchQuery('Pikachu 026/071');
+    expect(parsed.name).toBe('Pikachu');
+    expect(parsed.number).toBe('026');
+    expect(parsed.setId).toBeUndefined();
+  });
+
+  it('extracts special gallery numbers', () => {
+    const parsed = parseSearchQuery('Mew TG12');
+    expect(parsed.name).toBe('Mew');
+    expect(parsed.number).toBe('TG12');
+    expect(parsed.setId).toBeUndefined();
+  });
+
+  it('extracts set ID codes', () => {
+    const parsed = parseSearchQuery('Charizard sv3');
+    expect(parsed.name).toBe('Charizard');
+    expect(parsed.number).toBeUndefined();
+    expect(parsed.setId).toBe('sv3');
+  });
+
+  it('handles fully combined name, number and set queries', () => {
+    const parsed = parseSearchQuery('Pikachu 026/165 sv2a');
+    expect(parsed.name).toBe('Pikachu');
+    expect(parsed.number).toBe('026');
+    expect(parsed.setId).toBe('sv2a');
+  });
+
+  it('handles translated combined queries with accents', () => {
+    const parsed = parseSearchQuery('energía fuego 12 sv3');
+    expect(parsed.name).toBe('Fire Energy');
+    expect(parsed.number).toBe('12');
+    expect(parsed.setId).toBe('sv3');
   });
 });
