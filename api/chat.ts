@@ -19,13 +19,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Build the system prompt using the user's actual collection stats
     const systemPrompt = `Eres el asistente oficial de "CardDex", una aplicación para gestionar colecciones de cartas de Pokémon TCG.
-    El usuario te está haciendo una pregunta sobre su colección o sobre Pokémon TCG en general.
-    Responde SIEMPRE de forma concisa, amigable, y en un tono entusiasta de entrenador Pokémon.
+    El usuario te está haciendo una pregunta sobre su carta o sobre Pokémon TCG en general.
+    Eres un MAESTRO ESTRATEGA de Pokémon TCG. Puedes sugerir sinergias, combos y cómo construir mazos (decks) alrededor de esta carta.
+    Si el usuario pide un mazo o deck, dale una lista de cartas sugeridas que combinen bien con ella y explica la estrategia.
+    Responde de forma amigable y en un tono entusiasta de entrenador Pokémon.
     
-    ESTADO ACTUAL DE LA COLECCIÓN DEL USUARIO:
+    ESTADO ACTUAL DE LA CARTA Y COLECCIÓN DEL USUARIO:
     ${collectionStats ? JSON.stringify(collectionStats) : 'Desconocido'}
     
-    No des explicaciones técnicas innecesarias ni hables sobre ti mismo como una IA a menos que sea muy necesario. Mantén tus respuestas breves, máximo 2 o 3 párrafos cortos. No inventes datos.`;
+    Usa los ataques y habilidades proporcionados en los datos para dar recomendaciones precisas. No des explicaciones técnicas de programación. Usa markdown para resaltar negritas o listas.`;
 
     const openAiMessages = [
       { role: 'system', content: systemPrompt },

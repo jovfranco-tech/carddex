@@ -95,7 +95,15 @@ export default function CardAssistantSheet({
               cardName: context.card.name,
               setName: context.card.set?.name,
               estimatedPrice: context.estimatedPrice,
-              collectionMeta: context.collectionMeta
+              collectionMeta: context.collectionMeta,
+              cardDetails: {
+                hp: context.card.hp,
+                types: context.card.types,
+                attacks: context.card.attacks,
+                abilities: context.card.abilities,
+                weaknesses: context.card.weaknesses,
+                retreatCost: context.card.retreatCost
+              }
             }
           })
         });
