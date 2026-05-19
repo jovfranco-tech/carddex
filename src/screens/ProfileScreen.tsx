@@ -7,6 +7,7 @@ import {
   UploadIcon,
   TrashIcon,
   InfoIcon,
+  ShareIcon,
 } from '@/components/icons';
 import { useCollectionSummary } from '@/lib/hooks';
 import {
@@ -97,6 +98,17 @@ export default function ProfileScreen() {
   };
 
   const apiKeyConfigured = hasApiKey();
+
+  const handleShareProfile = async () => {
+    if (!user) return;
+    const url = `${window.location.origin}/u/${user.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Enlace copiado al portapapeles');
+    } catch {
+      showToast('No se pudo copiar el enlace');
+    }
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -312,6 +324,27 @@ export default function ProfileScreen() {
                 <Stat n={formatInt(summary.wishlistCount)} l="Wishlist" />
                 <Stat n={formatInt(summary.missingCount)} l="Faltan" />
               </div>
+              <button 
+                onClick={handleShareProfile}
+                style={{ 
+                  marginTop: 20, 
+                  width: '100%',
+                  background: 'var(--accent)', 
+                  color: '#fff', 
+                  border: 'none', 
+                  padding: 14, 
+                  borderRadius: 14, 
+                  fontWeight: 700, 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8
+                }}
+              >
+                <ShareIcon size={18} />
+                Copiar enlace a mi perfil público
+              </button>
             </>
           )}
         </Surface>

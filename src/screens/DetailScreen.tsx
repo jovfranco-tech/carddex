@@ -20,8 +20,9 @@ import {
   BanIcon,
   ShareIcon,
   MoreIcon,
+  DecksIcon,
 } from '@/components/icons';
-import { useAsync, useCardMeta } from '@/lib/hooks';
+import { useAsync, useCardMeta, useDecks } from '@/lib/hooks';
 import { getCardById, getSimilarCardsByName } from '@/lib/pokemonTcgApi';
 import {
   addRecentlyViewed,
@@ -35,6 +36,7 @@ import {
   formatPrice,
   PRICE_DISCLAIMER,
 } from '@/lib/pricing';
+import { addCardToDeck } from '@/lib/deckStorage';
 import { rarityColor, rarityLabel } from '@/lib/rarity';
 import { buildCardAssistantContext } from '@/lib/cardAssistant';
 import { typeColor } from '@/components/TypeBadge';
@@ -108,6 +110,10 @@ function Detail({
   const [condition, setCondition] = useState<CardCondition>(meta?.condition ?? 'Near Mint');
   const [variant, setVariant] = useState<CardVariant>(meta?.variant ?? 'Normal');
   const [saved, setSaved] = useState(false);
+  const [deckSavedId, setDeckSavedId] = useState<string | null>(null);
+
+  const decksState = useDecks();
+  const decks = Object.values(decksState.decks);
 
   // Resync local state if meta arrives after the first render.
   useEffect(() => {
@@ -574,6 +580,66 @@ function Detail({
           </button>
         </Surface>
       </div>
+
+      {/* Add to deck */}
+      {decks.length > 0 && (
+        <div style={{ padding: '0 14px 12px' }}>
+          <Surface style={{ padding: 16 }}>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--ink)',
+                letterSpacing: -0.2,
+                marginBottom: 12,
+              }}
+            >
+              Añadir a un mazo
+            </div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} className="no-scrollbar">
+              {decks.map(deck => {
+                const count = deck.cards.filter(id => id === card.id).length;
+                const isMaxed = count >= 4 && card.supertype !== 'Energy';
+                const isSavedHere = deckSavedId === deck.id;
+                
+                return (
+                  <button
+                    key={deck.id}
+                    onClick={() => {
+                      if (isMaxed) return;
+                      addCardToDeck(deck.id, card.id);
+                      setDeckSavedId(deck.id);
+                      setTimeout(() => setDeckSavedId(null), 2000);
+                    }}
+                    style={{
+                      flex: '0 0 auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: isSavedHere ? 'var(--success)' : isMaxed ? '#E1E3EA' : '#F2F3F7',
+                      color: isSavedHere ? '#fff' : isMaxed ? 'var(--muted)' : 'var(--ink)',
+                      padding: '8px 14px',
+                      borderRadius: 12,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: isMaxed ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'background 200ms',
+                    }}
+                  >
+                    {isSavedHere ? <CheckIcon size={16} color="#fff" /> : <DecksIcon size={16} />}
+                    {deck.name} ({deck.cards.length}/60)
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+              Puedes agregar hasta 4 copias de la misma carta por mazo.
+            </div>
+          </Surface>
+        </div>
+      )}
 
       {/* Card Assistant entry */}
       <div style={{ padding: '0 14px 14px' }}>

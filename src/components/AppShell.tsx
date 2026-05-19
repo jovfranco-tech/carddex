@@ -18,7 +18,8 @@ export default function AppShell({ children }: AppShellProps) {
     pathname === '/scan' ||
     pathname.startsWith('/card/') ||
     pathname.startsWith('/scan/') ||
-    pathname.startsWith('/deck/');
+    pathname.startsWith('/deck/') ||
+    pathname.startsWith('/u/');
 
   return (
     <div className="shell-wrap">
