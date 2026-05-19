@@ -118,6 +118,7 @@ export interface PokemonCard {
   images: CardImages;
   tcgplayer?: TcgPlayerData;
   cardmarket?: CardMarketData;
+  dhash?: string;
 }
 
 export interface ApiListResponse<T> {

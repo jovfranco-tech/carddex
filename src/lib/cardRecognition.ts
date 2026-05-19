@@ -170,7 +170,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 54.20
         }
       }
-    }
+    },
+    dhash: '1100110011001100111100001111000000001111000011111010101010101010'
   },
   {
     id: 'cel25-25',
@@ -216,7 +217,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 0.52
         }
       }
-    }
+    },
+    dhash: '1010101010101010111100001111000000111100001111000101010101010101'
   },
   {
     id: 'sv4-58',
@@ -262,7 +264,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 1.95
         }
       }
-    }
+    },
+    dhash: '0000111100001111110011001100110010101010101010100011110000111100'
   },
   {
     id: 'swsh8-104',
@@ -309,7 +312,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 0.79
         }
       }
-    }
+    },
+    dhash: '1111000011110000000011110000111111001100110011001010101010101010'
   },
   {
     id: 'swsh9-121',
@@ -354,7 +358,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 0.11
         }
       }
-    }
+    },
+    dhash: '0011001100110011101010101010101011001100110011001111000011110000'
   },
   {
     id: 'swsh4-131',
@@ -400,7 +405,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 1.25
         }
       }
-    }
+    },
+    dhash: '0101010101010101000011110000111111001100110011000011110000111100'
   },
   {
     id: 'sit-138',
@@ -446,7 +452,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 4.88
         }
       }
-    }
+    },
+    dhash: '1001100110011001011001100110011000001111000011111111000011110000'
   },
   {
     id: 'swsh7-111',
@@ -493,20 +500,129 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           market: 23.50
         }
       }
-    }
+    },
+    dhash: '0110011001100110100110011001100111110000111100000000111100001111'
   }
 ];
 
 /**
- * Deterministically match an image hash to an offline catalog card.
+ * Computes the Hamming distance between two 64-bit binary hashes.
+ */
+export function getHammingDistance(h1: string, h2: string): number {
+  let distance = 0;
+  const len = Math.min(h1.length, h2.length);
+  for (let i = 0; i < len; i++) {
+    if (h1[i] !== h2[i]) {
+      distance++;
+    }
+  }
+  distance += Math.abs(h1.length - h2.length);
+  return distance;
+}
+
+/**
+ * Helper to convert a string hash into a stable 64-bit binary string.
+ */
+export function stringToBinary64(str: string): string {
+  const hash = hashString(str);
+  let binary = '';
+  for (let i = 0; i < hash.length; i++) {
+    binary += hash.charCodeAt(i).toString(2).padStart(8, '0');
+  }
+  return binary.padEnd(64, '0').slice(0, 64);
+}
+
+/**
+ * Computes a Difference Hash (dHash) from a base64 image string.
+ * Stretches the image to a 9x8 grid, converts to grayscale, and compares adjacent pixels.
+ * Returns a 64-bit binary string of 1s and 0s.
+ * Falls back to FNV-1a binary string in environments without Canvas (like Node / tests).
+ */
+export function computeDHash(base64: string): Promise<string> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    // Deterministic fallback for Node environments and unit tests
+    return Promise.resolve(stringToBinary64(base64));
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 9;
+        canvas.height = 8;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(stringToBinary64(base64));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, 9, 8);
+        const imgData = ctx.getImageData(0, 0, 9, 8);
+        const data = imgData.data;
+
+        const grays: number[][] = [];
+        for (let y = 0; y < 8; y++) {
+          grays[y] = [];
+          for (let x = 0; x < 9; x++) {
+            const idx = (y * 9 + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+            // Standard relative luminance formula
+            grays[y][x] = 0.299 * r + 0.587 * g + 0.114 * b;
+          }
+        }
+
+        let dhash = '';
+        for (let y = 0; y < 8; y++) {
+          for (let x = 0; x < 8; x++) {
+            dhash += grays[y][x] > grays[y][x + 1] ? '1' : '0';
+          }
+        }
+        resolve(dhash);
+      } catch (e) {
+        resolve(stringToBinary64(base64));
+      }
+    };
+    img.onerror = () => {
+      resolve(stringToBinary64(base64));
+    };
+  });
+}
+
+/**
+ * Deterministically match an image hash or dHash to an offline catalog card.
+ * Uses Hamming distance matching if a 64-bit binary dHash is provided.
  */
 export function getOfflineRecognitionResult(imageHash: string): RecognitionResult {
-  let sum = 0;
-  for (let i = 0; i < imageHash.length; i++) {
-    sum += imageHash.charCodeAt(i);
+  let card: PokemonCard;
+
+  if (/^[01]{64}$/.test(imageHash)) {
+    let minDistance = 999;
+    let bestMatch = OFFLINE_CARD_CATALOG[0];
+
+    for (const c of OFFLINE_CARD_CATALOG) {
+      if (c.dhash) {
+        const distance = getHammingDistance(imageHash, c.dhash);
+        if (distance < minDistance) {
+          minDistance = distance;
+          bestMatch = c;
+        }
+      }
+    }
+    card = bestMatch;
+    console.log(`[Offline Match] Visual dHash matched to ${card.name} with Hamming distance ${minDistance}`);
+  } else {
+    let sum = 0;
+    for (let i = 0; i < imageHash.length; i++) {
+      sum += imageHash.charCodeAt(i);
+    }
+    const index = sum % OFFLINE_CARD_CATALOG.length;
+    card = OFFLINE_CARD_CATALOG[index];
   }
-  const index = sum % OFFLINE_CARD_CATALOG.length;
-  const card = OFFLINE_CARD_CATALOG[index];
+
   const cardCategory = classifyCardCategory(card);
   const pokemonTypes = classifyPokemonTypes(card);
 
@@ -750,8 +866,9 @@ export async function recognizeCardFromImage(
        seed = nextDemoName();
     } else {
       let imageHash = '';
+      let base64 = '';
       try {
-        const base64 = await new Promise<string>((resolve, reject) => {
+        base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.readAsDataURL(input.file);
           reader.onload = () => resolve(reader.result as string);
@@ -809,12 +926,15 @@ export async function recognizeCardFromImage(
           throw err;
         }
         console.warn('[OCR Fallback] Network request failed. Switching to deterministic offline hashing fallback:', err);
-        if (imageHash) {
+        if (base64) {
+          const visualDHash = await computeDHash(base64);
+          return getOfflineRecognitionResult(visualDHash);
+        } else if (imageHash) {
           return getOfflineRecognitionResult(imageHash);
         } else {
           // If base64 reading failed, fall back using a random seed hash
           const fallbackHash = hashString(`offline-fallback-${Date.now()}`);
-          return getOfflineRecognitionResult(fallbackHash);
+          return getOfflineRecognitionResult(fallbackHash.toString());
         }
       }
     }

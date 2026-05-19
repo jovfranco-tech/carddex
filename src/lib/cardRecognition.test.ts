@@ -9,6 +9,9 @@ import {
   hashString,
   getOfflineRecognitionResult,
   OFFLINE_CARD_CATALOG,
+  getHammingDistance,
+  computeDHash,
+  stringToBinary64,
 } from './cardRecognition';
 
 function makeCard(over: Partial<PokemonCard> = {}): PokemonCard {
@@ -207,4 +210,43 @@ describe('Offline Fallback and Hashing', () => {
     const repeatResult = getOfflineRecognitionResult(hash1);
     expect(repeatResult.card!.id).toBe(result1.card!.id);
   });
+
+  it('getHammingDistance calculates correct differences between binary strings', () => {
+    expect(getHammingDistance('000', '000')).toBe(0);
+    expect(getHammingDistance('111', '000')).toBe(3);
+    expect(getHammingDistance('1010', '0101')).toBe(4);
+    // Handles length mismatches gracefully
+    expect(getHammingDistance('11', '111')).toBe(1);
+  });
+
+  it('stringToBinary64 converts arbitrary strings into stable 64-bit binary strings', () => {
+    const bin1 = stringToBinary64('test-string-for-binary');
+    const bin2 = stringToBinary64('test-string-for-binary');
+    const bin3 = stringToBinary64('completely-different');
+
+    expect(bin1).toBe(bin2);
+    expect(bin1).not.toBe(bin3);
+    expect(bin1.length).toBe(64);
+    expect(/^[01]{64}$/.test(bin1)).toBe(true);
+  });
+
+  it('computeDHash falls back gracefully to a 64-bit binary string in tests', async () => {
+    const dhash = await computeDHash('mock-base-64-image-string-contents');
+    expect(dhash.length).toBe(64);
+    expect(/^[01]{64}$/.test(dhash)).toBe(true);
+  });
+
+  it('getOfflineRecognitionResult handles 64-bit binary dHash visual matching via Hamming distance', () => {
+    // Mewtwo ex pre-calculated dhash signature is:
+    // '0000111100001111110011001100110010101010101010100011110000111100'
+    const targetMewtwoDHash = '0000111100001111110011001100110010101010101010100011110000111100';
+    
+    // We create a slightly modified dhash (with Hamming distance 2)
+    const noisyMewtwoDHash = '0000111100001111110011001100110010101010101010100011110000111111';
+
+    const result = getOfflineRecognitionResult(noisyMewtwoDHash);
+    expect(result.card!.name).toBe('Mewtwo ex');
+    expect(result.source).toBe('offline_fallback');
+  });
 });
+

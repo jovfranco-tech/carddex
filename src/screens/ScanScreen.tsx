@@ -1308,6 +1308,8 @@ function DetectedPanel({
   onWrong: () => void;
 }) {
   const card = result.card!;
+  const isOffline = result.source === 'offline_fallback';
+  const matchColor = isOffline ? '#FF9500' : 'var(--success)';
   const price = getEstimatedPrice(card);
   const categoryColor =
     result.cardCategory === 'Pokémon'
@@ -1354,20 +1356,20 @@ function DetectedPanel({
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: 'var(--success)',
-                boxShadow: '0 0 8px var(--success)',
+                background: matchColor,
+                boxShadow: `0 0 8px ${matchColor}`,
               }}
             />
             <span
               style={{
                 fontSize: 10.5,
-                color: 'var(--success)',
+                color: matchColor,
                 fontWeight: 700,
                 letterSpacing: 0.3,
                 textTransform: 'uppercase',
               }}
             >
-              Coincidencia {confidence}%
+              {isOffline ? 'Modo Offline' : `Coincidencia ${confidence}%`}
             </span>
           </span>
           <span
@@ -1532,6 +1534,36 @@ function DetectedPanel({
             }}
           >
             Resultado simulado · escáner real en próxima versión
+          </div>
+        )}
+        {result.source === 'offline_fallback' && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              borderRadius: 8,
+              background: 'rgba(255, 149, 0, 0.12)',
+              border: '0.5px solid rgba(255, 149, 0, 0.3)',
+              fontSize: 10.5,
+              fontWeight: 600,
+              color: '#FF9500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              letterSpacing: 0.1,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#FF9500',
+                boxShadow: '0 0 6px #FF9500',
+                display: 'inline-block',
+              }}
+            />
+            Modo Offline · Coincidencia local aproximada
           </div>
         )}
       </div>

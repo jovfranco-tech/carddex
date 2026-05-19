@@ -20,9 +20,10 @@ import {
   ChevronDownIcon,
   CloseIcon,
 } from '@/components/icons';
-import { useAsync, useCollection } from '@/lib/hooks';
+import { useAsync, useCollection, useDebounced } from '@/lib/hooks';
 import { getCardsByIds, searchCards } from '@/lib/pokemonTcgApi';
 import { getEstimatedPrice } from '@/lib/pricing';
+import SearchBar from '@/components/SearchBar';
 import {
   RARITY_FILTERS,
   rarityMatchesFilter,
@@ -53,6 +54,9 @@ export default function LibraryScreen() {
   const [rarityFilter, setRarityFilter] = useState<string>('all');
   const [sort, setSort] = useState<SortKey>('rarity');
   const [sortOpen, setSortOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const debouncedSearchQuery = useDebounced(searchQuery, 400);
 
   const collectionIds = useMemo(
     () =>
@@ -70,20 +74,43 @@ export default function LibraryScreen() {
     [collectionIds.join(',')],
   );
 
-  // When viewing "all" + a set filter, fetch the set's cards from the API.
+  // When viewing "all" + a set filter (or global search query), fetch the cards from the API.
   const setView$ = useAsync(async (signal) => {
-    if (onlyMine || !setFilter) return [];
-    const { data } = await searchCards(
-      { setId: setFilter, pageSize: 60, orderBy: 'number' },
-      { signal },
-    );
-    return data;
-  }, [onlyMine, setFilter]);
+    if (onlyMine) return [];
+    if (!setFilter && !debouncedSearchQuery.trim()) return [];
 
-  const baseCards = onlyMine ? owned.data ?? [] : setView$.data ?? owned.data ?? [];
+    if (setFilter) {
+      const { data } = await searchCards(
+        { setId: setFilter, pageSize: 60, orderBy: 'number' },
+        { signal },
+      );
+      return data;
+    } else {
+      const { data } = await searchCards(
+        { name: debouncedSearchQuery.trim(), pageSize: 60, orderBy: '-set.releaseDate' },
+        { signal },
+      );
+      return data;
+    }
+  }, [onlyMine, setFilter, debouncedSearchQuery]);
+
+  const baseCards = onlyMine
+    ? owned.data ?? []
+    : ((setFilter || debouncedSearchQuery.trim()) ? setView$.data : null) ?? owned.data ?? [];
 
   const filteredCards = useMemo(() => {
     let list = baseCards;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((c) => {
+        const nameMatch = c.name.toLowerCase().includes(q);
+        const numMatch = c.number?.toLowerCase().includes(q);
+        const setMatch = c.set?.name?.toLowerCase().includes(q) || c.set?.id?.toLowerCase().includes(q);
+        return nameMatch || numMatch || setMatch;
+      });
+    }
+
     if (setFilter) list = list.filter((c) => c.set?.id === setFilter);
     if (rarityFilter !== 'all') {
       list = list.filter((c) => rarityMatchesFilter(c.rarity, rarityFilter));
@@ -102,7 +129,7 @@ export default function LibraryScreen() {
       return 0;
     });
     return list;
-  }, [baseCards, rarityFilter, sort, collection, setFilter]);
+  }, [baseCards, rarityFilter, sort, collection, setFilter, searchQuery]);
 
   const totalQuantity = useMemo(
     () =>
@@ -193,7 +220,15 @@ export default function LibraryScreen() {
   if (loading) {
     return (
       <div style={{ paddingBottom: 110 }}>
-        <Header onSet={!!setFilter} setName={setFilter} onClear={() => setSearchParams({})} />
+        <Header
+          onSet={!!setFilter}
+          setName={setFilter}
+          onClear={() => setSearchParams({})}
+          searchOpen={searchOpen}
+          setSearchOpen={setSearchOpen}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
         <LoadingState variant="grid" count={9} />
       </div>
     );
@@ -201,7 +236,15 @@ export default function LibraryScreen() {
   if (error) {
     return (
       <div style={{ paddingBottom: 110 }}>
-        <Header onSet={!!setFilter} setName={setFilter} onClear={() => setSearchParams({})} />
+        <Header
+          onSet={!!setFilter}
+          setName={setFilter}
+          onClear={() => setSearchParams({})}
+          searchOpen={searchOpen}
+          setSearchOpen={setSearchOpen}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
         <ErrorState message={error} onRetry={reload} />
       </div>
     );
@@ -213,7 +256,15 @@ export default function LibraryScreen() {
 
   return (
     <div style={{ paddingBottom: 110 }}>
-      <Header onSet={!!setFilter} setName={setFilter} onClear={() => setSearchParams({})} />
+      <Header
+        onSet={!!setFilter}
+        setName={setFilter}
+        onClear={() => setSearchParams({})}
+        searchOpen={searchOpen}
+        setSearchOpen={setSearchOpen}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
 
       {showEmpty ? (
         <EmptyState
@@ -580,88 +631,133 @@ function Header({
   onSet,
   setName,
   onClear,
+  searchOpen,
+  setSearchOpen,
+  searchQuery,
+  setSearchQuery,
 }: {
   onSet: boolean;
   setName: string;
   onClear: () => void;
+  searchOpen: boolean;
+  setSearchOpen: (val: boolean) => void;
+  searchQuery: string;
+  setSearchQuery: (val: string) => void;
 }) {
   return (
     <div
       style={{
         padding: '54px 18px 14px',
         display: 'flex',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         justifyContent: 'space-between',
+        height: 106,
+        boxSizing: 'border-box',
       }}
     >
-      <h1
-        style={{
-          margin: 0,
-          fontSize: 26,
-          fontWeight: 800,
-          color: 'var(--ink)',
-          letterSpacing: -0.6,
-        }}
-      >
-        Mi Colección
-      </h1>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {onSet && (
+      {searchOpen ? (
+        <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Buscar por nombre, número o set..."
+              autoFocus
+            />
+          </div>
           <button
-            onClick={onClear}
-            title={`Quitar filtro: ${setName}`}
+            onClick={() => {
+              setSearchOpen(false);
+              setSearchQuery('');
+            }}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              height: 38,
-              padding: '0 12px',
-              borderRadius: 12,
-              background: 'var(--accent-tint)',
+              background: 'transparent',
+              border: 'none',
               color: 'var(--accent)',
-              border: '0.5px solid var(--accent)',
-              fontSize: 12,
-              fontWeight: 700,
-              fontFamily: 'inherit',
+              fontSize: 14,
+              fontWeight: 600,
               cursor: 'pointer',
+              padding: '6px 4px',
             }}
           >
-            Set <CloseIcon size={12} />
+            Cancelar
           </button>
-        )}
-        <button
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 12,
-            background: 'var(--surface)',
-            border: '0.5px solid var(--border)',
-            color: 'var(--ink-2)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label="Buscar"
-        >
-          <SearchIcon size={18} />
-        </button>
-        <button
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 12,
-            background: 'var(--surface)',
-            border: '0.5px solid var(--border)',
-            color: 'var(--ink-2)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label="Filtrar"
-        >
-          <FilterIcon size={18} />
-        </button>
-      </div>
+        </div>
+      ) : (
+        <>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 26,
+              fontWeight: 800,
+              color: 'var(--ink)',
+              letterSpacing: -0.6,
+            }}
+          >
+            Mi Colección
+          </h1>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {onSet && (
+              <button
+                onClick={onClear}
+                title={`Quitar filtro: ${setName}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  height: 38,
+                  padding: '0 12px',
+                  borderRadius: 12,
+                  background: 'var(--accent-tint)',
+                  color: 'var(--accent)',
+                  border: '0.5px solid var(--accent)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                Set <CloseIcon size={12} />
+              </button>
+            )}
+            <button
+              onClick={() => setSearchOpen(true)}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: 'var(--surface)',
+                border: '0.5px solid var(--border)',
+                color: 'var(--ink-2)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              aria-label="Buscar"
+            >
+              <SearchIcon size={18} />
+            </button>
+            <button
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: 'var(--surface)',
+                border: '0.5px solid var(--border)',
+                color: 'var(--ink-2)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              aria-label="Filtrar"
+            >
+              <FilterIcon size={18} />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
