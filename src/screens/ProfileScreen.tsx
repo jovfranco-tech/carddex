@@ -35,7 +35,11 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +56,18 @@ export default function ProfileScreen() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authEmail || !authPassword) {
-      showToast('Ingresa correo y contraseña para registrarte');
+    if (!authEmail || !authPassword || !authName) {
+      showToast('Completa todos los campos para registrarte');
       return;
     }
     setAuthLoading(true);
-    const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+    const { error } = await supabase.auth.signUp({ 
+      email: authEmail, 
+      password: authPassword,
+      options: {
+        data: { full_name: authName }
+      }
+    });
     setAuthLoading(false);
     if (error) showToast(error.message);
     else showToast('Cuenta creada y sesión iniciada');
@@ -66,6 +76,24 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     showToast('Sesión cerrada');
+  };
+
+  const handleUpdateName = async () => {
+    if (!editNameValue.trim()) {
+      setIsEditingName(false);
+      return;
+    }
+    setAuthLoading(true);
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: editNameValue.trim() }
+    });
+    setAuthLoading(false);
+    if (error) {
+      showToast(error.message);
+    } else {
+      showToast('Nombre actualizado');
+      setIsEditingName(false);
+    }
   };
 
   const apiKeyConfigured = hasApiKey();
@@ -162,8 +190,20 @@ export default function ProfileScreen() {
         <Surface style={{ padding: 20, textAlign: 'center' }}>
           {!user ? (
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Accede a tu cuenta</div>
-              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+                {isLoginMode ? 'Accede a tu cuenta' : 'Crea una cuenta'}
+              </div>
+              <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {!isLoginMode && (
+                  <input 
+                    type="text" 
+                    placeholder="Tu nombre o apodo" 
+                    value={authName} 
+                    onChange={(e) => setAuthName(e.target.value)} 
+                    style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)' }} 
+                    required
+                  />
+                )}
                 <input 
                   type="email" 
                   placeholder="Correo electrónico" 
@@ -182,10 +222,10 @@ export default function ProfileScreen() {
                 />
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button type="submit" disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700 }}>
-                    {authLoading ? '...' : 'Iniciar Sesión'}
+                    {authLoading ? '...' : (isLoginMode ? 'Iniciar Sesión' : 'Registrarse')}
                   </button>
-                  <button type="button" onClick={handleSignup} disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', fontWeight: 700 }}>
-                    Registrarse
+                  <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', fontWeight: 700 }}>
+                    {isLoginMode ? 'Crear cuenta' : 'Ya tengo cuenta'}
                   </button>
                 </div>
               </form>
@@ -208,7 +248,7 @@ export default function ProfileScreen() {
                   fontWeight: 800,
                 }}
               >
-                {user.email?.[0].toUpperCase()}
+                {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
               </div>
               <div
                 style={{
@@ -216,9 +256,38 @@ export default function ProfileScreen() {
                   fontWeight: 700,
                   color: 'var(--ink)',
                   letterSpacing: -0.3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
                 }}
               >
-                {user.email}
+                {isEditingName ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input 
+                      autoFocus
+                      value={editNameValue}
+                      onChange={e => setEditNameValue(e.target.value)}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 16 }}
+                    />
+                    <button onClick={handleUpdateName} disabled={authLoading} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700 }}>
+                      ✓
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span>{user.user_metadata?.full_name || user.email}</span>
+                    <button 
+                      onClick={() => {
+                        setEditNameValue(user.user_metadata?.full_name || '');
+                        setIsEditingName(true);
+                      }}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+                    >
+                      Editar
+                    </button>
+                  </>
+                )}
               </div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
                 {formatInt(summary.uniqueCount)} únicas ·{' '}
