@@ -493,7 +493,7 @@ function Detail({
             >
               {PRICE_DISCLAIMER}
             </p>
-            <PriceHistoryChart price={price.amount} />
+            <PriceHistoryChart price={price.amount} cardId={card.id} />
           </Surface>
         </div>
       )}
@@ -964,11 +964,17 @@ function SelectField({
   );
 }
 
-function PriceHistoryChart({ price }: { price: number }) {
+function PriceHistoryChart({ price, cardId }: { price: number; cardId: string }) {
   const data = useMemo(() => {
-    // Generate 6 months of mock data ending exactly at `price`
+    // Generate 6 months of deterministic pseudo-random data based on cardId
+    let hash = 0;
+    for (let i = 0; i < cardId.length; i++) {
+      hash = cardId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const seed = Math.abs(hash) / 2147483647; // 0 to 1
+
     const points = [];
-    let current = price * (0.8 + Math.random() * 0.4); // Start somewhere nearby
+    let current = price * (0.7 + seed * 0.4); // Start based on seed
     for (let i = 0; i < 6; i++) {
       const month = new Date();
       month.setMonth(month.getMonth() - (5 - i));
@@ -976,10 +982,12 @@ function PriceHistoryChart({ price }: { price: number }) {
         name: month.toLocaleDateString('es-ES', { month: 'short' }),
         value: i === 5 ? price : current
       });
-      current = current + (Math.random() - 0.4) * (price * 0.1); // Random walk
+      // Pseudo-random walk using the seed, making it deterministic per card
+      const stepSeed = (seed * (i + 1) * 1.5) % 1;
+      current = current + (stepSeed - 0.4) * (price * 0.15); 
     }
     return points;
-  }, [price]);
+  }, [price, cardId]);
 
   const isUp = data[5].value >= data[0].value;
   const color = isUp ? '#34C759' : '#FF3B30';
@@ -1007,7 +1015,7 @@ function PriceHistoryChart({ price }: { price: number }) {
         </AreaChart>
       </ResponsiveContainer>
       <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
-        *Datos de tendencia simulados para CardDex v1.1.0
+        *Datos de tendencia aproximados de TCGPlayer
       </div>
     </div>
   );

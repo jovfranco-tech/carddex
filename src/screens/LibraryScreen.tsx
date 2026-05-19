@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import Chip from '@/components/Chip';
 import CardTile from '@/components/CardTile';
+import { VirtuosoGrid } from 'react-virtuoso';
 import TcgCardImage from '@/components/TcgCardImage';
 import RarityBadge from '@/components/RarityBadge';
 import PriceBadge from '@/components/PriceBadge';
@@ -464,16 +465,36 @@ export default function LibraryScreen() {
                 ))}
               </div>
             ) : view === 'grid' ? (
-              <div
+              <VirtuosoGrid
+                useWindowScroll
+                data={filteredCards}
+                listClassName="virtual-grid-list"
+                itemClassName="virtual-grid-item"
                 style={{
-                  padding: '0 18px',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 12,
-                  justifyItems: 'center',
+                  width: '100%',
                 }}
-              >
-                {filteredCards.map((c) => (
+                components={{
+                  List: React.forwardRef((props, ref) => (
+                    <div
+                      {...props}
+                      ref={ref}
+                      style={{
+                        padding: '0 18px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 12,
+                        justifyItems: 'center',
+                        ...props.style,
+                      }}
+                    />
+                  )),
+                  Item: ({ children, ...props }) => (
+                    <div {...props} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                      {children}
+                    </div>
+                  )
+                }}
+                itemContent={(index, c) => (
                   <CardTile
                     key={c.id}
                     card={c}
@@ -482,8 +503,8 @@ export default function LibraryScreen() {
                     onClick={() => navigate(`/card/${c.id}`)}
                     showMissingState={!onlyMine}
                   />
-                ))}
-              </div>
+                )}
+              />
             ) : (
               <div
                 style={{

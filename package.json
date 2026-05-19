@@ -13,13 +13,18 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/ios": "^8.3.4",
     "@supabase/supabase-js": "^2.106.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
+    "react-virtuoso": "^4.18.7",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.4",
     "@types/node": "^25.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
