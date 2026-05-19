@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: [
           {
             role: 'system',
-            content: 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Si la carta está en un idioma distinto al inglés (ej. japonés), TRADUCE el nombre al INGLÉS para que coincida con la base de datos oficial. Devuelve ÚNICAMENTE un objeto JSON con el nombre del Pokémon en "cardName", el número de la carta impreso (ej. "4/102") en "number", y el idioma detectado ("JP", "EN", "ES", etc) en "language". No incluyas markdown, solo el JSON raw.',
+            content: 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Si la carta está en un idioma distinto al inglés (ej. japonés, español), traduce e identifica la versión oficial equivalente en inglés para que coincida con la base de datos occidental de Pokémon TCG.\n\nDevuelve ÚNICAMENTE un objeto JSON con las siguientes claves:\n- "cardName": Nombre oficial de la carta traducido al inglés (ej. "Charizard", "Boss\'s Orders").\n- "number": El número de la carta tal cual viene impreso en la carta física (ej. "026/071" o "4/102").\n- "language": El código de idioma detectado (ej. "JP", "EN", "ES", "FR", etc.).\n- "englishNumber": El número equivalente de la carta en la versión en inglés si es una carta no inglesa (ej. para cartas japonesas, "062/193" o "62"). Si es inglés o no lo sabes, pon null.\n- "englishSetHint": El nombre del set equivalente en inglés (ej. "Paldea Evolved", "Crown Zenith", "Scarlet & Violet"). Si es inglés o no lo sabes, pon null.\n\nNo incluyas markdown (como ```json), solo el JSON raw puro y válido.',
           },
           {
             role: 'user',
@@ -36,13 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 type: 'image_url',
                 image_url: {
                   url: image,
-                  detail: 'low',
+                  detail: 'high',
                 },
               },
             ],
           },
         ],
-        max_tokens: 150,
+        max_tokens: 250,
       }),
     });
 

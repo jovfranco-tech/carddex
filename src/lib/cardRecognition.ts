@@ -24,7 +24,7 @@
  *   7. Frame-quality heuristics — reject blurry/glare frames before OCR.
  */
 
-import { searchCards } from './pokemonTcgApi';
+import { searchCards, getSets } from './pokemonTcgApi';
 import type { PokemonCard } from '@/types/pokemon';
 
 /** What category the recognized card belongs to. */
@@ -263,6 +263,9 @@ export async function recognizeCardFromImage(
 ): Promise<RecognitionResult> {
   let seed: string;
   let ocrNumber: string | undefined;
+  let detectedLanguage: string | null = null;
+  let englishNumber: string | null = null;
+  let englishSetHint: string | null = null;
   
   if (input.type === 'seed') {
     seed = input.name;
@@ -301,6 +304,9 @@ export async function recognizeCardFromImage(
 
         seed = ocrData.cardName;
         ocrNumber = ocrData.number;
+        detectedLanguage = ocrData.language ?? null;
+        englishNumber = ocrData.englishNumber ?? null;
+        englishSetHint = ocrData.englishSetHint ?? null;
       } catch (err) {
         if (
           err &&
@@ -321,27 +327,73 @@ export async function recognizeCardFromImage(
   // Si no tenemos seed a estas alturas (por ejemplo si falló algo), usamos fallback
   if (!seed) seed = nextDemoName();
 
-  const cached = seedCache.get(seed.toLowerCase() + (ocrNumber ? `-${ocrNumber}` : ''));
+  const cacheKey = seed.toLowerCase() + (ocrNumber ? `-${ocrNumber}` : '');
+  const cached = seedCache.get(cacheKey);
   if (cached) {
     return buildRecognitionResultFromApiCard(cached, {
       confidence: 0.92,
       source: 'api_lookup',
       simulated: false,
+      detectedLanguage,
     });
   }
 
   try {
-    // Si tenemos número, intentamos ser específicos
+    // Si la carta no es en inglés (ej. japonés) e identificamos un número equivalente, lo usamos
+    let targetNumber = ocrNumber;
+    if (detectedLanguage && detectedLanguage !== 'EN' && englishNumber) {
+      targetNumber = englishNumber;
+    }
+
+    // Si identificamos un set equivalente, intentamos buscar su ID oficial
+    let targetSetId: string | null = null;
+    if (englishSetHint) {
+      try {
+        const sets = await getSets({ signal: opts.signal });
+        const hint = englishSetHint.toLowerCase().trim();
+        const matchedSet = sets.find(
+          (s) =>
+            s.name.toLowerCase().includes(hint) ||
+            hint.includes(s.name.toLowerCase()) ||
+            s.id.toLowerCase() === hint
+        );
+        if (matchedSet) {
+          targetSetId = matchedSet.id;
+        }
+      } catch (err) {
+        console.error('Error fetching sets for hint matching:', err);
+      }
+    }
+
     const searchParams: any = { name: seed, pageSize: 4, orderBy: '-set.releaseDate' };
-    if (ocrNumber) {
+    const queryParts: string[] = [];
+
+    if (targetSetId) {
+      searchParams.setId = targetSetId;
+    }
+
+    if (targetNumber) {
+      const cleanNum = targetNumber.split('/')[0].replace(/^[0]+/, '').trim();
+      if (cleanNum) {
+        queryParts.push(`number:"${cleanNum}"`);
+      }
+    }
+
+    if (queryParts.length > 0) {
+      queryParts.unshift(`name:"*${seed.split(' ')[0]}*"`);
+      searchParams.q = queryParts.join(' ');
+    } else if (ocrNumber) {
       searchParams.q = `name:"*${seed.split(' ')[0]}*" number:"${ocrNumber.replace(/\/.*/, '')}"`;
     }
 
     let res = await searchCards(searchParams, { signal: opts.signal });
     
-    // Si buscamos por número y no hubo match, intentamos solo por nombre
-    if (res.data.length === 0 && ocrNumber) {
-      res = await searchCards({ name: seed, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+    // Si la búsqueda precisa falla, hacemos fallback a buscar solo por nombre traducido en inglés
+    if (res.data.length === 0 && (ocrNumber || englishNumber || targetSetId)) {
+      res = await searchCards(
+        { name: seed, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal: opts.signal }
+      );
     }
 
     if (res.data.length === 0) return buildEmptyResult('no_match');
@@ -354,11 +406,12 @@ export async function recognizeCardFromImage(
           Boolean(c.tcgplayer || c.cardmarket),
       ) ?? res.data[0];
 
-    seedCache.set(seed.toLowerCase() + (ocrNumber ? `-${ocrNumber}` : ''), detected);
+    seedCache.set(cacheKey, detected);
     return buildRecognitionResultFromApiCard(detected, {
-      confidence: ocrNumber ? 0.98 : 0.85,
+      confidence: targetNumber ? 0.98 : 0.85,
       source: 'api_lookup',
       simulated: false,
+      detectedLanguage,
     });
   } catch (err) {
     if (

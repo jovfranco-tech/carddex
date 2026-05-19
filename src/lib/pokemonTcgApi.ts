@@ -140,6 +140,101 @@ function buildQueryString(
   return parts.length ? `?${parts.join('&')}` : '';
 }
 
+const SPANISH_TO_ENGLISH_MAP: Record<string, string> = {
+  "cambio": "Switch",
+  "investigacion de profesores": "Professor's Research",
+  "busqueda de profesores": "Professor's Research",
+  "orden de jefes": "Boss's Orders",
+  "ordenes de jefes": "Boss's Orders",
+  "nido ball": "Nest Ball",
+  "ente ball": "Beast Ball",
+  "veloz ball": "Quick Ball",
+  "turno ball": "Repeat Ball",
+  "amigo ball": "Friend Ball",
+  "lujo ball": "Luxury Ball",
+  "peso ball": "Heavy Ball",
+  "nivel ball": "Level Ball",
+  "hiper ball": "Ultra Ball",
+  "super ball": "Great Ball",
+  "captura ball": "Nest Ball",
+  "recuperacion de energia": "Energy Retrieval",
+  "busqueda de energia": "Energy Search",
+  "transferencia de energia": "Energy Switch",
+  "caramelo raro": "Rare Candy",
+  "pocion": "Potion",
+  "superpocion": "Super Potion",
+  "cuerda huida": "Escape Rope",
+  "incienso evolucion": "Evolution Incense",
+  "globo de helio": "Air Balloon",
+  "martillo demoledor": "Crushing Hammer",
+  "martillo mejorado": "Enhanced Hammer",
+  "plato de metales": "Metal Saucer",
+  "parche aqua": "Aqua Patch",
+  "parche oscuro": "Dark Patch",
+  "cana de pescar ordinaria": "Ordinary Rod",
+  "soplador de campo": "Field Blower",
+  "guzma": "Guzma",
+  "cinturon eleccion": "Choice Belt",
+  "cinta vitalidad": "Vitality Band",
+  "amuleto de dureza": "Cape of Toughness",
+  "compartir experiencia": "Exp. Share",
+  "casco resonante": "Resonant Helmet",
+  "piedra flotante": "Float Stone",
+  "botas de caminata": "Trekking Shoes",
+  "zapatos de trekking": "Trekking Shoes",
+  "pase de combate vip": "VIP Battle Pass",
+  "pase vip de batalla": "VIP Battle Pass",
+  "generador electrico": "Electric Generator",
+  "vasija terrestre": "Earthquake Vessel",
+  "vasija antigua": "Earthen Vessel",
+  "sello de alerta": "Alert Stamp",
+  "sello de disruption": "Unfair Stamp",
+  "sello injusto": "Unfair Stamp",
+  "pokegear": "Pokégear",
+  "pokeball": "Poké Ball",
+  "pokebola": "Poké Ball",
+  "energia planta": "Grass Energy",
+  "energia fuego": "Fire Energy",
+  "energia agua": "Water Energy",
+  "energia rayo": "Lightning Energy",
+  "energia psiquica": "Psychic Energy",
+  "energia lucha": "Fighting Energy",
+  "energia oscura": "Darkness Energy",
+  "energia metal": "Metal Energy",
+  "energia dragon": "Dragon Energy",
+  "energia hada": "Fairy Energy",
+  "energia incolora": "Colorless Energy",
+  "energia": "Energy"
+};
+
+export function translateSpanishQuery(query: string): string {
+  const normalized = query
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  // 1. First check if the entire normalized query matches a dictionary key exactly.
+  if (SPANISH_TO_ENGLISH_MAP[normalized]) {
+    return SPANISH_TO_ENGLISH_MAP[normalized];
+  }
+
+  // 2. Otherwise, check if we can replace key Spanish phrases within the query.
+  // We sort map keys by length descending to replace longer phrases first (e.g. "energia fuego" before "energia").
+  let translated = normalized;
+  const sortedKeys = Object.keys(SPANISH_TO_ENGLISH_MAP).sort((a, b) => b.length - a.length);
+  
+  let replacedAny = false;
+  for (const key of sortedKeys) {
+    if (translated.includes(key)) {
+      translated = translated.replace(new RegExp(key, 'g'), SPANISH_TO_ENGLISH_MAP[key]);
+      replacedAny = true;
+    }
+  }
+
+  return replacedAny ? translated : query;
+}
+
 /**
  * Compose a Pokémon TCG API `q` query from structured filters.
  * Example output:  name:"char*" rarity:"Rare Holo" set.id:swsh1
@@ -149,10 +244,11 @@ function composeQuery(opts: SearchCardsParams): string | undefined {
   const raw = opts.q?.trim();
   if (raw) fragments.push(raw);
   if (opts.name) {
+    const translatedName = translateSpanishQuery(opts.name);
     // Strip characters that would break the q-syntax. Names can include
     // apostrophes ("Farfetch'd") and accents — keep them but quote-escape.
-    const safe = opts.name.replace(/["\\]/g, '').trim();
-    if (safe) fragments.push(`name:"${safe}*"`);
+    const safe = translatedName.replace(/["\\]/g, '').trim();
+    if (safe) fragments.push(`name:"*${safe}*"`);
   }
   if (opts.setId) fragments.push(`set.id:${opts.setId}`);
   if (opts.rarity) fragments.push(`rarity:"${opts.rarity}"`);
