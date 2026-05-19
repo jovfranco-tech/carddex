@@ -51,12 +51,20 @@ export default function LibraryScreen() {
 
   const setFilter = searchParams.get('set') ?? '';
   const [view, setView] = useState<'grid' | 'list' | 'sets'>('grid');
-  const [onlyMine, setOnlyMine] = useState(true);
+  
+  // Parse initial states from URL query parameters
+  const initialQ = useMemo(() => searchParams.get('q') ?? '', []);
+  const initialMine = useMemo(() => {
+    const p = searchParams.get('mine');
+    return p === 'false' ? false : true;
+  }, []);
+
+  const [onlyMine, setOnlyMine] = useState(initialMine);
   const [rarityFilter, setRarityFilter] = useState<string>('all');
   const [sort, setSort] = useState<SortKey>('rarity');
   const [sortOpen, setSortOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(initialQ);
+  const [searchOpen, setSearchOpen] = useState(!!initialQ);
   const debouncedSearchQuery = useDebounced(searchQuery, 400);
 
   // Reset pagination when search query or filters change

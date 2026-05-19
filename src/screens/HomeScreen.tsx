@@ -329,24 +329,63 @@ export default function HomeScreen() {
                   description={`No encontramos cartas que coincidan con “${trimmed}”.`}
                 />
               ) : (
-                <div
-                  style={{
-                    padding: '0 18px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 12,
-                    justifyItems: 'center',
-                  }}
-                >
-                  {searchFiltered.map((c) => (
-                    <CardTile
-                      key={c.id}
-                      card={c}
-                      meta={collection.cards[c.id]}
-                      width={104}
-                      onClick={() => navigate(`/card/${c.id}`)}
-                    />
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div
+                    style={{
+                      padding: '0 18px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: 12,
+                      justifyItems: 'center',
+                    }}
+                  >
+                    {searchFiltered.map((c) => (
+                      <CardTile
+                        key={c.id}
+                        card={c}
+                        meta={collection.cards[c.id]}
+                        width={104}
+                        onClick={() => navigate(`/card/${c.id}`)}
+                      />
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 18px' }}>
+                    <button
+                      onClick={() => navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false`)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        color: 'var(--ink)',
+                        borderRadius: 16,
+                        border: '1px solid var(--border)',
+                        padding: '14px 28px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+                        transition: 'all 200ms ease',
+                        width: '100%',
+                        maxWidth: 280,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.transform = 'none';
+                      }}
+                    >
+                      Ver todos los resultados en la biblioteca
+                    </button>
+                  </div>
                 </div>
               )}
             </Section>

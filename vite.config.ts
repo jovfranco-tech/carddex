@@ -48,20 +48,6 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
-          },
-          {
-            urlPattern: /^https:\/\/api\.pokemontcg\.io\/v2\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'pokemon-api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24, // 1 day
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
           }
         ]
       }
