@@ -8,6 +8,7 @@ import LibraryScreen from '@/screens/LibraryScreen';
 import SetsScreen from '@/screens/SetsScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
 import { ROUTES } from './routes';
+import { AuthProvider } from '@/lib/authContext';
 
 /**
  * Top-level error boundary. Catches render errors so the whole app doesn't go
@@ -109,19 +110,21 @@ class RootErrorBoundary extends Component<
 export default function App() {
   return (
     <RootErrorBoundary>
-      <BrowserRouter>
-        <AppShell>
-          <Routes>
-            <Route path={ROUTES.home} element={<HomeScreen />} />
-            <Route path={ROUTES.scan} element={<ScanScreen />} />
-            <Route path={ROUTES.cardDetailPattern} element={<DetailScreen />} />
-            <Route path={ROUTES.library} element={<LibraryScreen />} />
-            <Route path={ROUTES.sets} element={<SetsScreen />} />
-            <Route path={ROUTES.profile} element={<ProfileScreen />} />
-            <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
-          </Routes>
-        </AppShell>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppShell>
+            <Routes>
+              <Route path={ROUTES.home} element={<HomeScreen />} />
+              <Route path={ROUTES.scan} element={<ScanScreen />} />
+              <Route path={ROUTES.cardDetailPattern} element={<DetailScreen />} />
+              <Route path={ROUTES.library} element={<LibraryScreen />} />
+              <Route path={ROUTES.sets} element={<SetsScreen />} />
+              <Route path={ROUTES.profile} element={<ProfileScreen />} />
+              <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
+            </Routes>
+          </AppShell>
+        </BrowserRouter>
+      </AuthProvider>
     </RootErrorBoundary>
   );
 }

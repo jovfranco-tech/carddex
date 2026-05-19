@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS,
   makeDefaultMeta,
 } from '@/types/collection';
+import { supabase } from './supabaseClient';
 
 const KEYS = {
   collection: 'carddex.collection.v1',
@@ -77,9 +78,36 @@ export function getCollection(): CollectionState {
   return { version: 1, cards: cleanCards };
 }
 
+async function syncToCloud(state: CollectionState) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    await supabase
+      .from('collections')
+      .update({ state, updated_at: new Date().toISOString() })
+      .eq('user_id', session.user.id);
+  }
+}
+
+export async function fetchCloudCollection(): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    const { data, error } = await supabase
+      .from('collections')
+      .select('state')
+      .eq('user_id', session.user.id)
+      .single();
+      
+    if (!error && data?.state) {
+      safeWrite(KEYS.collection, data.state);
+      notify();
+    }
+  }
+}
+
 function writeCollection(state: CollectionState): void {
   safeWrite(KEYS.collection, state);
   notify();
+  syncToCloud(state).catch(console.error);
 }
 
 export function getCardMeta(cardId: string): CollectionCardMeta | undefined {

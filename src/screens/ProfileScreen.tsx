@@ -18,6 +18,8 @@ import {
 import { hasApiKey, clearApiCache } from '@/lib/pokemonTcgApi';
 import { formatInt } from '@/lib/formatters';
 import { prefersMXN, setPrefersMXN } from '@/lib/pricing';
+import { useAuth } from '@/lib/authContext';
+import { supabase } from '@/lib/supabaseClient';
 
 const APP_VERSION = '1.0.1';
 
@@ -30,6 +32,34 @@ export default function ProfileScreen() {
   const [toast, setToast] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [mxnEnabled, setMxnEnabled] = useState(prefersMXN());
+  const { user } = useAuth();
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+    setAuthLoading(false);
+    if (error) showToast(error.message);
+    else showToast('Sesión iniciada');
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+    setAuthLoading(false);
+    if (error) showToast(error.message);
+    else showToast('Cuenta creada y sesión iniciada');
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    showToast('Sesión cerrada');
+  };
+
   const apiKeyConfigured = hasApiKey();
 
   const showToast = (msg: string) => {
@@ -122,51 +152,91 @@ export default function ProfileScreen() {
       {/* Profile card */}
       <div style={{ padding: '0 14px 14px' }}>
         <Surface style={{ padding: 20, textAlign: 'center' }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              margin: '0 auto 12px',
-              background:
-                'linear-gradient(135deg, var(--accent), var(--accent-dark))',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 28,
-              fontWeight: 800,
-            }}
-          >
-            ★
-          </div>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: 'var(--ink)',
-              letterSpacing: -0.3,
-            }}
-          >
-            Coleccionista
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
-            {formatInt(summary.uniqueCount)} únicas ·{' '}
-            {formatInt(summary.totalQuantity)} cartas
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-around',
-              marginTop: 18,
-              paddingTop: 16,
-              borderTop: '0.5px solid var(--hairline)',
-            }}
-          >
-            <Stat n={formatInt(summary.favoriteCount)} l="Favoritas" />
-            <Stat n={formatInt(summary.wishlistCount)} l="Wishlist" />
-            <Stat n={formatInt(summary.missingCount)} l="Faltan" />
-          </div>
+          {!user ? (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Accede a tu cuenta</div>
+              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <input 
+                  type="email" 
+                  placeholder="Correo electrónico" 
+                  value={authEmail} 
+                  onChange={(e) => setAuthEmail(e.target.value)} 
+                  style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)' }} 
+                  required
+                />
+                <input 
+                  type="password" 
+                  placeholder="Contraseña" 
+                  value={authPassword} 
+                  onChange={(e) => setAuthPassword(e.target.value)} 
+                  style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)' }} 
+                  required
+                />
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button type="submit" disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700 }}>
+                    {authLoading ? '...' : 'Iniciar Sesión'}
+                  </button>
+                  <button type="button" onClick={handleSignup} disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', fontWeight: 700 }}>
+                    Registrarse
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  margin: '0 auto 12px',
+                  background:
+                    'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 28,
+                  fontWeight: 800,
+                }}
+              >
+                {user.email?.[0].toUpperCase()}
+              </div>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  letterSpacing: -0.3,
+                }}
+              >
+                {user.email}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
+                {formatInt(summary.uniqueCount)} únicas ·{' '}
+                {formatInt(summary.totalQuantity)} cartas
+              </div>
+              <button 
+                onClick={handleLogout}
+                style={{ marginTop: 12, background: 'transparent', border: 'none', color: 'var(--error)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cerrar sesión
+              </button>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-around',
+                  marginTop: 18,
+                  paddingTop: 16,
+                  borderTop: '0.5px solid var(--hairline)',
+                }}
+              >
+                <Stat n={formatInt(summary.favoriteCount)} l="Favoritas" />
+                <Stat n={formatInt(summary.wishlistCount)} l="Wishlist" />
+                <Stat n={formatInt(summary.missingCount)} l="Faltan" />
+              </div>
+            </>
+          )}
         </Surface>
       </div>
 
