@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import Chip from '@/components/Chip';
 import CardTile from '@/components/CardTile';
-import { VirtuosoGrid } from 'react-virtuoso';
 import TcgCardImage from '@/components/TcgCardImage';
 import RarityBadge from '@/components/RarityBadge';
 import PriceBadge from '@/components/PriceBadge';
@@ -48,17 +47,7 @@ export default function LibraryScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const collection = useCollection();
 
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    if (containerRef.current) {
-      const parent = containerRef.current.closest('.shell-screen') as HTMLElement;
-      if (parent) {
-        setScrollParent(parent);
-      }
-    }
-  }, []);
+  const [visibleCount, setVisibleCount] = useState(24);
 
   const setFilter = searchParams.get('set') ?? '';
   const [view, setView] = useState<'grid' | 'list' | 'sets'>('grid');
@@ -69,6 +58,11 @@ export default function LibraryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const debouncedSearchQuery = useDebounced(searchQuery, 400);
+
+  // Reset pagination when search query or filters change
+  React.useEffect(() => {
+    setVisibleCount(24);
+  }, [debouncedSearchQuery, setFilter, onlyMine, rarityFilter]);
 
   const collectionIds = useMemo(
     () =>
@@ -267,7 +261,7 @@ export default function LibraryScreen() {
   /* --------------------------------------------------------------------- */
 
   return (
-    <div ref={containerRef} style={{ paddingBottom: 110 }}>
+    <div style={{ paddingBottom: 110 }}>
       <Header
         onSet={!!setFilter}
         setName={setFilter}
@@ -528,104 +522,166 @@ export default function LibraryScreen() {
                 ))}
               </div>
             ) : view === 'grid' ? (
-              <VirtuosoGrid
-                {...(scrollParent ? { customScrollParent: scrollParent } : { useWindowScroll: true })}
-                data={filteredCards}
-                listClassName="virtual-grid-list"
-                itemClassName="virtual-grid-item"
-                style={{
-                  width: '100%',
-                }}
-                components={{
-                  List: React.forwardRef((props: any, ref) => (
-                    <div
-                      {...props}
-                      ref={ref}
-                      style={{
-                        padding: '0 18px',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 12,
-                        justifyItems: 'center',
-                        ...props.style,
-                      }}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div
+                  style={{
+                    padding: '0 18px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 12,
+                    justifyItems: 'center',
+                  }}
+                >
+                  {filteredCards.slice(0, visibleCount).map((c) => (
+                    <CardTile
+                      key={c.id}
+                      card={c}
+                      meta={collection.cards[c.id]}
+                      width={104}
+                      onClick={() => navigate(`/card/${c.id}`)}
+                      showMissingState={!onlyMine}
                     />
-                  )),
-                  Item: ({ children, ...props }: any) => (
-                    <div {...props} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                      {children}
-                    </div>
-                  )
-                }}
-                itemContent={(index, c) => (
-                  <CardTile
-                    key={c.id}
-                    card={c}
-                    meta={collection.cards[c.id]}
-                    width={104}
-                    onClick={() => navigate(`/card/${c.id}`)}
-                    showMissingState={!onlyMine}
-                  />
+                  ))}
+                </div>
+
+                {filteredCards.length > visibleCount && (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 18px' }}>
+                    <button
+                      onClick={() => setVisibleCount((prev) => prev + 24)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        color: 'var(--ink)',
+                        borderRadius: 16,
+                        border: '1px solid var(--border)',
+                        padding: '14px 28px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+                        transition: 'all 200ms ease',
+                        width: '100%',
+                        maxWidth: 260,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.transform = 'none';
+                      }}
+                    >
+                      Cargar más ({filteredCards.length - visibleCount} restantes)
+                    </button>
+                  </div>
                 )}
-              />
+              </div>
             ) : (
-              <div
-                style={{
-                  padding: '0 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                {filteredCards.map((c) => (
-                  <Surface
-                    key={c.id}
-                    onClick={() => navigate(`/card/${c.id}`)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: 10,
-                    }}
-                  >
-                    <TcgCardImage card={c} width={48} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          color: 'var(--ink)',
-                          letterSpacing: -0.2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {c.name}
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginTop: 2,
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <RarityBadge rarity={c.rarity} />
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{c.number}</span>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <PriceBadge price={getEstimatedPrice(c)} />
-                      {collection.cards[c.id]?.quantity ? (
-                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                          ×{collection.cards[c.id]?.quantity}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div
+                  style={{
+                    padding: '0 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  {filteredCards.slice(0, visibleCount).map((c) => (
+                    <Surface
+                      key={c.id}
+                      onClick={() => navigate(`/card/${c.id}`)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: 10,
+                      }}
+                    >
+                      <TcgCardImage card={c} width={48} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: 'var(--ink)',
+                            letterSpacing: -0.2,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {c.name}
                         </div>
-                      ) : null}
-                    </div>
-                  </Surface>
-                ))}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            marginTop: 2,
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <RarityBadge rarity={c.rarity} />
+                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{c.number}</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <PriceBadge price={getEstimatedPrice(c)} />
+                        {collection.cards[c.id]?.quantity ? (
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                            ×{collection.cards[c.id]?.quantity}
+                          </div>
+                        ) : null}
+                      </div>
+                    </Surface>
+                  ))}
+                </div>
+
+                {filteredCards.length > visibleCount && (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 14px' }}>
+                    <button
+                      onClick={() => setVisibleCount((prev) => prev + 24)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        color: 'var(--ink)',
+                        borderRadius: 16,
+                        border: '1px solid var(--border)',
+                        padding: '14px 28px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+                        transition: 'all 200ms ease',
+                        width: '100%',
+                        maxWidth: 260,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.transform = 'none';
+                      }}
+                    >
+                      Cargar más ({filteredCards.length - visibleCount} restantes)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </Section>
