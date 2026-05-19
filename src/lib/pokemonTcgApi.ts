@@ -204,7 +204,14 @@ const SPANISH_TO_ENGLISH_MAP: Record<string, string> = {
   "energia dragon": "Dragon Energy",
   "energia hada": "Fairy Energy",
   "energia incolora": "Colorless Energy",
-  "energia": "Energy"
+  "energia": "Energy",
+  "pikachu gordo": "Pikachu VMAX",
+  "pikachu choncho": "Pikachu VMAX",
+  "pikachu obeso": "Pikachu VMAX",
+  "chonkachu": "Pikachu VMAX",
+  "charizard gordo": "Charizard VMAX",
+  "gordo": "VMAX",
+  "gorda": "VMAX"
 };
 
 export function translateSpanishQuery(query: string): string {

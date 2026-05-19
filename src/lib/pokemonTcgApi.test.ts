@@ -22,6 +22,12 @@ describe('translateSpanishQuery', () => {
     expect(translateSpanishQuery('Pikachu')).toBe('Pikachu');
     expect(translateSpanishQuery('Charizard VMAX')).toBe('Charizard VMAX');
   });
+
+  it('translates fan nicknames like gordo and chonkachu', () => {
+    expect(translateSpanishQuery('pikachu gordo')).toBe('Pikachu VMAX');
+    expect(translateSpanishQuery('chonkachu')).toBe('Pikachu VMAX');
+    expect(translateSpanishQuery('eevee gordo')).toBe('eevee VMAX');
+  });
 });
 
 describe('parseSearchQuery', () => {
