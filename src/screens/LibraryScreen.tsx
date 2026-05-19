@@ -81,13 +81,13 @@ export default function LibraryScreen() {
 
     if (setFilter) {
       const { data } = await searchCards(
-        { setId: setFilter, pageSize: 60, orderBy: 'number' },
+        { setId: setFilter, pageSize: 250, orderBy: 'number' },
         { signal },
       );
       return data;
     } else {
       const { data } = await searchCards(
-        { name: debouncedSearchQuery.trim(), pageSize: 60, orderBy: '-set.releaseDate' },
+        { name: debouncedSearchQuery.trim(), pageSize: 250, orderBy: '-set.releaseDate' },
         { signal },
       );
       return data;
