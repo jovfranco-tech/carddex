@@ -389,14 +389,54 @@ export async function getCardsByIds(
 ): Promise<PokemonCard[]> {
   if (ids.length === 0) return [];
   const unique = Array.from(new Set(ids));
-  const results = await Promise.allSettled(
-    unique.map((id) => getCardById(id, opts)),
-  );
-  return results
-    .filter(
-      (r): r is PromiseFulfilledResult<PokemonCard> => r.status === 'fulfilled',
-    )
-    .map((r) => r.value);
+
+  // 1. Separate cached from uncached IDs to avoid redundant fetch calls
+  const results: PokemonCard[] = [];
+  const uncachedIds: string[] = [];
+
+  for (const id of unique) {
+    const cached = cardCache.get(id);
+    if (cached) {
+      results.push(cached);
+    } else {
+      uncachedIds.push(id);
+    }
+  }
+
+  if (uncachedIds.length === 0) {
+    // Everything was cached; return them in the original requested unique order
+    return unique.map((id) => cardCache.get(id)!).filter(Boolean);
+  }
+
+  // 2. Group uncached IDs into batches of 25 to fit inside URL limits safely
+  const BATCH_SIZE = 25;
+  const batches: string[][] = [];
+  for (let i = 0; i < uncachedIds.length; i += BATCH_SIZE) {
+    batches.push(uncachedIds.slice(i, i + BATCH_SIZE));
+  }
+
+  const fetchPromises = batches.map(async (batch) => {
+    // Build standard Lucene OR search query: id:"xy1-1" OR id:"xy1-2" OR ...
+    const q = batch.map((id) => `id:"${id}"`).join(' OR ');
+    try {
+      const response = await searchCards({ q, pageSize: BATCH_SIZE }, opts);
+      return response.data;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[API Batching] Failed to fetch batch of cards:`, err);
+      return [];
+    }
+  });
+
+  const fetchedGroups = await Promise.all(fetchPromises);
+  for (const group of fetchedGroups) {
+    for (const card of group) {
+      cardCache.set(card.id, card);
+    }
+  }
+
+  // Return all unique requested cards in the original order
+  return unique.map((id) => cardCache.get(id)!).filter(Boolean);
 }
 
 export async function getSets(opts: RequestOptions = {}): Promise<CardSet[]> {

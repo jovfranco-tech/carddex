@@ -18,6 +18,7 @@ import {
   LayersIcon,
   ChevronDownIcon,
   CloseIcon,
+  BookIcon,
 } from '@/components/icons';
 import { useAsync, useCollection, useDebounced } from '@/lib/hooks';
 import { getCardsByIds, searchCards } from '@/lib/pokemonTcgApi';
@@ -50,7 +51,8 @@ export default function LibraryScreen() {
   const [visibleCount, setVisibleCount] = useState(24);
 
   const setFilter = searchParams.get('set') ?? '';
-  const [view, setView] = useState<'grid' | 'list' | 'sets'>('grid');
+  const [view, setView] = useState<'grid' | 'list' | 'sets' | 'binder'>('grid');
+  const [binderPage, setBinderPage] = useState(1);
   
   // Parse initial states from URL query parameters
   const initialQ = useMemo(() => searchParams.get('q') ?? '', []);
@@ -70,6 +72,7 @@ export default function LibraryScreen() {
   // Reset pagination when search query or filters change
   React.useEffect(() => {
     setVisibleCount(24);
+    setBinderPage(1);
   }, [debouncedSearchQuery, setFilter, onlyMine, rarityFilter]);
 
   const collectionIds = useMemo(
@@ -229,6 +232,13 @@ export default function LibraryScreen() {
     setView$.reload();
   };
 
+  const totalBinderPages = Math.max(1, Math.ceil(filteredCards.length / 9));
+
+  const binderCards = useMemo(() => {
+    const start = (binderPage - 1) * 9;
+    return filteredCards.slice(start, start + 9);
+  }, [filteredCards, binderPage]);
+
   /* --------------------------------------------------------------------- */
 
   if (loading) {
@@ -337,6 +347,7 @@ export default function LibraryScreen() {
                     ['grid', <GridIcon size={16} />, 'Vista cuadrícula'],
                     ['list', <ListIcon size={16} />, 'Vista lista'],
                     ['sets', <LayersIcon size={16} />, 'Vista por expansión'],
+                    ['binder', <BookIcon size={16} />, 'Vista carpeta'],
                   ] as const
                 ).map(([k, icon, label]) => (
                   <button
@@ -591,6 +602,117 @@ export default function LibraryScreen() {
                   </div>
                 )}
               </div>
+            ) : view === 'binder' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+                {/* Visual Binder Sheet */}
+                <div className="binder-sheet">
+                  {/* Left ring binder margin with punch holes */}
+                  <div className="binder-spine">
+                    <div className="punch-hole" />
+                    <div className="punch-hole" />
+                    <div className="punch-hole" />
+                    <div className="punch-hole" />
+                  </div>
+                  
+                  {/* 3x3 Grid of Pockets */}
+                  <div className="binder-grid">
+                    {Array.from({ length: 9 }).map((_, index) => {
+                      const card = binderCards[index];
+                      if (card) {
+                        return (
+                          <div key={card.id} className="binder-pocket">
+                            <CardTile
+                              card={card}
+                              meta={collection.cards[card.id]}
+                              width={92}
+                              onClick={() => navigate(`/card/${card.id}`)}
+                              showMissingState={!onlyMine}
+                            />
+                            <div className="pocket-reflection" />
+                          </div>
+                        );
+                      } else {
+                        // Empty sleeve pocket
+                        return (
+                          <div key={`empty-${index}`} className="binder-pocket empty-pocket">
+                            <div className="empty-pocket-inner">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.25 }}>
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <line x1="9" y1="3" x2="9" y2="21" />
+                                <line x1="15" y1="3" x2="15" y2="21" />
+                                <line x1="3" y1="9" x2="21" y2="9" />
+                                <line x1="3" y1="15" x2="21" y2="15" />
+                              </svg>
+                            </div>
+                            <div className="pocket-reflection" />
+                          </div>
+                        );
+                      }
+                    })}
+                  </div>
+                </div>
+
+                {/* Floating controls for binder pages */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  padding: '8px 16px',
+                  borderRadius: 99,
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  marginTop: 6,
+                }}>
+                  <button
+                    disabled={binderPage === 1}
+                    onClick={() => setBinderPage(p => Math.max(1, p - 1))}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: binderPage === 1 ? 'var(--muted-3)' : 'var(--ink)',
+                      cursor: binderPage === 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 4,
+                      opacity: binderPage === 1 ? 0.4 : 1,
+                    }}
+                    aria-label="Página anterior"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', minWidth: 100, textAlign: 'center' }}>
+                    Pág. {binderPage} de {totalBinderPages}
+                  </span>
+
+                  <button
+                    disabled={binderPage === totalBinderPages}
+                    onClick={() => setBinderPage(p => Math.min(totalBinderPages, p + 1))}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: binderPage === totalBinderPages ? 'var(--muted-3)' : 'var(--ink)',
+                      cursor: binderPage === totalBinderPages ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 4,
+                      opacity: binderPage === totalBinderPages ? 0.4 : 1,
+                    }}
+                    aria-label="Página siguiente"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div
@@ -695,6 +817,96 @@ export default function LibraryScreen() {
           </Section>
         </>
       )}
+      <style>{`
+        .binder-sheet {
+          position: relative;
+          width: calc(100% - 28px);
+          max-width: 370px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+          display: flex;
+          padding: 16px 12px 16px 28px;
+          overflow: hidden;
+          background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
+          background-size: 24px 24px;
+        }
+        .binder-spine {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 24px;
+          background: rgba(0, 0, 0, 0.15);
+          border-right: 1px solid rgba(255, 255, 255, 0.05);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-around;
+          align-items: center;
+          padding: 30px 0;
+        }
+        .punch-hole {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #0f1116;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+          position: relative;
+        }
+        .punch-hole::after {
+          content: '';
+          position: absolute;
+          inset: -2px;
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          pointer-events: none;
+        }
+        .binder-grid {
+          flex: 1;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          justify-items: center;
+        }
+        .binder-pocket {
+          position: relative;
+          aspect-ratio: 92/128;
+          width: 100%;
+          max-width: 96px;
+          border-radius: 8px;
+          overflow: hidden;
+          background: rgba(0, 0, 0, 0.2);
+          box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .binder-pocket:hover {
+          transform: translateY(-4px) scale(1.03);
+          z-index: 10;
+        }
+        .empty-pocket {
+          border: 1px dashed rgba(255, 255, 255, 0.08);
+          background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.01) 0 6px, transparent 6px 12px);
+        }
+        .empty-pocket-inner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255, 255, 255, 0.15);
+        }
+        .pocket-reflection {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.02) 100%);
+          border-radius: 8px;
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+          z-index: 5;
+        }
+      `}</style>
     </div>
   );
 }

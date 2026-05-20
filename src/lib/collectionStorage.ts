@@ -28,6 +28,30 @@ export function subscribe(listener: () => void): () => void {
 }
 
 /* ------------------------------------------------------------------------- */
+/* Reactive Cloud Sync Status Bus                                            */
+/* ------------------------------------------------------------------------- */
+
+export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
+let currentSyncStatus: SyncStatus = 'idle';
+const SYNC_SUBSCRIBERS = new Set<() => void>();
+
+export function getSyncStatus(): SyncStatus {
+  return currentSyncStatus;
+}
+
+export function subscribeSyncStatus(listener: () => void): () => void {
+  SYNC_SUBSCRIBERS.add(listener);
+  return () => {
+    SYNC_SUBSCRIBERS.delete(listener);
+  };
+}
+
+export function setSyncStatus(status: SyncStatus) {
+  currentSyncStatus = status;
+  SYNC_SUBSCRIBERS.forEach((fn) => fn());
+}
+
+/* ------------------------------------------------------------------------- */
 /* Safe read/write helpers                                                    */
 /* ------------------------------------------------------------------------- */
 
@@ -81,25 +105,61 @@ export function getCollection(): CollectionState {
 async function syncToCloud(state: CollectionState) {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
-    await supabase
-      .from('collections')
-      .update({ state, updated_at: new Date().toISOString() })
-      .eq('user_id', session.user.id);
+    setSyncStatus('syncing');
+    try {
+      const { error } = await supabase
+        .from('collections')
+        .update({ state, updated_at: new Date().toISOString() })
+        .eq('user_id', session.user.id);
+      
+      if (error) {
+        setSyncStatus('error');
+      } else {
+        setSyncStatus('synced');
+        // Reset to idle after 2.5 seconds to allow UI animations to complete smoothly
+        setTimeout(() => {
+          if (currentSyncStatus === 'synced') {
+            setSyncStatus('idle');
+          }
+        }, 2500);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Cloud Sync] Failed to sync collection:', err);
+      setSyncStatus('error');
+    }
   }
 }
 
 export async function fetchCloudCollection(): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
-    const { data, error } = await supabase
-      .from('collections')
-      .select('state')
-      .eq('user_id', session.user.id)
-      .single();
-      
-    if (!error && data?.state) {
-      safeWrite(KEYS.collection, data.state);
-      notify();
+    setSyncStatus('syncing');
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .select('state')
+        .eq('user_id', session.user.id)
+        .single();
+        
+      if (!error && data?.state) {
+        safeWrite(KEYS.collection, data.state);
+        notify();
+        setSyncStatus('synced');
+        setTimeout(() => {
+          if (currentSyncStatus === 'synced') {
+            setSyncStatus('idle');
+          }
+        }, 2500);
+      } else if (error) {
+        setSyncStatus('error');
+      } else {
+        setSyncStatus('idle');
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Cloud Sync] Failed to fetch collection:', err);
+      setSyncStatus('error');
     }
   }
 }

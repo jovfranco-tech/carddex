@@ -9,6 +9,9 @@ import {
   summarize,
   subscribe,
   type CollectionSummary,
+  getSyncStatus,
+  subscribeSyncStatus,
+  type SyncStatus,
 } from '@/lib/collectionStorage';
 import { isAbortError } from '@/lib/pokemonTcgApi';
 import { getDecksState, subscribeDecks } from '@/lib/deckStorage';
@@ -133,4 +136,13 @@ export function useDecks() {
   }, []);
 
   return decksState;
+}
+
+export function useSyncStatus(): SyncStatus {
+  const [status, setStatus] = useState<SyncStatus>(() => getSyncStatus());
+  useEffect(() => {
+    const unsub = subscribeSyncStatus(() => setStatus(getSyncStatus()));
+    return unsub;
+  }, []);
+  return status;
 }
