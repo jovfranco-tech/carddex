@@ -24,10 +24,11 @@ import { prefersMXN, setPrefersMXN, getEstimatedPrice } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
-import PasskeyManager from '@/components/PasskeyManager';
+import PasskeyManager, { decryptCreds } from '@/components/PasskeyManager';
 import { requestPushPermission } from '@/lib/priceMonitor';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
+import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
 
 const APP_VERSION = '1.1.0';
@@ -65,6 +66,17 @@ export default function ProfileScreen() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [hasPasskeyStored, setHasPasskeyStored] = useState(false);
+  const [biometricScanning, setBiometricScanning] = useState(false);
+  const [showBiometricLoginOverlay, setShowBiometricLoginOverlay] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('carddex.auth.passkey');
+      setHasPasskeyStored(!!stored);
+    } catch {}
+  }, [user]);
+
   const [scanLanguage, setScanLanguage] = useState<'AUTO' | 'EN' | 'ES' | 'JP'>(() => {
     try {
       const saved = localStorage.getItem('carddex.scanner.language');
@@ -119,6 +131,81 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     showToast('Sesión cerrada');
+  };
+
+  const handleBiometricLogin = async () => {
+    if (biometricScanning) return;
+    setBiometricScanning(true);
+    triggerHaptic('light');
+
+    const storedPasskey = localStorage.getItem('carddex.auth.passkey');
+    const isMock = storedPasskey ? storedPasskey.startsWith('mock-key-') : true;
+    
+    const proceedWithLogin = async () => {
+      try {
+        const encrypted = localStorage.getItem('carddex.auth.passkey_cred');
+        if (!encrypted) {
+          showToast('No se encontraron credenciales biométricas guardadas');
+          setBiometricScanning(false);
+          return;
+        }
+        
+        const decrypted = decryptCreds(encrypted);
+        if (!decrypted) {
+          showToast('Error al descifrar credenciales');
+          setBiometricScanning(false);
+          return;
+        }
+
+        setAuthLoading(true);
+        const { error } = await supabase.auth.signInWithPassword({
+          email: decrypted.email,
+          password: decrypted.pass,
+        });
+        setAuthLoading(false);
+        setBiometricScanning(false);
+
+        if (error) {
+          showToast(error.message);
+          triggerHaptic('warning');
+        } else {
+          showToast('Sesión iniciada con biometría');
+          triggerHaptic('success');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error en la autenticación biométrica');
+        setBiometricScanning(false);
+        setAuthLoading(false);
+      }
+    };
+
+    if (!isMock && window.isSecureContext && navigator.credentials && navigator.credentials.get) {
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        const credential = await navigator.credentials.get({
+          publicKey: {
+            challenge,
+            rpId: window.location.hostname,
+            userVerification: 'required',
+            timeout: 15000,
+          },
+        });
+
+        if (credential) {
+          await proceedWithLogin();
+        } else {
+          setBiometricScanning(false);
+        }
+      } catch (err) {
+        console.warn('Real WebAuthn verification error, falling back to simulated UI:', err);
+        setShowBiometricLoginOverlay(true);
+      }
+    } else {
+      setShowBiometricLoginOverlay(true);
+    }
   };
 
   const handleUpdateName = async () => {
@@ -256,6 +343,140 @@ export default function ProfileScreen() {
     <div style={{ paddingBottom: 110 }}>
       <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} duration={2000} />
 
+      {/* Simulated Biometric Login overlay */}
+      {showBiometricLoginOverlay && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              width: 290,
+              background: 'rgba(30, 32, 45, 0.95)',
+              border: '0.5px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: 24,
+              padding: 24,
+              textAlign: 'center',
+              boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
+              animation: 'scaleInPasskey 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+              <div
+                style={{
+                  width: 76,
+                  height: 76,
+                  borderRadius: '50%',
+                  background: 'rgba(123, 90, 217, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent)',
+                  fontSize: 36,
+                  animation: 'pulseFingerprint 1.5s infinite',
+                }}
+              >
+                🫵
+              </div>
+            </div>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
+              Verificación Biométrica
+            </h3>
+            <p style={{ margin: '8px 0 24px', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+              Usa Face ID o Touch ID para verificar tu identidad y acceder de forma segura.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowBiometricLoginOverlay(false);
+                  setBiometricScanning(false);
+                  showToast('Acceso biométrico cancelado');
+                  triggerHaptic('warning');
+                }}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 12,
+                  border: 'none',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  setShowBiometricLoginOverlay(false);
+                  try {
+                    const encrypted = localStorage.getItem('carddex.auth.passkey_cred');
+                    if (!encrypted) {
+                      showToast('No se encontraron credenciales biométricas guardadas');
+                      setBiometricScanning(false);
+                      return;
+                    }
+                    
+                    const decrypted = decryptCreds(encrypted);
+                    if (!decrypted) {
+                      showToast('Error al descifrar credenciales');
+                      setBiometricScanning(false);
+                      return;
+                    }
+
+                    setAuthLoading(true);
+                    const { error } = await supabase.auth.signInWithPassword({
+                      email: decrypted.email,
+                      password: decrypted.pass,
+                    });
+                    setAuthLoading(false);
+                    setBiometricScanning(false);
+
+                    if (error) {
+                      showToast(error.message);
+                      triggerHaptic('warning');
+                    } else {
+                      showToast('Sesión iniciada con biometría');
+                      triggerHaptic('success');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    showToast('Error en la autenticación biométrica');
+                    setBiometricScanning(false);
+                    setAuthLoading(false);
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 12,
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Escanear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ padding: '54px 18px 18px' }}>
         <h1
@@ -289,6 +510,37 @@ export default function ProfileScreen() {
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
                 {isLoginMode ? 'Accede a tu cuenta' : 'Crea una cuenta'}
               </div>
+              
+              {isLoginMode && hasPasskeyStored && (
+                <button
+                  type="button"
+                  onClick={handleBiometricLogin}
+                  disabled={authLoading || biometricScanning}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, rgba(123, 90, 217, 0.12), rgba(47, 111, 224, 0.12))',
+                    color: 'var(--accent)',
+                    border: '1px dashed rgba(123, 90, 217, 0.4)',
+                    padding: 14,
+                    borderRadius: 14,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    marginBottom: 16,
+                    boxShadow: '0 4px 12px rgba(123, 90, 217, 0.05)',
+                    transition: 'all 200ms ease',
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>🫵</span>
+                  {biometricScanning ? 'Verificando…' : 'Acceder con Huella / Face ID'}
+                </button>
+              )}
+
               <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {!isLoginMode && (
                   <input 

@@ -25,6 +25,7 @@ import { useAsync, useCollection, useDebounced } from '@/lib/hooks';
 import { getCardsByIds, searchCards } from '@/lib/pokemonTcgApi';
 import { getEstimatedPrice } from '@/lib/pricing';
 import SearchBar from '@/components/SearchBar';
+import { recognizeCardFromImage } from '@/lib/cardRecognition';
 import {
   RARITY_FILTERS,
   rarityMatchesFilter,
@@ -188,10 +189,51 @@ const SEARCH_SUGGESTIONS = [
   { label: '🌟 Secretas', value: 'rareza:secret' },
 ];
 
+function base64ToFile(base64: string, filename: string): File {
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
 export default function LibraryScreen() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const collection = useCollection();
+
+  const [imageRecognizing, setImageRecognizing] = useState(false);
+  const [recognizingImageBase64, setRecognizingImageBase64] = useState<string | null>(null);
+
+  const handleImageSearch = async (base64Image: string) => {
+    setImageRecognizing(true);
+    setRecognizingImageBase64(base64Image);
+    triggerHaptic('medium');
+
+    try {
+      const resFile = base64ToFile(base64Image, 'search-card.jpg');
+      const result = await recognizeCardFromImage({ type: 'file', file: resFile });
+      
+      if (result && result.cardName) {
+        setSearchQuery(result.cardName);
+        setSearchOpen(true);
+        triggerHaptic('success');
+      } else {
+        triggerHaptic('warning');
+        alert('No se pudo identificar la carta con claridad. Intenta con otra foto.');
+      }
+    } catch (err) {
+      console.error('Error during image search:', err);
+      triggerHaptic('error');
+    } finally {
+      setImageRecognizing(false);
+      setRecognizingImageBase64(null);
+    }
+  };
 
   const [visibleCount, setVisibleCount] = useState(24);
 
@@ -449,6 +491,7 @@ export default function LibraryScreen() {
           setIsAiSearch={setIsAiSearch}
           aiExplanation={aiExplanation}
           aiLoading={aiLoading}
+          onImageSearch={handleImageSearch}
         />
         <LoadingState variant="grid" count={9} />
       </div>
@@ -474,6 +517,7 @@ export default function LibraryScreen() {
           setIsAiSearch={setIsAiSearch}
           aiExplanation={aiExplanation}
           aiLoading={aiLoading}
+          onImageSearch={handleImageSearch}
         />
         <ErrorState message={error} onRetry={reload} />
       </div>
@@ -486,6 +530,91 @@ export default function LibraryScreen() {
 
   return (
     <div style={{ paddingBottom: 110 }}>
+      {/* Scanning hologram overlay */}
+      {imageRecognizing && recognizingImageBase64 && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: 280,
+              aspectRatio: '3 / 4.2',
+              borderRadius: 24,
+              overflow: 'hidden',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+              border: '1.5px solid rgba(255,255,255,0.15)',
+              background: '#1A1B23',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src={recognizingImageBase64}
+              alt="Scanning..."
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                opacity: 0.85,
+              }}
+            />
+            {/* Holographic Laser overlay */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: 4,
+                background: 'linear-gradient(90deg, rgba(123, 90, 217, 0), rgba(123, 90, 217, 1) 50%, rgba(123, 90, 217, 0))',
+                boxShadow: '0 0 15px 3px rgba(123, 90, 217, 0.8)',
+                animation: 'laserScanAnim 2s ease-in-out infinite',
+              }}
+            />
+            
+            {/* Grid overlay for scanning effect */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+          
+          <h3 style={{ margin: '24px 0 8px', fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
+            Identificando carta...
+          </h3>
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
+            Nuestra IA está analizando los detalles visuales de tu carta usando OpenAI Vision.
+          </p>
+
+          <style>{`
+            @keyframes laserScanAnim {
+              0% { top: 0%; }
+              50% { top: 100%; }
+              100% { top: 0%; }
+            }
+          `}</style>
+        </div>
+      )}
+
       <Header
         onSet={!!setFilter}
         setName={setFilter}
@@ -503,6 +632,7 @@ export default function LibraryScreen() {
         setIsAiSearch={setIsAiSearch}
         aiExplanation={aiExplanation}
         aiLoading={aiLoading}
+        onImageSearch={handleImageSearch}
       />
 
       {showEmpty ? (
@@ -1361,6 +1491,7 @@ function Header({
   setIsAiSearch = () => {},
   aiExplanation = null,
   aiLoading = false,
+  onImageSearch,
 }: {
   onSet: boolean;
   setName: string;
@@ -1375,6 +1506,7 @@ function Header({
   setIsAiSearch?: (val: boolean) => void;
   aiExplanation?: string | null;
   aiLoading?: boolean;
+  onImageSearch?: (base64Image: string) => void;
 }) {
   return (
     <div
@@ -1397,6 +1529,7 @@ function Header({
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
+                onImageSearch={onImageSearch}
                 placeholder="Ej: charizard tipo:fuego hp>120"
                 autoFocus
               />

@@ -1,20 +1,19 @@
 /**
- * Utility for client-side image compression and resizing using the free
- * images.weserv.nl service (powered by Cloudflare CDN).
+ * Utility for client-side image compression, resizing, and automatic card cropping.
+ * Uses contrast-based edge detection to remove background clutter before AI processing.
+ * Also integrates the free images.weserv.nl service for rendering.
  */
+
 export function getOptimizedImageUrl(url: string | undefined, width?: number): string {
   if (!url) return '';
   
-  // Only optimize official pokemontcg.io images to avoid breaking other services
   if (!url.startsWith('https://images.pokemontcg.io/')) {
     return url;
   }
 
   const cleanUrl = encodeURIComponent(url);
-  // Scale width by 1.5 for crisp rendering on high-DPI/Retina screens
   const wParam = width ? `&w=${Math.round(width * 1.5)}` : '';
   
-  // output=webp converts the format dynamically, q=80 sets optimal WebP compression
   return `https://images.weserv.nl/?url=${cleanUrl}${wParam}&output=webp&q=80`;
 }
 
@@ -23,7 +22,6 @@ export function getOptimizedImageUrl(url: string | undefined, width?: number): s
  * Returns a new File or the original if it is already small.
  */
 export async function resizeImageFile(file: File, maxDim = 1000): Promise<File> {
-  // If the file is smaller than 200KB, no need to resize
   if (file.size < 200 * 1024) {
     return file;
   }
@@ -85,17 +83,131 @@ export async function resizeImageFile(file: File, maxDim = 1000): Promise<File> 
   });
 }
 
+/**
+ * Detects the bounding box of a card within the canvas by analyzing pixel color contrast.
+ * Scans inwards from top, bottom, left, and right to find high-gradient transitions
+ * (representing card edges against standard backgrounds like tables, desks, etc.).
+ * Returns the cropped bounding box, adding margin to keep borders intact.
+ */
+export function detectCardBoundingBox(canvas: HTMLCanvasElement): { x: number; y: number; w: number; h: number } {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { x: 0, y: 0, w: canvas.width, h: canvas.height };
+
+  const { width: w, height: h } = canvas;
+  let data: Uint8ClampedArray;
+  try {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    data = imgData.data;
+  } catch (e) {
+    // Cross-origin fallback
+    return { x: 0, y: 0, w, h };
+  }
+
+  // Helper to get RGB at coordinate
+  const getRGB = (x: number, y: number) => {
+    const idx = (y * w + x) * 4;
+    return { r: data[idx], g: data[idx + 1], b: data[idx + 2] };
+  };
+
+  // Helper to calculate Euclidean color distance in RGB space
+  const colorDistance = (c1: { r: number; g: number; b: number }, c2: { r: number; g: number; b: number }) => {
+    return Math.sqrt((c1.r - c2.r) ** 2 + (c1.g - c2.g) ** 2 + (c1.b - c2.b) ** 2);
+  };
+
+  // Define background reference by averaging regions near corners
+  const corners = [getRGB(5, 5), getRGB(w - 5, 5), getRGB(5, h - 5), getRGB(w - 5, h - 5)];
+  const bg = {
+    r: Math.round(corners.reduce((sum, c) => sum + c.r, 0) / 4),
+    g: Math.round(corners.reduce((sum, c) => sum + c.g, 0) / 4),
+    b: Math.round(corners.reduce((sum, c) => sum + c.b, 0) / 4)
+  };
+
+  let top = 0;
+  let bottom = h - 1;
+  let left = 0;
+  let right = w - 1;
+
+  const THRESHOLD = 38; 
+  const GRID_STEP = 6;
+
+  // 1. Scan Top to Bottom (sample columns at 25%, 50%, 75% width)
+  let foundTop = false;
+  for (let y = 10; y < h / 2; y += GRID_STEP) {
+    let contrastHits = 0;
+    const cols = [Math.round(w * 0.25), Math.round(w * 0.5), Math.round(w * 0.75)];
+    for (const col of cols) {
+      if (colorDistance(getRGB(col, y), bg) > THRESHOLD) contrastHits++;
+    }
+    if (contrastHits >= 2) {
+      top = Math.max(0, y - 12);
+      foundTop = true;
+      break;
+    }
+  }
+
+  // 2. Scan Bottom to Top
+  let foundBottom = false;
+  for (let y = h - 10; y > h / 2; y -= GRID_STEP) {
+    let contrastHits = 0;
+    const cols = [Math.round(w * 0.25), Math.round(w * 0.5), Math.round(w * 0.75)];
+    for (const col of cols) {
+      if (colorDistance(getRGB(col, y), bg) > THRESHOLD) contrastHits++;
+    }
+    if (contrastHits >= 2) {
+      bottom = Math.min(h - 1, y + 12);
+      foundBottom = true;
+      break;
+    }
+  }
+
+  // 3. Scan Left to Right (sample rows at 25%, 50%, 75% height)
+  let foundLeft = false;
+  for (let x = 10; x < w / 2; x += GRID_STEP) {
+    let contrastHits = 0;
+    const rows = [Math.round(h * 0.25), Math.round(h * 0.5), Math.round(h * 0.75)];
+    for (const row of rows) {
+      if (colorDistance(getRGB(x, row), bg) > THRESHOLD) contrastHits++;
+    }
+    if (contrastHits >= 2) {
+      left = Math.max(0, x - 12);
+      foundLeft = true;
+      break;
+    }
+  }
+
+  // 4. Scan Right to Left
+  let foundRight = false;
+  for (let x = w - 10; x > w / 2; x -= GRID_STEP) {
+    let contrastHits = 0;
+    const rows = [Math.round(h * 0.25), Math.round(h * 0.5), Math.round(h * 0.75)];
+    for (const row of rows) {
+      if (colorDistance(getRGB(x, row), bg) > THRESHOLD) contrastHits++;
+    }
+    if (contrastHits >= 2) {
+      right = Math.min(w - 1, x + 12);
+      foundRight = true;
+      break;
+    }
+  }
+
+  // Fallback if boundaries are too ambiguous
+  if (!foundTop || !foundBottom || !foundLeft || !foundRight) {
+    const pW = Math.round(w * 0.04);
+    const pH = Math.round(h * 0.04);
+    return { x: pW, y: pH, w: w - pW * 2, h: h - pH * 2 };
+  }
+
+  return {
+    x: left,
+    y: top,
+    w: right - left,
+    h: bottom - top
+  };
+}
 
 /**
- * Compresses a base64-encoded image (dataURL or raw base64) to a target size
+ * Compresses and auto-crops a base64-encoded image to a target size
  * in KB before sending it to an AI endpoint.
- *
- * Strategy:
- * 1. Decode the base64 into an Image
- * 2. Draw it on a canvas scaled to a max of 1600×1600px
- * 3. Re-encode as JPEG at quality 0.82
- * 4. If still above maxKB, re-encode at quality 0.65 (second pass)
- * Returns the compressed base64 string (data URL).
  */
 export async function compressForAI(base64: string, maxKB = 500): Promise<string> {
   return new Promise<string>((resolve) => {
@@ -110,21 +222,33 @@ export async function compressForAI(base64: string, maxKB = 500): Promise<string
         else { w = Math.round((w * MAX_DIM) / h); h = MAX_DIM; }
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(base64); return; }
-      ctx.drawImage(img, 0, 0, w, h);
+      // 1. Initial draw to temp canvas
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) { resolve(base64); return; }
+      tempCtx.drawImage(img, 0, 0, w, h);
 
+      // 2. Perform intelligent card cropping to remove background
+      const crop = detectCardBoundingBox(tempCanvas);
+
+      // 3. Draw cropped region to final canvas
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = crop.w;
+      finalCanvas.height = crop.h;
+      const finalCtx = finalCanvas.getContext('2d');
+      if (!finalCtx) { resolve(base64); return; }
+      finalCtx.drawImage(tempCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+
+      // 4. Compress to target file size
       const tryEncode = (quality: number) => {
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        // Rough size check: base64 length * 0.75 ≈ bytes
+        const dataUrl = finalCanvas.toDataURL('image/jpeg', quality);
         const approxKB = (dataUrl.length * 0.75) / 1024;
         if (approxKB <= maxKB || quality <= 0.5) {
           resolve(dataUrl);
         } else {
-          tryEncode(quality - 0.15);
+          tryEncode(quality - 0.12);
         }
       };
 
