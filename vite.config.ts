@@ -123,6 +123,31 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase';
+            }
+            if (
+              id.includes('recharts') ||
+              id.includes('d3') ||
+              id.includes('decimal.js')
+            ) {
+              return 'vendor-charts';
+            }
+            if (id.includes('react-virtuoso')) {
+              return 'vendor-virtuoso';
+            }
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
