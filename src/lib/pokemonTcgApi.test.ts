@@ -64,6 +64,13 @@ describe('parseSearchQuery', () => {
     expect(parsed.name).toBe('Charizard');
     expect(parsed.number).toBeUndefined();
     expect(parsed.setId).toBe('sv3');
+
+    // Test new 2025/2026 sets and classic sets
+    expect(parseSearchQuery('Mewtwo me3').setId).toBe('me3');
+    expect(parseSearchQuery('Pikachu ex zsv10pt5').setId).toBe('zsv10pt5');
+    expect(parseSearchQuery('Reshiram rsv10pt5').setId).toBe('rsv10pt5');
+    expect(parseSearchQuery('Alakazam base1').setId).toBe('base1');
+    expect(parseSearchQuery('Mew cel25').setId).toBe('cel25');
   });
 
   it('handles fully combined name, number and set queries', () => {

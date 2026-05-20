@@ -421,8 +421,8 @@ export function parseSearchQuery(query: string): ParsedQuery {
       continue;
     }
 
-    // Detect set ID codes (e.g., "sv3", "swsh12", "xy1", "base4")
-    if (/^(sv|swsh|sm|xy|bw|col|hgss|pl|dp|ex|np|pop)\d+[a-z0-9]*$/i.test(cleanWord)) {
+    // Detect set ID codes (e.g., "sv3", "swsh12", "xy1", "base4", "me1", "zsv10pt5")
+    if (/^(sv|swsh|sm|xy|bw|col|hgss|pl|dp|ex|np|pop|me|zsv|rsv|base|cel|det|dv|ecard|fut|gym|mcd|neo|ru|si|tk)\d+[a-z0-9]*$/i.test(cleanWord)) {
       setIdVal = cleanWord.toLowerCase();
       continue;
     }

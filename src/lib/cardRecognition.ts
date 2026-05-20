@@ -1727,6 +1727,12 @@ export async function recognizeCardFromImage(
       res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
+    // Capa 1.5: Nombre + Set (Si falló la Capa 1 pero teníamos Set. Útil si el número de la carta japonesa/extranjera difiere del número occidental)
+    if (res.data.length === 0 && nameQuery && targetSetId) {
+      const q = `${nameQuery} AND set.id:${targetSetId}`;
+      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+    }
+
     // Capa 2: Nombre + Número (Si falló la Capa 1 o no teníamos Set)
     if (res.data.length === 0 && nameQuery && numberQuery) {
       const q = `${nameQuery} AND ${numberQuery}`;
