@@ -8,6 +8,7 @@ import {
   TrashIcon,
   InfoIcon,
   ShareIcon,
+  GalleryIcon,
 } from '@/components/icons';
 import { useCollectionSummary } from '@/lib/hooks';
 import {
@@ -15,12 +16,15 @@ import {
   exportCollection,
   importCollection,
   resetRecentlyViewed,
+  getCollection,
 } from '@/lib/collectionStorage';
-import { hasApiKey, clearApiCache } from '@/lib/pokemonTcgApi';
+import { hasApiKey, clearApiCache, getCachedCard } from '@/lib/pokemonTcgApi';
 import { formatInt } from '@/lib/formatters';
-import { prefersMXN, setPrefersMXN } from '@/lib/pricing';
+import { prefersMXN, setPrefersMXN, getEstimatedPrice } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import CollectionShareModal from '@/components/CollectionShareModal';
+import type { PokemonCard } from '@/types/pokemon';
 
 const APP_VERSION = '1.1.0';
 
@@ -41,6 +45,7 @@ export default function ProfileScreen() {
   const [authLoading, setAuthLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,6 +181,38 @@ export default function ProfileScreen() {
     setPrefersMXN(next);
     setMxnEnabled(next);
     window.location.reload();
+  };
+
+  const getShowcaseCards = (): PokemonCard[] => {
+    const col = getCollection();
+    const ownedIds = Object.values(col.cards)
+      .filter((c) => c.owned)
+      .map((c) => c.cardId);
+
+    const ownedCards = ownedIds
+      .map((id) => getCachedCard(id))
+      .filter((c): c is PokemonCard => !!c);
+
+    const favoriteCards = ownedCards.filter((c) => col.cards[c.id]?.favorite);
+
+    let showcase = [...favoriteCards];
+
+    if (showcase.length < 4) {
+      const remainingOwned = ownedCards.filter((c) => !showcase.some((sc) => sc.id === c.id));
+      const sortedByPrice = [...remainingOwned].sort((a, b) => {
+        const pa = getEstimatedPrice(a)?.value ?? 0;
+        const pb = getEstimatedPrice(b)?.value ?? 0;
+        return pb - pa;
+      });
+      showcase.push(...sortedByPrice.slice(0, 4 - showcase.length));
+    }
+
+    if (showcase.length < 4) {
+      const remainingOwned = ownedCards.filter((c) => !showcase.some((sc) => sc.id === c.id));
+      showcase.push(...remainingOwned.slice(0, 4 - showcase.length));
+    }
+
+    return showcase.slice(0, 4);
   };
 
   return (
@@ -357,6 +394,59 @@ export default function ProfileScreen() {
               </button>
             </>
           )}
+        </Surface>
+      </div>
+
+      {/* Showcase Poster Export */}
+      <div style={{ padding: '0 14px 14px' }}>
+        <SectionTitle>Compartir mi vitrina</SectionTitle>
+        <Surface style={{ padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 11,
+                background: 'rgba(0, 188, 212, 0.12)',
+                color: '#00BCD4',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <GalleryIcon size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  letterSpacing: -0.2,
+                }}
+              >
+                Showcase Poster
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                Genera una infografía elegante de tus cartas destacadas.
+              </div>
+            </div>
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              style={{
+                background: 'var(--accent-tint)',
+                border: 'none',
+                color: 'var(--accent)',
+                padding: '8px 16px',
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Generar
+            </button>
+          </div>
         </Surface>
       </div>
 
@@ -599,6 +689,15 @@ export default function ProfileScreen() {
           </p>
         </Surface>
       </div>
+      <CollectionShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        summary={summary}
+        showcaseCards={getShowcaseCards()}
+        username={user?.user_metadata?.full_name || user?.email || 'Mi Colección'}
+        userId={user?.id || ''}
+        onShowToast={showToast}
+      />
     </div>
   );
 }

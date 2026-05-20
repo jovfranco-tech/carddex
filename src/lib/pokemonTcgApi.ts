@@ -5,6 +5,14 @@ import type {
   PokemonCard,
   SearchCardsParams,
 } from '@/types/pokemon';
+import {
+  saveCardToDb,
+  getCardFromDb,
+  getAllCardsFromDb,
+  pruneCardsDb,
+  clearCardsDb,
+} from './indexedDb';
+
 
 const BASE_URL = (
   import.meta.env.VITE_POKEMON_TCG_API_BASE_URL as string | undefined
@@ -130,15 +138,36 @@ function updateAccessTimestamp(id: string): void {
   }
 }
 
+async function initPersistedCardCache(cacheMap: Map<string, PokemonCard>): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    const dbEntries = await getAllCardsFromDb();
+    dbEntries.forEach((entry) => {
+      if (entry && entry.card) {
+        Map.prototype.set.call(cacheMap, entry.id, entry.card);
+      }
+    });
+    // eslint-disable-next-line no-console
+    console.log(`[API Cache] Hydrated ${cacheMap.size} cards from IndexedDB.`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[API Cache] Failed to load IndexedDB card cache:', e);
+  }
+}
+
 class PersistedCardCache extends Map<string, PokemonCard> {
   constructor() {
     super();
     loadPersistedCardCache(this);
+    initPersistedCardCache(this);
   }
 
   set(key: string, value: PokemonCard): this {
     super.set(key, value);
-    setTimeout(() => persistCardCache(this), 0);
+    setTimeout(() => {
+      persistCardCache(this);
+      saveCardToDb(value).then(() => pruneCardsDb(1000));
+    }, 0);
     return this;
   }
 
@@ -155,9 +184,10 @@ class PersistedCardCache extends Map<string, PokemonCard> {
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('carddex.card_cache.v1');
+        clearCardsDb();
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.error('[API Cache] Failed to clear localStorage card cache:', e);
+        console.error('[API Cache] Failed to clear local caches:', e);
       }
     }
   }
@@ -481,6 +511,15 @@ export async function getCardById(
 ): Promise<PokemonCard> {
   const cached = cardCache.get(id);
   if (cached) return cached;
+
+  // Try retrieving from IndexedDB cache first
+  const dbCard = await getCardFromDb(id);
+  if (dbCard) {
+    // Populate the memory cache Map
+    Map.prototype.set.call(cardCache, id, dbCard);
+    return dbCard;
+  }
+
   const { data } = await request<ApiSingleResponse<PokemonCard>>(
     `/cards/${encodeURIComponent(id)}`,
     opts,

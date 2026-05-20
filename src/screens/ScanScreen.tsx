@@ -22,6 +22,7 @@ import {
 } from '@/lib/cardRecognition';
 import type { PokemonCard } from '@/types/pokemon';
 import { saveCardMeta } from '@/lib/collectionStorage';
+import { triggerHaptic } from '@/lib/haptic';
 
 type ScanState = 'idle' | 'scanning' | 'detected' | 'lowConf';
 type CameraStatus = 'idle' | 'starting' | 'live' | 'denied' | 'unsupported' | 'error';
@@ -145,7 +146,7 @@ export default function ScanScreen() {
     setResult(null);
     setDetectedMulticards([]);
     setBlurWarning(false);
-    if (navigator.vibrate) navigator.vibrate(40);
+    triggerHaptic('light');
   };
 
   // Selector de idioma OCR para optimizar el escaneo de cartas multilingües
@@ -162,7 +163,7 @@ export default function ScanScreen() {
     try {
       localStorage.setItem('carddex.scanner.language', lang);
     } catch {}
-    if (navigator.vibrate) navigator.vibrate(30);
+    triggerHaptic('light');
   };
 
   // Estado de fluctuación cinética para simulación de rastreo espacial multicarta en tiempo real
@@ -222,7 +223,7 @@ export default function ScanScreen() {
     }, 3000);
 
     // Vibrate and clear batch
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    triggerHaptic('success');
     setScannedBatch([]);
   };
 
@@ -243,7 +244,7 @@ export default function ScanScreen() {
       setShowBatchSaveToast(false);
     }, 3000);
 
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    triggerHaptic('success');
     
     // Clear and reset state
     setState('idle');
@@ -255,12 +256,12 @@ export default function ScanScreen() {
 
   const handleClearBatch = () => {
     setScannedBatch([]);
-    if (navigator.vibrate) navigator.vibrate(30);
+    triggerHaptic('light');
   };
 
   const handleRemoveFromBatch = (cardId: string) => {
     setScannedBatch((prev) => prev.filter((item) => item.card?.id !== cardId));
-    if (navigator.vibrate) navigator.vibrate(30);
+    triggerHaptic('light');
   };
 
   // Refs for media-capture plumbing.
@@ -377,7 +378,7 @@ export default function ScanScreen() {
         setConfidence(98);
         setDetectedMulticards(cardsToDetect);
         setState('detected');
-        if (navigator.vibrate) navigator.vibrate(100);
+        triggerHaptic('success');
         return;
       }
 
@@ -395,7 +396,7 @@ export default function ScanScreen() {
         setConfidence(Math.round(recognition.confidence * 100));
         setResult(recognition);
         setState('lowConf');
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Error vibration pattern
+        triggerHaptic('warning'); // Error vibration pattern
         return;
       }
 
@@ -410,7 +411,7 @@ export default function ScanScreen() {
         });
         setJustAddedToBatch(true);
         setTimeout(() => setJustAddedToBatch(false), 800);
-        if (navigator.vibrate) navigator.vibrate(120);
+        triggerHaptic('success');
 
         setState('idle');
         setConfidence(0);
@@ -420,7 +421,7 @@ export default function ScanScreen() {
         // Mode Único: show single card detected panel
         setResult(recognition);
         setState('detected');
-        if (navigator.vibrate) navigator.vibrate(100); // Success vibration
+        triggerHaptic('success'); // Success vibration
       }
     } catch (err) {
       window.clearInterval(tick);
@@ -447,12 +448,12 @@ export default function ScanScreen() {
       setConfidence(0);
       setResult(null);
       setBlurWarning(false);
-      if (navigator.vibrate) navigator.vibrate(50);
+      triggerHaptic('light');
       return;
     }
     if (state === 'scanning') return;
     
-    if (navigator.vibrate) navigator.vibrate(50); // Tap vibration
+    triggerHaptic('light'); // Tap vibration
     setBlurWarning(false);
 
     // Pre-arm the input for runScan. If the camera is live we grab a frame

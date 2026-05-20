@@ -39,6 +39,7 @@ import {
 import { addCardToDeck } from '@/lib/deckStorage';
 import { rarityColor, rarityLabel } from '@/lib/rarity';
 import { buildCardAssistantContext } from '@/lib/cardAssistant';
+import { triggerHaptic } from '@/lib/haptic';
 import { typeColor } from '@/components/TypeBadge';
 import { formatDateShort } from '@/lib/formatters';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -136,6 +137,7 @@ function Detail({
       variant,
       owned: true,
     });
+    triggerHaptic('light');
     setSaved(true);
   };
 
@@ -608,6 +610,7 @@ function Detail({
                     onClick={() => {
                       if (isMaxed) return;
                       addCardToDeck(deck.id, card.id);
+                      triggerHaptic('light');
                       setDeckSavedId(deck.id);
                       setTimeout(() => setDeckSavedId(null), 2000);
                     }}
@@ -663,21 +666,30 @@ function Detail({
           label="Favorita"
           active={!!meta?.favorite}
           color="#FF3B30"
-          onClick={() => toggleFavorite(card.id)}
+          onClick={() => {
+            toggleFavorite(card.id);
+            triggerHaptic('light');
+          }}
         />
         <ActionBtn
           icon={<BookmarkIcon size={18} />}
           label="Wishlist"
           active={!!meta?.wishlist}
           color="#7B5AD9"
-          onClick={() => toggleWishlist(card.id)}
+          onClick={() => {
+            toggleWishlist(card.id);
+            triggerHaptic('light');
+          }}
         />
         <ActionBtn
           icon={<BanIcon size={18} />}
           label="Falta"
           active={!!meta?.missing}
           color="#8E8E93"
-          onClick={() => toggleMissing(card.id)}
+          onClick={() => {
+            toggleMissing(card.id);
+            triggerHaptic('light');
+          }}
         />
       </div>
     </div>

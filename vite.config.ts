@@ -36,7 +36,7 @@ export default defineConfig({
       workbox: {
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/images\.pokemontcg\.io\/.*/i,
+            urlPattern: /^https:\/\/(images\.pokemontcg\.io|images\.weserv\.nl)\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'pokemon-cards-cache',

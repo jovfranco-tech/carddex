@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from '@/components/AppShell';
@@ -5,6 +6,7 @@ import HomeScreen from '@/screens/HomeScreen';
 import { ROUTES } from './routes';
 import { AuthProvider } from '@/lib/authContext';
 import { usePredictiveImagePreloader } from '@/lib/imagePreloader';
+import { checkAndGeneratePriceAlerts } from '@/lib/priceMonitor';
 
 // Dynamic lazy imports for non-critical screens to reduce initial bundle chunk size
 const ScanScreen = lazy(() => import('@/screens/ScanScreen'));
@@ -168,6 +170,12 @@ class RootErrorBoundary extends Component<
 
 export default function App() {
   usePredictiveImagePreloader();
+
+  useEffect(() => {
+    // Generate/update price alerts in background when app boots
+    checkAndGeneratePriceAlerts();
+  }, []);
+
   return (
     <RootErrorBoundary>
       <AuthProvider>

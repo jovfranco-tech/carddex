@@ -19,6 +19,7 @@ import {
   ChevronDownIcon,
   CloseIcon,
   BookIcon,
+  BellIcon,
 } from '@/components/icons';
 import { useAsync, useCollection, useDebounced } from '@/lib/hooks';
 import { getCardsByIds, searchCards } from '@/lib/pokemonTcgApi';
@@ -32,6 +33,14 @@ import {
 } from '@/lib/rarity';
 import { formatInt } from '@/lib/formatters';
 import type { CollectionState } from '@/types/collection';
+import {
+  getPriceAlerts,
+  markAllAlertsAsRead,
+  clearAllPriceAlerts,
+  subscribePriceAlerts,
+  type PriceAlert
+} from '@/lib/priceMonitor';
+import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
 import VisualCollectionStats from '@/components/VisualCollectionStats';
 
@@ -43,6 +52,141 @@ const SORT_LABELS: Record<SortKey, string> = {
   name: 'Nombre',
   recent: 'Recientes',
 };
+
+interface AdvancedFilters {
+  name?: string;
+  types: string[];
+  hpMin?: number;
+  hpMax?: number;
+  rarities: string[];
+}
+
+function mapTypeToEnglish(t: string): string {
+  switch (t) {
+    case 'fuego': return 'fire';
+    case 'agua': return 'water';
+    case 'planta': return 'grass';
+    case 'rayo': case 'eléctrico': case 'electrico': return 'lightning';
+    case 'psíquico': case 'psiquico': return 'psychic';
+    case 'lucha': return 'fighting';
+    case 'oscuridad': case 'siniestro': return 'darkness';
+    case 'metal': case 'acero': return 'metal';
+    case 'dragón': case 'dragon': return 'dragon';
+    case 'incoloro': return 'colorless';
+    case 'hada': return 'fairy';
+    default: return t;
+  }
+}
+
+function mapRarityToEnglish(r: string): string {
+  switch (r) {
+    case 'común': case 'comun': return 'common';
+    case 'infrecuente': return 'uncommon';
+    case 'rara': return 'rare';
+    case 'secreta': case 'secreto': return 'secret';
+    default: return r;
+  }
+}
+
+function parseAdvancedQuery(query: string): AdvancedFilters {
+  const parts = query.split(/\s+/);
+  const filters: AdvancedFilters = {
+    types: [],
+    rarities: [],
+  };
+
+  const nameParts: string[] = [];
+
+  parts.forEach((part) => {
+    if (!part) return;
+
+    if (part.startsWith('t:') || part.startsWith('tipo:') || part.startsWith('type:')) {
+      const val = part.split(':')[1]?.toLowerCase();
+      if (val) filters.types.push(val);
+    } else if (part.startsWith('r:') || part.startsWith('rareza:') || part.startsWith('rarity:')) {
+      const val = part.split(':')[1]?.toLowerCase();
+      if (val) filters.rarities.push(val);
+    } else if (part.startsWith('hp>')) {
+      const val = parseInt(part.substring(3), 10);
+      if (!isNaN(val)) filters.hpMin = val;
+    } else if (part.startsWith('hp<')) {
+      const val = parseInt(part.substring(3), 10);
+      if (!isNaN(val)) filters.hpMax = val;
+    } else if (part.startsWith('hp=')) {
+      const val = parseInt(part.substring(3), 10);
+      if (!isNaN(val)) {
+        filters.hpMin = val;
+        filters.hpMax = val;
+      }
+    } else {
+      nameParts.push(part);
+    }
+  });
+
+  if (nameParts.length > 0) {
+    filters.name = nameParts.join(' ').toLowerCase();
+  }
+
+  return filters;
+}
+
+function matchesAdvancedFilters(c: PokemonCard, f: AdvancedFilters): boolean {
+  if (f.name) {
+    const nameMatch = c.name.toLowerCase().includes(f.name);
+    const numMatch = c.number?.toLowerCase().includes(f.name);
+    const setMatch = c.set?.name?.toLowerCase().includes(f.name) || c.set?.id?.toLowerCase().includes(f.name);
+    if (!nameMatch && !numMatch && !setMatch) return false;
+  }
+
+  if (f.types.length > 0) {
+    const cardTypes = (c.types || []).map((t) => t.toLowerCase());
+    const supertype = c.supertype?.toLowerCase() || '';
+    const subtype = (c.subtypes || []).map((s) => s.toLowerCase());
+
+    const match = f.types.some((t) => {
+      const englishType = mapTypeToEnglish(t);
+      return (
+        cardTypes.includes(englishType) ||
+        cardTypes.includes(t) ||
+        supertype.includes(t) ||
+        subtype.includes(t)
+      );
+    });
+    if (!match) return false;
+  }
+
+  if (f.rarities.length > 0) {
+    const cardRarity = c.rarity?.toLowerCase() || '';
+    const match = f.rarities.some((r) => {
+      const englishRarity = mapRarityToEnglish(r);
+      return cardRarity.includes(englishRarity) || cardRarity.includes(r);
+    });
+    if (!match) return false;
+  }
+
+  if (f.hpMin !== undefined || f.hpMax !== undefined) {
+    const hpVal = parseInt(c.hp || '', 10);
+    if (isNaN(hpVal)) return false;
+    if (f.hpMin !== undefined && hpVal < f.hpMin) return false;
+    if (f.hpMax !== undefined && hpVal > f.hpMax) return false;
+  }
+
+  return true;
+}
+
+const SEARCH_SUGGESTIONS = [
+  { label: '🔥 Fuego', value: 'tipo:fuego' },
+  { label: '💧 Agua', value: 'tipo:agua' },
+  { label: '🌿 Planta', value: 'tipo:planta' },
+  { label: '⚡ Rayo', value: 'tipo:rayo' },
+  { label: '👁️ Psíquico', value: 'tipo:psiquico' },
+  { label: '✊ Lucha', value: 'tipo:lucha' },
+  { label: '⭐ Incoloro', value: 'tipo:incoloro' },
+  { label: '❤️ HP > 120', value: 'hp>120' },
+  { label: '❤️ HP > 200', value: 'hp>200' },
+  { label: '✨ Raras', value: 'rareza:rare' },
+  { label: '🌟 Secretas', value: 'rareza:secret' },
+];
 
 export default function LibraryScreen() {
   const navigate = useNavigate();
@@ -69,6 +213,15 @@ export default function LibraryScreen() {
   const [searchQuery, setSearchQuery] = useState(initialQ);
   const [searchOpen, setSearchOpen] = useState(!!initialQ);
   const debouncedSearchQuery = useDebounced(searchQuery, 400);
+
+  const [alerts, setAlerts] = useState<PriceAlert[]>(() => getPriceAlerts());
+  const [alertsOpen, setAlertsOpen] = useState(false);
+
+  React.useEffect(() => {
+    return subscribePriceAlerts(() => {
+      setAlerts(getPriceAlerts());
+    });
+  }, []);
 
   // Reset pagination when search query or filters change
   React.useEffect(() => {
@@ -120,13 +273,8 @@ export default function LibraryScreen() {
     let list = baseCards;
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter((c) => {
-        const nameMatch = c.name.toLowerCase().includes(q);
-        const numMatch = c.number?.toLowerCase().includes(q);
-        const setMatch = c.set?.name?.toLowerCase().includes(q) || c.set?.id?.toLowerCase().includes(q);
-        return nameMatch || numMatch || setMatch;
-      });
+      const parsed = parseAdvancedQuery(searchQuery);
+      list = list.filter((c) => matchesAdvancedFilters(c, parsed));
     }
 
     if (setFilter) list = list.filter((c) => c.set?.id === setFilter);
@@ -244,6 +392,11 @@ export default function LibraryScreen() {
           setSearchOpen={setSearchOpen}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          unreadAlertsCount={alerts.filter(a => !a.read).length}
+          onAlertsOpen={() => {
+            setAlertsOpen(true);
+            triggerHaptic('light');
+          }}
         />
         <LoadingState variant="grid" count={9} />
       </div>
@@ -260,6 +413,11 @@ export default function LibraryScreen() {
           setSearchOpen={setSearchOpen}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          unreadAlertsCount={alerts.filter(a => !a.read).length}
+          onAlertsOpen={() => {
+            setAlertsOpen(true);
+            triggerHaptic('light');
+          }}
         />
         <ErrorState message={error} onRetry={reload} />
       </div>
@@ -280,6 +438,11 @@ export default function LibraryScreen() {
         setSearchOpen={setSearchOpen}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        unreadAlertsCount={alerts.filter(a => !a.read).length}
+        onAlertsOpen={() => {
+          setAlertsOpen(true);
+          triggerHaptic('light');
+        }}
       />
 
       {showEmpty ? (
@@ -811,6 +974,221 @@ export default function LibraryScreen() {
           </Section>
         </>
       )}
+
+      {/* Price Alerts Glassmorphic Side/Bottom Panel */}
+      {alertsOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(15, 20, 40, 0.4)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+          }}
+          onClick={() => {
+            setAlertsOpen(false);
+            triggerHaptic('light');
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: '24px 20px 40px',
+              boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.15)',
+              border: '0.5px solid rgba(255, 255, 255, 0.4)',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grabber */}
+            <div
+              style={{
+                width: 36,
+                height: 5,
+                background: 'rgba(0, 0, 0, 0.1)',
+                borderRadius: 2.5,
+                alignSelf: 'center',
+                marginBottom: 18,
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
+                Alertas de Precios
+              </h2>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {alerts.length > 0 && (
+                  <button
+                    onClick={() => {
+                      markAllAlertsAsRead();
+                      triggerHaptic('light');
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--accent)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Marcar leídas
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setAlertsOpen(false);
+                    triggerHaptic('light');
+                  }}
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.05)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 28,
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    color: 'var(--ink-2)',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* List */}
+            <div
+              className="no-scrollbar"
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                paddingRight: 2,
+              }}
+            >
+              {alerts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)', fontSize: 13 }}>
+                  No tienes alertas de precios en este momento.
+                </div>
+              ) : (
+                alerts.map((alert) => {
+                  const isUp = alert.changePercent >= 0;
+                  return (
+                    <div
+                      key={alert.id}
+                      onClick={() => {
+                        setAlertsOpen(false);
+                        triggerHaptic('light');
+                        navigate(`/card/${alert.cardId}`);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '12px 14px',
+                        borderRadius: 16,
+                        background: alert.read ? 'rgba(0, 0, 0, 0.02)' : 'rgba(123, 90, 217, 0.06)',
+                        border: alert.read ? '0.5px solid rgba(0, 0, 0, 0.05)' : '0.5px solid rgba(123, 90, 217, 0.2)',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                        boxShadow: alert.read ? 'none' : '0 4px 12px rgba(123, 90, 217, 0.04)',
+                      }}
+                    >
+                      <img
+                        src={alert.cardImage}
+                        alt={alert.cardName}
+                        style={{
+                          width: 38,
+                          height: 53,
+                          borderRadius: 6,
+                          objectFit: 'cover',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                            {alert.cardName}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 800,
+                              color: isUp ? 'var(--success)' : 'var(--error)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {isUp ? '▲' : '▼'} {Math.abs(alert.changePercent)}%
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                            Antes: <span style={{ textDecoration: 'line-through' }}>${alert.oldPrice.toFixed(2)}</span>
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>
+                            Ahora: ${alert.newPrice.toFixed(2)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 4 }}>
+                          {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(alert.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {alerts.length > 0 && (
+              <button
+                onClick={() => {
+                  clearAllPriceAlerts();
+                  triggerHaptic('heavy');
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: 20,
+                  background: 'rgba(255, 59, 48, 0.08)',
+                  color: '#FF3B30',
+                  border: 'none',
+                  borderRadius: 14,
+                  padding: '12px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'background 0.2s',
+                }}
+              >
+                Limpiar todas las alertas
+              </button>
+            )}
+          </div>
+          <style>{`
+            @keyframes slideUp {
+              from { transform: translateY(100%); }
+              to { transform: translateY(0); }
+            }
+          `}</style>
+        </div>
+      )}
       <style>{`
         .binder-sheet {
           position: relative;
@@ -917,6 +1295,8 @@ function Header({
   setSearchOpen,
   searchQuery,
   setSearchQuery,
+  unreadAlertsCount = 0,
+  onAlertsOpen,
 }: {
   onSet: boolean;
   setName: string;
@@ -925,48 +1305,98 @@ function Header({
   setSearchOpen: (val: boolean) => void;
   searchQuery: string;
   setSearchQuery: (val: string) => void;
+  unreadAlertsCount?: number;
+  onAlertsOpen?: () => void;
 }) {
   return (
     <div
       style={{
         padding: '54px 18px 14px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 106,
+        alignItems: 'stretch',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        minHeight: 106,
+        height: searchOpen ? 'auto' : 106,
         boxSizing: 'border-box',
+        gap: 12,
       }}
     >
       {searchOpen ? (
-        <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Buscar por nombre, número o set..."
-              autoFocus
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 10 }}>
+          <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Ej: charizard tipo:fuego hp>120"
+                autoFocus
+              />
+            </div>
+            <button
+              onClick={() => {
+                setSearchOpen(false);
+                setSearchQuery('');
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--accent)',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '6px 4px',
+              }}
+            >
+              Cancelar
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setSearchOpen(false);
-              setSearchQuery('');
-            }}
+          {/* Advanced Search Suggestions Row */}
+          <div
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--accent)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              padding: '6px 4px',
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              padding: '4px 0 8px',
+              width: '100%',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
             }}
           >
-            Cancelar
-          </button>
+            {SEARCH_SUGGESTIONS.map((s) => {
+              const active = searchQuery.includes(s.value);
+              return (
+                <button
+                  key={s.value}
+                  onClick={() => {
+                    setSearchQuery(
+                      searchQuery.trim().includes(s.value)
+                        ? searchQuery.replace(s.value, '').replace(/\s+/g, ' ').trim()
+                        : `${searchQuery.trim()} ${s.value}`.trim()
+                    );
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: '1.5px solid',
+                    borderColor: active ? 'var(--accent)' : 'var(--border)',
+                    background: active ? 'var(--accent-tint)' : 'var(--surface-overlay)',
+                    color: active ? 'var(--accent)' : 'var(--ink)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
-        <>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <h1
             style={{
               margin: 0,
@@ -978,7 +1408,7 @@ function Header({
           >
             Mi Colección
           </h1>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {onSet && (
               <button
                 onClick={onClear}
@@ -1021,24 +1451,48 @@ function Header({
               <SearchIcon size={18} />
             </button>
             <button
+              onClick={onAlertsOpen}
               style={{
                 width: 38,
                 height: 38,
                 borderRadius: 12,
                 background: 'var(--surface)',
                 border: '0.5px solid var(--border)',
-                color: 'var(--ink-2)',
+                color: unreadAlertsCount > 0 ? 'var(--accent)' : 'var(--ink-2)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                position: 'relative',
               }}
-              aria-label="Filtrar"
+              aria-label="Alertas de precios"
             >
-              <FilterIcon size={18} />
+              <BellIcon size={18} />
+              {unreadAlertsCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    fontSize: 9,
+                    fontWeight: 900,
+                    borderRadius: '50%',
+                    width: 15,
+                    height: 15,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1.5px solid var(--bg)',
+                  }}
+                >
+                  {unreadAlertsCount}
+                </span>
+              )}
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

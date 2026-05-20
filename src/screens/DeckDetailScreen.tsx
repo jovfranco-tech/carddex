@@ -7,11 +7,14 @@ import { removeCardFromDeck, updateDeckCards, removeCardFromDeckAll } from '@/li
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
-import { BackIcon, TrashIcon, LayersIcon, ShareIcon, DownloadIcon, GalleryIcon } from '@/components/icons';
+import { BackIcon, TrashIcon, LayersIcon, ShareIcon, DownloadIcon, GalleryIcon, BookIcon } from '@/components/icons';
 import { Toast } from '@/components/Section';
 import { ROUTES } from '@/app/routes';
 import type { PokemonCard } from '@/types/pokemon';
 import PremiumShareModal from '@/components/PremiumShareModal';
+import DeckPlaytestModal from '@/components/DeckPlaytestModal';
+import DeckOptimizationModal from '@/components/DeckOptimizationModal';
+import { triggerHaptic } from '@/lib/haptic';
 
 /**
  * Maps a list of cards to official Pokémon TCG Live (PTCGL) export format.
@@ -158,6 +161,7 @@ export default function DeckDetailScreen() {
     
     setDraggedIndex(index);
     setOrderedCards(nextCards);
+    triggerHaptic('light');
   };
 
   const handleDragEnd = () => {
@@ -177,6 +181,7 @@ export default function DeckDetailScreen() {
       const cardToRemove = orderedCards[draggedIndex];
       if (cardToRemove) {
         removeCardFromDeckAll(deck.id, cardToRemove.id);
+        triggerHaptic('heavy');
         showToast(`Removido ${cardToRemove.name} del mazo`);
       }
     }
@@ -222,6 +227,7 @@ export default function DeckDetailScreen() {
         
         setDraggedIndex(hoverIndex);
         setOrderedCards(nextCards);
+        triggerHaptic('light');
       }
     }
   };
@@ -233,10 +239,12 @@ export default function DeckDetailScreen() {
       const cardToRemove = orderedCards[draggedIndex];
       if (cardToRemove && deck) {
         removeCardFromDeckAll(deck.id, cardToRemove.id);
+        triggerHaptic('heavy');
         showToast(`Removido ${cardToRemove.name} del mazo`);
       }
     } else {
       saveNewOrder(orderedCards);
+      triggerHaptic('light');
     }
 
     setDraggedIndex(null);
@@ -245,6 +253,8 @@ export default function DeckDetailScreen() {
 
   const [toast, setToast] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isPlaytestOpen, setIsPlaytestOpen] = useState(false);
+  const [isOptimizerOpen, setIsOptimizerOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -331,6 +341,55 @@ export default function DeckDetailScreen() {
           {deck.name}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => {
+              setIsOptimizerOpen(true);
+              triggerHaptic('light');
+            }}
+            disabled={deckCards.loading || deck.cards.length === 0}
+            title="Optimizar mazo con IA"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: 'var(--surface)',
+              border: '0.5px solid var(--border)',
+              color: 'var(--accent)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: deckCards.loading || deck.cards.length === 0 ? 'default' : 'pointer',
+              opacity: deckCards.loading || deck.cards.length === 0 ? 0.4 : 1,
+              transition: 'all 200ms',
+            }}
+          >
+            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="18" width="18" xmlns="http://www.w3.org/2000/svg">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+              <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5 5 3Z" />
+              <path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setIsPlaytestOpen(true)}
+            disabled={deckCards.loading || deck.cards.length === 0}
+            title="Iniciar simulador Playtest"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: 'var(--surface)',
+              border: '0.5px solid var(--border)',
+              color: 'var(--ink-2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: deckCards.loading || deck.cards.length === 0 ? 'default' : 'pointer',
+              opacity: deckCards.loading || deck.cards.length === 0 ? 0.4 : 1,
+              transition: 'all 200ms',
+            }}
+          >
+            <BookIcon size={18} />
+          </button>
           <button
             onClick={() => setIsShareModalOpen(true)}
             disabled={deckCards.loading || deck.cards.length === 0}
@@ -593,6 +652,23 @@ export default function DeckDetailScreen() {
         cardIds={deck.cards}
         onShowToast={showToast}
       />
+
+      <DeckPlaytestModal
+        isOpen={isPlaytestOpen}
+        onClose={() => setIsPlaytestOpen(false)}
+        deckName={deck.name}
+        deckCards={deckCards.data ?? []}
+        cardIds={deck.cards}
+      />
+
+      {deck && deckCards.data && (
+        <DeckOptimizationModal
+          deck={deck}
+          deckCards={deckCards.data}
+          isOpen={isOptimizerOpen}
+          onClose={() => setIsOptimizerOpen(false)}
+        />
+      )}
     </div>
   );
 }

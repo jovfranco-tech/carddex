@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { getCollection } from '@/lib/collectionStorage';
 import { getDecksState } from '@/lib/deckStorage';
 import { getCachedCard, getCardsByIds } from '@/lib/pokemonTcgApi';
+import { getOptimizedImageUrl } from '@/lib/imageOptimization';
 
 // In-memory set of already preloaded image URLs to avoid duplicate fetches in this session
 const preloadedUrls = new Set<string>();
@@ -107,13 +108,13 @@ export async function triggerPredictivePreload() {
       }
     });
 
-    // 3. Queue images for already cached card metadata
+    // 3. Queue images for already cached card metadata (optimize for target sizes)
     const imageUrlsToPrefetch: string[] = [];
     cachedIds.forEach((id) => {
       const card = getCachedCard(id);
       if (card?.images) {
-        if (card.images.small) imageUrlsToPrefetch.push(card.images.small);
-        if (card.images.large) imageUrlsToPrefetch.push(card.images.large);
+        if (card.images.small) imageUrlsToPrefetch.push(getOptimizedImageUrl(card.images.small, 110));
+        if (card.images.large) imageUrlsToPrefetch.push(getOptimizedImageUrl(card.images.large, 240));
       }
     });
 
@@ -132,8 +133,8 @@ export async function triggerPredictivePreload() {
           const freshUrls: string[] = [];
           cards.forEach((card) => {
             if (card?.images) {
-              if (card.images.small) freshUrls.push(card.images.small);
-              if (card.images.large) freshUrls.push(card.images.large);
+              if (card.images.small) freshUrls.push(getOptimizedImageUrl(card.images.small, 110));
+              if (card.images.large) freshUrls.push(getOptimizedImageUrl(card.images.large, 240));
             }
           });
           if (freshUrls.length > 0) {
