@@ -56,7 +56,9 @@ export default function AppShell({ children }: AppShellProps) {
           </div>
         )}
         <div className="shell-screen">
-          {children}
+          <div key={pathname} className="page-transition">
+            {children}
+          </div>
         </div>
         {!hideNav && <BottomNavigation />}
       </div>

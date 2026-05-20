@@ -7,10 +7,11 @@ import { removeCardFromDeck } from '@/lib/deckStorage';
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
-import { BackIcon, TrashIcon, LayersIcon, ShareIcon, DownloadIcon } from '@/components/icons';
+import { BackIcon, TrashIcon, LayersIcon, ShareIcon, DownloadIcon, GalleryIcon } from '@/components/icons';
 import { Toast } from '@/components/Section';
 import { ROUTES } from '@/app/routes';
 import type { PokemonCard } from '@/types/pokemon';
+import PremiumShareModal from '@/components/PremiumShareModal';
 
 /**
  * Maps a list of cards to official Pokémon TCG Live (PTCGL) export format.
@@ -95,6 +96,7 @@ export default function DeckDetailScreen() {
   );
 
   const [toast, setToast] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -181,6 +183,27 @@ export default function DeckDetailScreen() {
           {deck.name}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            disabled={deckCards.loading || deck.cards.length === 0}
+            title="Compartir Tarjeta Mazo"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: 'var(--surface)',
+              border: '0.5px solid var(--border)',
+              color: 'var(--ink-2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: deckCards.loading || deck.cards.length === 0 ? 'default' : 'pointer',
+              opacity: deckCards.loading || deck.cards.length === 0 ? 0.4 : 1,
+              transition: 'all 200ms',
+            }}
+          >
+            <GalleryIcon size={18} />
+          </button>
           <button
             onClick={handleShare}
             disabled={deck.cards.length === 0}
@@ -299,6 +322,15 @@ export default function DeckDetailScreen() {
         visible={!!toast}
         onHide={() => setToast(null)}
         duration={2000}
+      />
+
+      <PremiumShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        deckName={deck.name}
+        deckCards={deckCards.data ?? []}
+        cardIds={deck.cards}
+        onShowToast={showToast}
       />
     </div>
   );

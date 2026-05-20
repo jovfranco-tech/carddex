@@ -101,3 +101,25 @@ a {
     background: var(--bg);
   }
 }
+
+/* Fluid Screen Transitions */
+@keyframes pageEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-transition {
+  animation: pageEntrance 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  transform-origin: center top;
+}
+

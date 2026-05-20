@@ -6,11 +6,12 @@ import { getCardsByIds } from '@/lib/pokemonTcgApi';
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
-import { BackIcon, LayersIcon, DownloadIcon } from '@/components/icons';
+import { BackIcon, LayersIcon, DownloadIcon, GalleryIcon } from '@/components/icons';
 import { Toast } from '@/components/Section';
 import VisualCollectionStats from '@/components/VisualCollectionStats';
 import type { PokemonCard } from '@/types/pokemon';
 import { ROUTES } from '@/app/routes';
+import PremiumShareModal from '@/components/PremiumShareModal';
 
 /**
  * Maps a list of cards to official Pokémon TCG Live (PTCGL) export format.
@@ -89,6 +90,7 @@ export default function DeckShareScreen() {
   );
 
   const [toast, setToast] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -182,6 +184,28 @@ export default function DeckShareScreen() {
           {name}
         </div>
         <button
+          onClick={() => setIsShareModalOpen(true)}
+          disabled={deckCards.loading || cardIds.length === 0}
+          title="Compartir Tarjeta Mazo"
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            background: 'var(--surface)',
+            border: '0.5px solid var(--border)',
+            color: 'var(--ink-2)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: deckCards.loading || cardIds.length === 0 ? 'default' : 'pointer',
+            opacity: deckCards.loading || cardIds.length === 0 ? 0.4 : 1,
+            transition: 'all 200ms',
+            marginRight: 6,
+          }}
+        >
+          <GalleryIcon size={18} />
+        </button>
+        <button
           onClick={handleExport}
           disabled={deckCards.loading || cardIds.length === 0}
           title="Exportar mazo a PTCGL"
@@ -268,6 +292,15 @@ export default function DeckShareScreen() {
         visible={!!toast}
         onHide={() => setToast(null)}
         duration={2000}
+      />
+
+      <PremiumShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        deckName={name}
+        deckCards={deckCards.data ?? []}
+        cardIds={cardIds}
+        onShowToast={showToast}
       />
     </div>
   );

@@ -1,13 +1,14 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, MouseEvent } from 'react';
 
 export interface SurfaceProps {
   children: ReactNode;
-  onClick?: () => void;
+  onClick?: (event: MouseEvent<HTMLElement>) => void;
   style?: CSSProperties;
   as?: 'div' | 'section' | 'article';
   /** Inline padding shortcut: numbers become px, strings pass through. */
   padding?: number | string;
 }
+
 
 /**
  * A white, rounded-card surface. The default visual block used throughout the app.
