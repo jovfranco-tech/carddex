@@ -7,8 +7,9 @@ import { removeCardFromDeck } from '@/lib/deckStorage';
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
-import { BackIcon, TrashIcon, LayersIcon, ShareIcon } from '@/components/icons';
+import { BackIcon, TrashIcon, LayersIcon, ShareIcon, DownloadIcon } from '@/components/icons';
 import { Toast } from '@/components/Section';
+import { ROUTES } from '@/app/routes';
 import type { PokemonCard } from '@/types/pokemon';
 
 /**
@@ -117,6 +118,24 @@ export default function DeckDetailScreen() {
     }
   };
 
+  const handleShare = () => {
+    if (!deck) return;
+    try {
+      const shareUrl = `${window.location.origin}${ROUTES.deckShare(deck.id)}?name=${encodeURIComponent(deck.name)}&cards=${deck.cards.join(',')}`;
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          showToast('¡Enlace de mazo público copiado!');
+        })
+        .catch((err) => {
+          console.error('Failed to copy share link:', err);
+          showToast('Error al copiar el enlace');
+        });
+    } catch (err) {
+      console.error('Failed to generate share link:', err);
+      showToast('Error al generar el enlace');
+    }
+  };
+
   return (
     <div style={{ paddingBottom: 110 }}>
       {/* Top bar */}
@@ -161,27 +180,50 @@ export default function DeckDetailScreen() {
         >
           {deck.name}
         </div>
-        <button
-          onClick={handleExport}
-          disabled={deckCards.loading || deck.cards.length === 0}
-          title="Exportar mazo a PTCGL"
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 12,
-            background: 'var(--surface)',
-            border: '0.5px solid var(--border)',
-            color: 'var(--ink-2)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: deckCards.loading || deck.cards.length === 0 ? 'default' : 'pointer',
-            opacity: deckCards.loading || deck.cards.length === 0 ? 0.4 : 1,
-            transition: 'all 200ms',
-          }}
-        >
-          <ShareIcon size={18} />
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={handleShare}
+            disabled={deck.cards.length === 0}
+            title="Copiar enlace de compartir"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: 'var(--surface)',
+              border: '0.5px solid var(--border)',
+              color: 'var(--ink-2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: deck.cards.length === 0 ? 'default' : 'pointer',
+              opacity: deck.cards.length === 0 ? 0.4 : 1,
+              transition: 'all 200ms',
+            }}
+          >
+            <ShareIcon size={18} />
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={deckCards.loading || deck.cards.length === 0}
+            title="Exportar mazo a PTCGL"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: 'var(--surface)',
+              border: '0.5px solid var(--border)',
+              color: 'var(--ink-2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: deckCards.loading || deck.cards.length === 0 ? 'default' : 'pointer',
+              opacity: deckCards.loading || deck.cards.length === 0 ? 0.4 : 1,
+              transition: 'all 200ms',
+            }}
+          >
+            <DownloadIcon size={18} />
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '0 14px 14px' }}>

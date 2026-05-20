@@ -10,6 +10,8 @@ export const ROUTES = {
   decks: '/decks',
   deckDetail: (id: string) => `/deck/${encodeURIComponent(id)}`,
   deckDetailPattern: '/deck/:deckId',
+  deckShare: (id: string) => `/deck/share/${encodeURIComponent(id)}`,
+  deckSharePattern: '/deck/share/:deckId',
   publicProfile: (id: string) => `/u/${encodeURIComponent(id)}`,
   publicProfilePattern: '/u/:userId',
 } as const;

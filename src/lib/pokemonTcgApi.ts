@@ -49,15 +49,121 @@ export function hasApiKey(): boolean {
 }
 
 /* ------------------------------------------------------------------------- */
-/* In-memory session cache                                                   */
+/* Persistent Card Cache with LRU Eviction (localStorage)                     */
 /* ------------------------------------------------------------------------- */
-/*
- * The cache lives for the lifetime of the page. It is intentionally not
- * persisted to LocalStorage: we want fresh prices on reload and to keep our
- * persisted footprint small (only user-owned collection metadata).
- */
 
-const cardCache = new Map<string, PokemonCard>();
+interface CacheEntry {
+  card: PokemonCard;
+  timestamp: number;
+}
+
+function loadPersistedCardCache(cacheMap: Map<string, PokemonCard>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem('carddex.card_cache.v1');
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, CacheEntry>;
+      Object.entries(parsed).forEach(([id, entry]) => {
+        if (entry && entry.card) {
+          // Set in superclass directly to avoid trigger loop/persisting on load
+          Map.prototype.set.call(cacheMap, id, entry.card);
+        }
+      });
+      // eslint-disable-next-line no-console
+      console.log(`[API Cache] Hydrated ${cacheMap.size} cards from localStorage.`);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[API Cache] Failed to load persisted card cache:', e);
+  }
+}
+
+function persistCardCache(cacheMap: Map<string, PokemonCard>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const entries: Record<string, CacheEntry> = {};
+    const raw = localStorage.getItem('carddex.card_cache.v1');
+    if (raw) {
+      Object.assign(entries, JSON.parse(raw));
+    }
+
+    cacheMap.forEach((card, id) => {
+      entries[id] = {
+        card,
+        timestamp: entries[id]?.timestamp ?? Date.now(),
+      };
+    });
+
+    const keys = Object.keys(entries);
+    if (keys.length > 150) {
+      const sorted = keys
+        .map((k) => ({ id: k, timestamp: entries[k].timestamp }))
+        .sort((a, b) => b.timestamp - a.timestamp); // newest first
+      
+      const toKeep = sorted.slice(0, 150);
+      const pruned: Record<string, CacheEntry> = {};
+      toKeep.forEach((item) => {
+        pruned[item.id] = entries[item.id];
+      });
+      localStorage.setItem('carddex.card_cache.v1', JSON.stringify(pruned));
+    } else {
+      localStorage.setItem('carddex.card_cache.v1', JSON.stringify(entries));
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[API Cache] Failed to persist card cache:', e);
+  }
+}
+
+function updateAccessTimestamp(id: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem('carddex.card_cache.v1');
+    if (!raw) return;
+    const entries = JSON.parse(raw) as Record<string, CacheEntry>;
+    if (entries[id]) {
+      entries[id].timestamp = Date.now();
+      localStorage.setItem('carddex.card_cache.v1', JSON.stringify(entries));
+    }
+  } catch (e) {
+    // Silent ignore
+  }
+}
+
+class PersistedCardCache extends Map<string, PokemonCard> {
+  constructor() {
+    super();
+    loadPersistedCardCache(this);
+  }
+
+  set(key: string, value: PokemonCard): this {
+    super.set(key, value);
+    setTimeout(() => persistCardCache(this), 0);
+    return this;
+  }
+
+  get(key: string): PokemonCard | undefined {
+    const card = super.get(key);
+    if (card) {
+      setTimeout(() => updateAccessTimestamp(key), 0);
+    }
+    return card;
+  }
+
+  clear(): void {
+    super.clear();
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('carddex.card_cache.v1');
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[API Cache] Failed to clear localStorage card cache:', e);
+      }
+    }
+  }
+}
+
+const cardCache = new PersistedCardCache();
 const searchCache = new Map<string, { value: ApiListResponse<PokemonCard>; expiresAt: number }>();
 const setsCache: { value: CardSet[] | null; expiresAt: number } = {
   value: null,

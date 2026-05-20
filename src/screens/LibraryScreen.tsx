@@ -33,6 +33,7 @@ import {
 import { formatInt } from '@/lib/formatters';
 import type { CollectionState } from '@/types/collection';
 import type { PokemonCard } from '@/types/pokemon';
+import VisualCollectionStats from '@/components/VisualCollectionStats';
 
 type SortKey = 'rarity' | 'value' | 'name' | 'recent';
 
@@ -208,15 +209,6 @@ export default function LibraryScreen() {
         return b.cards.length - a.cards.length;
       });
   }, [view, filteredCards]);
-
-  const rarityCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    (owned.data ?? []).forEach((c) => {
-      const key = rarityLabel(c.rarity);
-      counts.set(key, (counts.get(key) ?? 0) + (collection.cards[c.id]?.quantity ?? 1));
-    });
-    return counts;
-  }, [owned.data, collection]);
 
   const rarest = useMemo(() => {
     return [...(owned.data ?? [])]
@@ -406,8 +398,10 @@ export default function LibraryScreen() {
             </div>
           )}
 
-          {/* Rarity summary */}
-          {rarityCounts.size > 0 && <RaritySummary counts={rarityCounts} />}
+          {/* Collection statistics panel */}
+          {owned.data && owned.data.length > 0 && (
+            <VisualCollectionStats ownedCards={owned.data} collection={collection} />
+          )}
 
           {/* Rarity chips */}
           <div
@@ -1050,98 +1044,6 @@ function Header({
   );
 }
 
-/* ------------------------------------------------------------------------- */
-/* Rarity summary panel                                                       */
-/* ------------------------------------------------------------------------- */
-
-function RaritySummary({ counts }: { counts: Map<string, number> }) {
-  // Top 5 by count.
-  const entries = Array.from(counts.entries())
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-  if (entries.length === 0) return null;
-
-  return (
-    <div style={{ padding: '0 14px 14px' }}>
-      <div
-        style={{
-          background: 'var(--ink)',
-          color: '#fff',
-          borderRadius: 22,
-          padding: '14px 16px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(1.5px 1.5px at 30% 60%, rgba(255,255,255,0.32), transparent), radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 85% 80%, rgba(255,255,255,0.3), transparent)',
-            opacity: 0.6,
-          }}
-        />
-        <div
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2 }}>
-            Resumen de rarezas
-          </div>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            {entries.reduce((a, [, v]) => a + v, 0)} cartas
-          </span>
-        </div>
-        <div
-          style={{
-            position: 'relative',
-            display: 'grid',
-            gridTemplateColumns: `repeat(${entries.length}, 1fr)`,
-            gap: 6,
-          }}
-        >
-          {entries.map(([label, n]) => (
-            <div key={label} style={{ textAlign: 'left' }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: 'rgba(255,255,255,0.65)',
-                  letterSpacing: -0.1,
-                }}
-              >
-                {label}
-              </div>
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  marginTop: 2,
-                  letterSpacing: -0.4,
-                }}
-              >
-                {n}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------------- */
 /* Sets view subcomponents                                                    */
