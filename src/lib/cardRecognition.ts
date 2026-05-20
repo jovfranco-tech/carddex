@@ -25,6 +25,7 @@
  */
 
 import { searchCards, getSets } from './pokemonTcgApi';
+import { resizeImageFile } from './imageOptimization';
 import type { PokemonCard } from '@/types/pokemon';
 
 /** What category the recognized card belongs to. */
@@ -1548,6 +1549,27 @@ function saveToOcrCache(hash: string, data: any): void {
  *     The TODO list at the top of this file is where the real OCR/pHash
  *     pipeline will land.
  */
+function getNumberQuery(rawNum: string): string {
+  const clean = rawNum.split('/')[0].trim();
+  const digits = clean.replace(/\D/g, '');
+  const nonDigits = clean.replace(/\d/g, '');
+  
+  if (!digits) {
+    return `number:"${clean}"`;
+  }
+  
+  const val = parseInt(digits, 10);
+  const variants = new Set<string>();
+  variants.add(clean);
+  variants.add(nonDigits + val);
+  variants.add(nonDigits + val.toString().padStart(2, '0'));
+  variants.add(nonDigits + val.toString().padStart(3, '0'));
+  variants.add(nonDigits + val.toString().padStart(4, '0'));
+  
+  const variantQueries = Array.from(variants).map(v => `number:"${v}"`);
+  return `(${variantQueries.join(' OR ')})`;
+}
+
 export async function recognizeCardFromImage(
   input: RecognitionInput,
   opts: RecognizeOptions = {},
@@ -1571,9 +1593,10 @@ export async function recognizeCardFromImage(
       let imageHash = '';
       let base64 = '';
       try {
+        const optimizedFile = await resizeImageFile(input.file);
         base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
-          reader.readAsDataURL(input.file);
+          reader.readAsDataURL(optimizedFile);
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = error => reject(error);
         });
@@ -1668,7 +1691,8 @@ export async function recognizeCardFromImage(
       targetNumber = englishNumber;
     }
 
-    const cleanNum = targetNumber ? targetNumber.split('/')[0].replace(/^[0]+/, '').trim() : '';
+    const rawNumberPart = targetNumber ? targetNumber.split('/')[0].trim() : '';
+    const numberQuery = rawNumberPart ? getNumberQuery(rawNumberPart) : '';
 
     // Si identificamos un set equivalente, intentamos buscar su ID oficial
     let targetSetId: string | null = null;
@@ -1698,14 +1722,14 @@ export async function recognizeCardFromImage(
     let res: any = { data: [] };
 
     // Capa 1: Búsqueda precisa (Nombre + Número + Set)
-    if (nameQuery && cleanNum && targetSetId) {
-      const q = `${nameQuery} AND number:"${cleanNum}" AND set.id:${targetSetId}`;
+    if (nameQuery && numberQuery && targetSetId) {
+      const q = `${nameQuery} AND ${numberQuery} AND set.id:${targetSetId}`;
       res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
     // Capa 2: Nombre + Número (Si falló la Capa 1 o no teníamos Set)
-    if (res.data.length === 0 && nameQuery && cleanNum) {
-      const q = `${nameQuery} AND number:"${cleanNum}"`;
+    if (res.data.length === 0 && nameQuery && numberQuery) {
+      const q = `${nameQuery} AND ${numberQuery}`;
       res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 

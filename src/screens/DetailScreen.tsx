@@ -21,12 +21,14 @@ import {
   ShareIcon,
   MoreIcon,
   DecksIcon,
+  TrashIcon,
 } from '@/components/icons';
 import { useAsync, useCardMeta, useDecks } from '@/lib/hooks';
 import { getCardById, getSimilarCardsByName } from '@/lib/pokemonTcgApi';
 import {
   addRecentlyViewed,
   saveCardMeta,
+  removeCard,
   toggleFavorite,
   toggleMissing,
   toggleWishlist,
@@ -36,7 +38,7 @@ import {
   formatPrice,
   PRICE_DISCLAIMER,
 } from '@/lib/pricing';
-import { addCardToDeck } from '@/lib/deckStorage';
+import { addCardToDeck, createDeck } from '@/lib/deckStorage';
 import { rarityColor, rarityLabel } from '@/lib/rarity';
 import { buildCardAssistantContext } from '@/lib/cardAssistant';
 import { triggerHaptic } from '@/lib/haptic';
@@ -110,7 +112,9 @@ function Detail({
   const [foil, setFoil] = useState<boolean>(meta?.foil ?? false);
   const [condition, setCondition] = useState<CardCondition>(meta?.condition ?? 'Near Mint');
   const [variant, setVariant] = useState<CardVariant>(meta?.variant ?? 'Normal');
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(() => Boolean(meta?.owned));
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [deckSavedId, setDeckSavedId] = useState<string | null>(null);
 
   const decksState = useDecks();
@@ -123,8 +127,11 @@ function Detail({
       setFoil(meta.foil);
       setCondition(meta.condition);
       setVariant(meta.variant);
+      setSaved(Boolean(meta.owned));
+    } else {
+      setSaved(false);
     }
-  }, [meta?.cardId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [meta?.cardId, meta?.owned]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const price = useMemo(() => getEstimatedPrice(card), [card]);
 
@@ -139,6 +146,85 @@ function Detail({
     });
     triggerHaptic('light');
     setSaved(true);
+    setToastMessage(`Guardada en tu colección${foil ? ' · Foil' : ''} · ×${safeQty}`);
+  };
+
+  const handleRemove = () => {
+    removeCard(card.id);
+    triggerHaptic('medium');
+    setSaved(false);
+    setQty(1);
+    setFoil(false);
+    setCondition('Near Mint');
+    setVariant('Normal');
+    setToastMessage('Eliminada de tu colección');
+  };
+
+  const handleDownloadImage = async () => {
+    try {
+      const imageUrl = card.images?.large || card.images?.small;
+      if (!imageUrl) return;
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${card.name}-${card.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setToastMessage('Imagen descargada con éxito');
+    } catch (err) {
+      console.error(err);
+      // Fallback: open in new window
+      window.open(card.images?.large || card.images?.small, '_blank');
+      setToastMessage('Abriendo imagen en pestaña nueva');
+    }
+  };
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(card.id);
+    triggerHaptic('light');
+    setToastMessage('ID copiado al portapapeles');
+  };
+
+  const handleCreateDeckWithCard = () => {
+    const name = prompt('Nombre del nuevo mazo:');
+    if (!name || !name.trim()) return;
+    try {
+      const deck = createDeck(name.trim());
+      addCardToDeck(deck.id, card.id);
+      triggerHaptic('success');
+      setToastMessage(`Mazo "${deck.name}" creado con éxito`);
+    } catch (err) {
+      console.error(err);
+      setToastMessage('Error al crear el mazo');
+    }
+  };
+
+  const handleShare = async () => {
+    triggerHaptic('light');
+    const shareData = {
+      title: `Pokémon TCG - ${card.name}`,
+      text: `Mira esta carta: ${card.name} (${card.number}/${card.set?.printedTotal || card.set?.total}) de la expansión ${card.set?.name}.`,
+      url: window.location.href,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.warn('Share failed or cancelled:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setToastMessage('Enlace copiado al portapapeles');
+      } catch (err) {
+        setToastMessage('No se pudo copiar el enlace');
+      }
+    }
   };
 
   const similar = useAsync(
@@ -166,9 +252,9 @@ function Detail({
   return (
     <div style={{ paddingBottom: 110 }}>
       <Toast
-        visible={saved}
-        message={`Guardada en tu colección${foil ? ' · Foil' : ''} · ×${qty}`}
-        onHide={() => setSaved(false)}
+        visible={Boolean(toastMessage)}
+        message={toastMessage || ''}
+        onHide={() => setToastMessage(null)}
       />
 
       {/* Top bar */}
@@ -200,10 +286,10 @@ function Detail({
         >
           Detalle de carta
         </div>
-        <RoundBtn ariaLabel="Compartir">
+        <RoundBtn ariaLabel="Compartir" onClick={handleShare}>
           <ShareIcon size={18} />
         </RoundBtn>
-        <RoundBtn ariaLabel="Más">
+        <RoundBtn ariaLabel="Más" onClick={() => { triggerHaptic('light'); setMoreOpen(true); }}>
           <MoreIcon size={18} />
         </RoundBtn>
       </div>
@@ -556,30 +642,59 @@ function Detail({
             />
           </div>
 
-          <button
-            onClick={handleSave}
-            style={{
-              width: '100%',
-              padding: '13px',
-              background: saved ? 'var(--success)' : 'var(--accent)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 14,
-              fontSize: 15,
-              fontWeight: 700,
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-              letterSpacing: -0.2,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transition: 'background 200ms',
-            }}
-          >
-            <CheckIcon size={18} color="#fff" />
-            {saved ? 'Guardada' : 'Guardar en mi colección'}
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: saved ? '1fr 1fr' : '1fr', gap: 10 }}>
+            <button
+              onClick={handleSave}
+              style={{
+                width: '100%',
+                padding: '13px',
+                background: saved ? 'var(--success)' : 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                letterSpacing: -0.2,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                transition: 'background 200ms',
+              }}
+            >
+              <CheckIcon size={18} color="#fff" />
+              {saved ? 'Guardado' : 'Guardar en mi colección'}
+            </button>
+
+            {saved && (
+              <button
+                onClick={handleRemove}
+                style={{
+                  width: '100%',
+                  padding: '13px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  color: '#ef4444',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: 14,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  letterSpacing: -0.2,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  transition: 'background 200ms, border-color 200ms',
+                }}
+              >
+                <TrashIcon size={18} color="#ef4444" />
+                Quitar
+              </button>
+            )}
+          </div>
         </Surface>
       </div>
 
@@ -692,6 +807,196 @@ function Detail({
           }}
         />
       </div>
+
+      {/* 3-dots Context Menu / Modal */}
+      {moreOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(15, 20, 40, 0.4)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+          }}
+          onClick={() => setMoreOpen(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 520,
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(24px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: '20px 20px 34px',
+              boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.15)',
+              borderTop: '0.5px solid rgba(255, 255, 255, 0.4)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              animation: 'slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 5,
+                background: 'rgba(0, 0, 0, 0.15)',
+                borderRadius: 3,
+                alignSelf: 'center',
+                marginBottom: 12,
+              }}
+            />
+            
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'var(--muted)',
+                marginBottom: 6,
+                paddingLeft: 8,
+              }}
+            >
+              Acciones de Carta
+            </div>
+
+            <button
+              onClick={() => {
+                setMoreOpen(false);
+                handleDownloadImage();
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'rgba(0, 0, 0, 0.03)',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 600,
+                color: 'var(--ink)',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                fontFamily: 'inherit',
+              }}
+            >
+              📥 Descargar Imagen
+            </button>
+
+            <button
+              onClick={() => {
+                setMoreOpen(false);
+                handleCopyId();
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'rgba(0, 0, 0, 0.03)',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 600,
+                color: 'var(--ink)',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                fontFamily: 'inherit',
+              }}
+            >
+              📋 Copiar ID de Carta
+            </button>
+
+            {card.tcgplayer?.url && (
+              <button
+                onClick={() => {
+                  setMoreOpen(false);
+                  window.open(card.tcgplayer?.url, '_blank');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: 'rgba(0, 0, 0, 0.03)',
+                  border: 'none',
+                  borderRadius: 14,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  fontFamily: 'inherit',
+                }}
+              >
+                🌐 Ver en TCGPlayer
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setMoreOpen(false);
+                handleCreateDeckWithCard();
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'rgba(123, 90, 217, 0.1)',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 600,
+                color: 'var(--accent)',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                fontFamily: 'inherit',
+              }}
+            >
+              ➕ Crear mazo con esta carta
+            </button>
+
+            <button
+              onClick={() => setMoreOpen(false)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'rgba(0, 0, 0, 0.05)',
+                border: 'none',
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 700,
+                color: 'var(--ink-2)',
+                textAlign: 'center',
+                cursor: 'pointer',
+                marginTop: 8,
+                fontFamily: 'inherit',
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
