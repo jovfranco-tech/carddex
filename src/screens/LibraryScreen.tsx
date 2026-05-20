@@ -205,6 +205,7 @@ export default function LibraryScreen() {
     const p = searchParams.get('mine');
     return p === 'false' ? false : true;
   }, []);
+  const initialAi = useMemo(() => searchParams.get('ai') === 'true', []);
 
   const [onlyMine, setOnlyMine] = useState(initialMine);
   const [rarityFilter, setRarityFilter] = useState<string>('all');
@@ -213,6 +214,53 @@ export default function LibraryScreen() {
   const [searchQuery, setSearchQuery] = useState(initialQ);
   const [searchOpen, setSearchOpen] = useState(!!initialQ);
   const debouncedSearchQuery = useDebounced(searchQuery, 400);
+
+  const [isAiSearch, setIsAiSearch] = useState(initialAi);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [translatedQuery, setTranslatedQuery] = useState(initialQ);
+
+  React.useEffect(() => {
+    if (!isAiSearch) {
+      setTranslatedQuery(debouncedSearchQuery);
+      setAiExplanation(null);
+      return;
+    }
+
+    if (!debouncedSearchQuery.trim()) {
+      setTranslatedQuery('');
+      setAiExplanation(null);
+      return;
+    }
+
+    let active = true;
+    const runTranslation = async () => {
+      setAiLoading(true);
+      try {
+        const res = await fetch('/api/semantic-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: debouncedSearchQuery.trim() }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (active) {
+            setTranslatedQuery(data.luceneQuery);
+            setAiExplanation(data.explanation);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (active) setAiLoading(false);
+      }
+    };
+
+    runTranslation();
+    return () => {
+      active = false;
+    };
+  }, [debouncedSearchQuery, isAiSearch]);
 
   const [alerts, setAlerts] = useState<PriceAlert[]>(() => getPriceAlerts());
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -248,7 +296,7 @@ export default function LibraryScreen() {
   // When viewing "all" + a set filter (or global search query), fetch the cards from the API.
   const setView$ = useAsync(async (signal) => {
     if (onlyMine) return [];
-    if (!setFilter && !debouncedSearchQuery.trim()) return [];
+    if (!setFilter && !translatedQuery.trim()) return [];
 
     if (setFilter) {
       const { data } = await searchCards(
@@ -258,16 +306,16 @@ export default function LibraryScreen() {
       return data;
     } else {
       const { data } = await searchCards(
-        { name: debouncedSearchQuery.trim(), pageSize: 250, orderBy: '-set.releaseDate' },
+        { name: translatedQuery.trim(), pageSize: 250, orderBy: '-set.releaseDate' },
         { signal },
       );
       return data;
     }
-  }, [onlyMine, setFilter, debouncedSearchQuery]);
+  }, [onlyMine, setFilter, translatedQuery]);
 
   const baseCards = onlyMine
     ? owned.data ?? []
-    : ((setFilter || debouncedSearchQuery.trim()) ? setView$.data : null) ?? owned.data ?? [];
+    : ((setFilter || translatedQuery.trim()) ? setView$.data : null) ?? owned.data ?? [];
 
   const filteredCards = useMemo(() => {
     let list = baseCards;
@@ -397,6 +445,10 @@ export default function LibraryScreen() {
             setAlertsOpen(true);
             triggerHaptic('light');
           }}
+          isAiSearch={isAiSearch}
+          setIsAiSearch={setIsAiSearch}
+          aiExplanation={aiExplanation}
+          aiLoading={aiLoading}
         />
         <LoadingState variant="grid" count={9} />
       </div>
@@ -418,6 +470,10 @@ export default function LibraryScreen() {
             setAlertsOpen(true);
             triggerHaptic('light');
           }}
+          isAiSearch={isAiSearch}
+          setIsAiSearch={setIsAiSearch}
+          aiExplanation={aiExplanation}
+          aiLoading={aiLoading}
         />
         <ErrorState message={error} onRetry={reload} />
       </div>
@@ -443,6 +499,10 @@ export default function LibraryScreen() {
           setAlertsOpen(true);
           triggerHaptic('light');
         }}
+        isAiSearch={isAiSearch}
+        setIsAiSearch={setIsAiSearch}
+        aiExplanation={aiExplanation}
+        aiLoading={aiLoading}
       />
 
       {showEmpty ? (
@@ -1297,6 +1357,10 @@ function Header({
   setSearchQuery,
   unreadAlertsCount = 0,
   onAlertsOpen,
+  isAiSearch = false,
+  setIsAiSearch = () => {},
+  aiExplanation = null,
+  aiLoading = false,
 }: {
   onSet: boolean;
   setName: string;
@@ -1307,6 +1371,10 @@ function Header({
   setSearchQuery: (val: string) => void;
   unreadAlertsCount?: number;
   onAlertsOpen?: () => void;
+  isAiSearch?: boolean;
+  setIsAiSearch?: (val: boolean) => void;
+  aiExplanation?: string | null;
+  aiLoading?: boolean;
 }) {
   return (
     <div
@@ -1351,6 +1419,66 @@ function Header({
               Cancelar
             </button>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+            <button
+              type="button"
+              onClick={() => setIsAiSearch(!isAiSearch)}
+              style={{
+                background: isAiSearch ? 'var(--accent-tint)' : 'rgba(255,255,255,0.04)',
+                border: isAiSearch ? '1px solid var(--accent)' : '1px solid var(--border)',
+                borderRadius: 12,
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: isAiSearch ? 'var(--accent)' : 'var(--muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 200ms ease',
+              }}
+            >
+              <span>✦ Búsqueda Semántica (IA)</span>
+              <span style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: isAiSearch ? 'var(--accent)' : 'var(--muted-3)',
+                display: 'inline-block'
+              }} />
+            </button>
+
+            {aiLoading && (
+              <span style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  border: '1.5px solid var(--border)',
+                  borderTopColor: 'var(--accent)',
+                  animation: 'spinSearchLoader 0.6s linear infinite'
+                }} />
+                Traduciendo...
+              </span>
+            )}
+          </div>
+
+          {aiExplanation && (
+            <div style={{
+              background: 'var(--accent-tint)',
+              color: 'var(--accent)',
+              fontSize: 12,
+              padding: '8px 12px',
+              borderRadius: 10,
+              fontWeight: 600,
+              border: '0.5px solid rgba(123,90,217,0.2)',
+              marginTop: -2,
+            }}>
+              💡 Filtros aplicados: {aiExplanation}
+            </div>
+          )}
+
           {/* Advanced Search Suggestions Row */}
           <div
             style={{

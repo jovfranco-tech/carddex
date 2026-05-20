@@ -1854,9 +1854,10 @@ export async function recognizeCardFromImage(
         let ocrText: string | undefined = undefined;
         if (base64) {
           try {
-            console.log('[OCR Local] Initializing local Tesseract OCR...');
+            const langCode = opts.languageHint === 'ES' ? 'spa' : opts.languageHint === 'JP' ? 'jpn' : 'eng';
+            console.log(`[OCR Local] Initializing local Tesseract OCR with language: ${langCode}`);
             const { createWorker } = await import('tesseract.js');
-            const worker = await createWorker('eng', 1, {
+            const worker = await createWorker(langCode, 1, {
               workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
               langPath: 'https://tessdata.projectnaptha.com/4.0.0_fast',
               corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core.wasm.js',

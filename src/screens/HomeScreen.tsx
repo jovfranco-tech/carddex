@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { triggerHaptic } from '@/lib/haptic';
 import Surface from '@/components/Surface';
 import Chip from '@/components/Chip';
 import SearchBar from '@/components/SearchBar';
@@ -42,6 +43,7 @@ import {
 } from '@/lib/rarity';
 import { formatInt } from '@/lib/formatters';
 import type { PokemonCard } from '@/types/pokemon';
+import AISynergyFeed from '@/components/AISynergyFeed';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -104,6 +106,11 @@ export default function HomeScreen() {
       })
       .slice(0, 8);
   }, [owned.data]);
+
+  const ownedCardNames = useMemo(() => {
+    if (!owned.data) return [];
+    return owned.data.filter((c) => collection.cards[c.id]?.owned).map((c) => c.name);
+  }, [owned.data, collection]);
 
   /**
    * Lightweight collection insights. We compute the rarest owned card,
@@ -350,7 +357,39 @@ export default function HomeScreen() {
                     ))}
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 18px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', padding: '10px 18px' }}>
+                    <button
+                      onClick={() => navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false&ai=true`)}
+                      style={{
+                        background: 'var(--accent-tint)',
+                        color: 'var(--accent)',
+                        borderRadius: 16,
+                        border: '1.5px solid var(--accent)',
+                        padding: '14px 28px',
+                        fontSize: 14,
+                        fontWeight: 800,
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 20px rgba(123, 90, 217, 0.15)',
+                        transition: 'all 200ms ease',
+                        width: '100%',
+                        maxWidth: 280,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'var(--accent-tint)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'var(--accent-tint)';
+                        e.currentTarget.style.transform = 'none';
+                      }}
+                    >
+                      ✦ Búsqueda Semántica con IA
+                    </button>
                     <button
                       onClick={() => navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false`)}
                       style={{
@@ -383,7 +422,7 @@ export default function HomeScreen() {
                         e.currentTarget.style.transform = 'none';
                       }}
                     >
-                      Ver todos los resultados en la biblioteca
+                      Ver todos los resultados
                     </button>
                   </div>
                 </div>
@@ -391,6 +430,65 @@ export default function HomeScreen() {
             </Section>
           ) : (
             <>
+              {/* Herramientas IA Native */}
+              <Section title="Herramientas IA Native ✦">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '0 18px 8px' }}>
+                  <div
+                    onClick={() => {
+                      triggerHaptic('light');
+                      navigate('/custom-card');
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255, 149, 0, 0.08) 0%, rgba(255, 45, 85, 0.08) 100%)',
+                      border: '0.5px solid rgba(255, 149, 0, 0.25)',
+                      borderRadius: 18,
+                      padding: 14,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      transition: 'all 200ms ease',
+                    }}
+                  >
+                    <div style={{ fontSize: 24 }}>⚖️</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>Creador Custom</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.3 }}>
+                        Crea cartas TCG únicas en 3D holográfico interactivo.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      triggerHaptic('light');
+                      navigate('/decks');
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(123, 90, 217, 0.08) 0%, rgba(47, 111, 224, 0.08) 100%)',
+                      border: '0.5px solid rgba(123, 90, 217, 0.25)',
+                      borderRadius: 18,
+                      padding: 14,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      transition: 'all 200ms ease',
+                    }}
+                  >
+                    <div style={{ fontSize: 24 }}>🔮</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>Copiloto de Mazos</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.3 }}>
+                        Construye y optimiza mazos de competición con IA.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Section>
+
+              <AISynergyFeed ownedCardNames={ownedCardNames} />
+
               {/* Featured */}
               <Section
                 title="Cartas destacadas"

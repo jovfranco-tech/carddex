@@ -18,6 +18,7 @@ const DecksScreen = lazy(() => import('@/screens/DecksScreen'));
 const DeckDetailScreen = lazy(() => import('@/screens/DeckDetailScreen'));
 const DeckShareScreen = lazy(() => import('@/screens/DeckShareScreen'));
 const PublicProfileScreen = lazy(() => import('@/screens/PublicProfileScreen'));
+const CustomCardScreen = lazy(() => import('@/screens/CustomCardScreen'));
 
 /**
  * stand-alone, glassmorphic loading spinner with inline keyframes styling
@@ -193,6 +194,7 @@ export default function App() {
                 <Route path={ROUTES.deckDetailPattern} element={<DeckDetailScreen />} />
                 <Route path={ROUTES.deckSharePattern} element={<DeckShareScreen />} />
                 <Route path={ROUTES.publicProfilePattern} element={<PublicProfileScreen />} />
+                <Route path={ROUTES.customCard} element={<CustomCardScreen />} />
                 <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
               </Routes>
             </Suspense>

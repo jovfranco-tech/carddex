@@ -14,6 +14,7 @@ export const ROUTES = {
   deckSharePattern: '/deck/share/:deckId',
   publicProfile: (id: string) => `/u/${encodeURIComponent(id)}`,
   publicProfilePattern: '/u/:userId',
+  customCard: '/custom-card',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

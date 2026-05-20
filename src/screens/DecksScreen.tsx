@@ -5,11 +5,15 @@ import { useDecks } from '@/lib/hooks';
 import { createDeck, deleteDeck } from '@/lib/deckStorage';
 import { PlusIcon, TrashIcon } from '@/components/icons';
 import { ROUTES } from '@/app/routes';
+import DeckBuilderModal from '@/components/DeckBuilderModal';
+import { Toast } from '@/components/Section';
 
 export default function DecksScreen() {
   const decksState = useDecks();
   const navigate = useNavigate();
   const [newDeckName, setNewDeckName] = useState('');
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const decks = Object.values(decksState.decks).sort(
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -69,6 +73,30 @@ export default function DecksScreen() {
             <PlusIcon size={20} />
           </button>
         </form>
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid var(--border)', display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setIsBuilderOpen(true)}
+            style={{
+              width: '100%',
+              background: 'var(--accent-tint)',
+              border: 'none',
+              color: 'var(--accent)',
+              padding: '12px 16px',
+              borderRadius: 12,
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 200ms ease',
+            }}
+          >
+            <span>✦ Construir Mazo con Copiloto IA</span>
+          </button>
+        </div>
       </Surface>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -119,6 +147,20 @@ export default function DecksScreen() {
           ))
         )}
       </div>
+
+      <DeckBuilderModal
+        isOpen={isBuilderOpen}
+        onClose={() => setIsBuilderOpen(false)}
+        onSuccess={(id) => navigate(ROUTES.deckDetail(id))}
+        onShowToast={(msg) => setToastMsg(msg)}
+      />
+
+      <Toast
+        message={toastMsg ?? ''}
+        visible={!!toastMsg}
+        onHide={() => setToastMsg(null)}
+        duration={3000}
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { Toast } from '@/components/Section';
 import { ROUTES } from '@/app/routes';
 import type { PokemonCard } from '@/types/pokemon';
 import PremiumShareModal from '@/components/PremiumShareModal';
+import SocialShareButton from '@/components/SocialShareButton';
 import DeckPlaytestModal from '@/components/DeckPlaytestModal';
 import DeckOptimizationModal from '@/components/DeckOptimizationModal';
 import { triggerHaptic } from '@/lib/haptic';
@@ -465,6 +466,21 @@ export default function DeckDetailScreen() {
             Cartas en el mazo
           </div>
         </Surface>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <SocialShareButton
+            title={deck.name}
+            subtitle={`Mazo Pokémon TCG · ${deck.cards.length} cartas`}
+            imageUrl={orderedCards[0]?.images?.small || ''}
+            qrValue={window.location.href}
+            stats={[
+              { label: 'Cartas', value: `${deck.cards.length}` },
+              { label: 'Únicas', value: `${orderedCards.length}` },
+              { label: 'Tipo', value: orderedCards[0]?.supertype || 'Mazo' }
+            ]}
+            onToast={showToast}
+          />
+        </div>
 
         {deckCards.loading ? (
           <LoadingState variant="grid" count={6} />

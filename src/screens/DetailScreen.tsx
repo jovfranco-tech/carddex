@@ -10,6 +10,7 @@ import FoilToggle from '@/components/FoilToggle';
 import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import CardAssistantButton from '@/components/CardAssistantButton';
+import SocialShareButton from '@/components/SocialShareButton';
 import { Toast } from '@/components/Section';
 import {
   BackIcon,
@@ -44,7 +45,7 @@ import { buildCardAssistantContext } from '@/lib/cardAssistant';
 import { triggerHaptic } from '@/lib/haptic';
 import { typeColor } from '@/components/TypeBadge';
 import { formatDateShort } from '@/lib/formatters';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import PriceHistoryChart from '@/components/PriceHistoryChart';
 import type { PokemonCard } from '@/types/pokemon';
 import type { CardCondition, CardVariant } from '@/types/collection';
 
@@ -581,7 +582,7 @@ function Detail({
             >
               {PRICE_DISCLAIMER}
             </p>
-            <PriceHistoryChart price={price.value} cardId={card.id} />
+            <PriceHistoryChart basePrice={price.value} cardName={card.name} />
           </Surface>
         </div>
       )}
@@ -805,6 +806,22 @@ function Detail({
             toggleMissing(card.id);
             triggerHaptic('light');
           }}
+        />
+      </div>
+
+      {/* Export Social Card component */}
+      <div style={{ padding: '14px 14px 0', display: 'flex', justifyContent: 'center' }}>
+        <SocialShareButton
+          title={card.name}
+          subtitle={`${card.set?.name ?? 'Expansión'} · #${card.number}`}
+          imageUrl={card.images?.large || card.images?.small || ''}
+          qrValue={window.location.href}
+          stats={[
+            { label: 'PS', value: card.hp ?? '—' },
+            { label: 'Número', value: card.number },
+            { label: 'Rareza', value: card.rarity ? card.rarity.slice(0, 10) : 'Común' }
+          ]}
+          onToast={setToastMessage}
         />
       </div>
 
@@ -1282,59 +1299,3 @@ function SelectField({
   );
 }
 
-function PriceHistoryChart({ price, cardId }: { price: number; cardId: string }) {
-  const data = useMemo(() => {
-    // Generate 6 months of deterministic pseudo-random data based on cardId
-    let hash = 0;
-    for (let i = 0; i < cardId.length; i++) {
-      hash = cardId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const seed = Math.abs(hash) / 2147483647; // 0 to 1
-
-    const points = [];
-    let current = price * (0.7 + seed * 0.4); // Start based on seed
-    for (let i = 0; i < 6; i++) {
-      const month = new Date();
-      month.setMonth(month.getMonth() - (5 - i));
-      points.push({
-        name: month.toLocaleDateString('es-ES', { month: 'short' }),
-        value: i === 5 ? price : current
-      });
-      // Pseudo-random walk using the seed, making it deterministic per card
-      const stepSeed = (seed * (i + 1) * 1.5) % 1;
-      current = current + (stepSeed - 0.4) * (price * 0.15); 
-    }
-    return points;
-  }, [price, cardId]);
-
-  const isUp = data[5].value >= data[0].value;
-  const color = isUp ? '#34C759' : '#FF3B30';
-
-  return (
-    <div style={{ width: '100%', height: 120, marginTop: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>
-        TENDENCIA DE 6 MESES <span style={{ color }}>{isUp ? '▲' : '▼'} {Math.abs(((data[5].value - data[0].value) / data[0].value) * 100).toFixed(1)}%</span>
-      </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-              <stop offset="95%" stopColor={color} stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted)' }} dy={10} />
-          <Tooltip 
-            contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-            itemStyle={{ color: 'var(--ink)', fontWeight: 'bold' }}
-            formatter={(value: any) => [`$${value.toFixed(2)}`, 'Valor']}
-          />
-          <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
-        </AreaChart>
-      </ResponsiveContainer>
-      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
-        *Datos de tendencia aproximados de TCGPlayer
-      </div>
-    </div>
-  );
-}

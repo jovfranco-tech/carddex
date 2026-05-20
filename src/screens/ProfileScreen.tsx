@@ -24,6 +24,7 @@ import { prefersMXN, setPrefersMXN, getEstimatedPrice } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
+import PasskeyManager from '@/components/PasskeyManager';
 import type { PokemonCard } from '@/types/pokemon';
 
 const APP_VERSION = '1.1.0';
@@ -46,6 +47,24 @@ export default function ProfileScreen() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [scanLanguage, setScanLanguage] = useState<'AUTO' | 'EN' | 'ES' | 'JP'>(() => {
+    try {
+      const saved = localStorage.getItem('carddex.scanner.language');
+      if (saved === 'EN' || saved === 'ES' || saved === 'JP') return saved as any;
+    } catch {}
+    return 'AUTO';
+  });
+
+  const handleToggleScanLanguage = () => {
+    const langs: ('AUTO' | 'EN' | 'ES' | 'JP')[] = ['AUTO', 'EN', 'ES', 'JP'];
+    const nextIdx = (langs.indexOf(scanLanguage) + 1) % langs.length;
+    const nextLang = langs[nextIdx];
+    setScanLanguage(nextLang);
+    try {
+      localStorage.setItem('carddex.scanner.language', nextLang);
+    } catch {}
+    showToast(`Idioma de escaneo: ${nextLang}`);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,6 +411,11 @@ export default function ProfileScreen() {
                 <ShareIcon size={18} />
                 Copiar enlace a mi perfil público
               </button>
+              <PasskeyManager
+                userEmail={user?.email || undefined}
+                userName={user?.user_metadata?.full_name || undefined}
+                onToast={showToast}
+              />
             </>
           )}
         </Surface>
@@ -501,6 +525,13 @@ export default function ProfileScreen() {
             label="Mostrar en Pesos (MXN)"
             description={`Convierte valores estimados a MXN (${mxnEnabled ? 'Activado' : 'Desactivado'})`}
             onClick={handleToggleMxn}
+          />
+          <Divider />
+          <ActionRow
+            icon={<span style={{ fontWeight: 800, fontSize: 16 }}>🌐</span>}
+            label="Idioma de Escaneo (OCR)"
+            description={`Idioma prioritario actual: ${scanLanguage}`}
+            onClick={handleToggleScanLanguage}
           />
         </Surface>
       </div>

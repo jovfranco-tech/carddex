@@ -30,6 +30,8 @@ export interface CollectionCardMeta {
   priority?: WishlistPriority;
   /** ISO 639-1 code or free-form label (e.g. "EN", "ES", "JP"). */
   language?: string;
+  customGrade?: number;
+  customGradeReport?: string;
   addedAt: string;
   updatedAt: string;
 }
