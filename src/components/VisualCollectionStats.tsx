@@ -197,26 +197,58 @@ export default function VisualCollectionStats({
     const currentValue = pricingTotals.usd || pricingTotals.eur || 120.00;
     const currencySym = pricingTotals.usd > 0 || pricingTotals.eur === 0 ? '$' : '€';
     
-    // Stable random seed generator based on collection value
-    let seed = currentValue;
-    const lcg = () => {
-      seed = (seed * 1664525 + 1013904223) % 4294967296;
-      return seed / 4294967296;
-    };
+    let rawPoints: { date: string; value: number }[] = [];
+    
+    if (collection.history && collection.history.length >= 2) {
+      rawPoints = collection.history;
+    } else {
+      // Generate retroactive seed data if history is empty/new
+      let seed = currentValue;
+      const lcg = () => {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return seed / 4294967296;
+      };
 
-    const points: number[] = [];
-    let tempVal = currentValue * 0.88; // 6 weeks ago value start lower
-    for (let i = 0; i < 6; i++) {
-      if (i === 5) {
-        points.push(currentValue);
-      } else {
-        points.push(tempVal);
-        const change = 1 + (lcg() * 0.08 - 0.02); // -2% to +6% weekly change
-        tempVal = tempVal * change;
+      const seedPoints: { date: string; value: number }[] = [];
+      let tempVal = currentValue * 0.88; // 6 weeks ago start lower
+      for (let i = 0; i < 6; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - (5 - i) * 7);
+        const dateStr = d.toISOString().split('T')[0];
+
+        if (i === 5) {
+          seedPoints.push({ date: dateStr, value: currentValue });
+        } else {
+          seedPoints.push({ date: dateStr, value: Math.round(tempVal * 100) / 100 });
+          const change = 1 + (lcg() * 0.08 - 0.02); // -2% to +6% weekly change
+          tempVal = tempVal * change;
+        }
       }
+      rawPoints = seedPoints;
     }
 
-    const labels = ['Sem -5', 'Sem -4', 'Sem -3', 'Sem -2', 'Sem -1', 'Hoy'];
+    // Map raw points to SVG scale coordinates
+    const points = rawPoints.map(p => p.value);
+    
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const labels = rawPoints.map((p, idx) => {
+      if (rawPoints.length <= 6) {
+        try {
+          const parts = p.date.split('-');
+          const day = parseInt(parts[2], 10);
+          const monthIdx = parseInt(parts[1], 10) - 1;
+          return `${day} ${monthNames[monthIdx]}`;
+        } catch {
+          return p.date;
+        }
+      } else {
+        if (idx === 0) return 'Inicio';
+        if (idx === Math.floor(rawPoints.length / 2)) return 'Medio';
+        if (idx === rawPoints.length - 1) return 'Hoy';
+        return '';
+      }
+    });
+
     const W = 240;
     const H = 80;
     const paddingX = 15;
@@ -227,7 +259,7 @@ export default function VisualCollectionStats({
     const range = (maxVal - minVal) || 1;
 
     const coords = points.map((val, idx) => {
-      const x = paddingX + (idx / 5) * (W - 2 * paddingX);
+      const x = paddingX + (idx / (points.length - 1 || 1)) * (W - 2 * paddingX);
       const y = H - paddingY - ((val - minVal) / range) * (H - 2 * paddingY);
       return { x, y, value: val };
     });
@@ -251,7 +283,7 @@ export default function VisualCollectionStats({
     areaD += ` L ${coords[coords.length - 1].x} ${H - paddingY} Z`;
 
     return { points, labels, coords, pathD, areaD, currencySym };
-  }, [pricingTotals]);
+  }, [pricingTotals, collection.history]);
 
   const valueFormatted = formatCollectionValue(pricingTotals);
 

@@ -8,6 +8,8 @@ import {
   makeDefaultMeta,
 } from '@/types/collection';
 import { supabase } from './supabaseClient';
+import { getEstimatedPrice } from './pricing';
+import type { PokemonCard } from '@/types/pokemon';
 
 const KEYS = {
   collection: 'carddex.collection.v1',
@@ -107,9 +109,25 @@ export function mergeCollections(
     }
   }
 
+  const mergedHistory: Record<string, number> = {};
+  if (local?.history) {
+    local.history.forEach((p) => {
+      mergedHistory[p.date] = p.value;
+    });
+  }
+  if (remote?.history) {
+    remote.history.forEach((p) => {
+      mergedHistory[p.date] = p.value;
+    });
+  }
+  const historyList = Object.entries(mergedHistory)
+    .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
   return {
     version: 1,
     cards: mergedCards,
+    history: historyList,
   };
 }
 
@@ -137,7 +155,7 @@ export function getCollection(): CollectionState {
       cardId: id,
     };
   }
-  return { version: 1, cards: cleanCards };
+  return { version: 1, cards: cleanCards, history: obj.history || [] };
 }
 
 function getSyncQueue(): CollectionState[] {
@@ -509,5 +527,47 @@ if (typeof window !== 'undefined') {
     flushSyncQueue().catch(console.error);
   } else if (getSyncQueue().length > 0) {
     setSyncStatus('offline-pending');
+  }
+}
+
+export function logCollectionValueSnapshot(ownedCards: PokemonCard[]): void {
+  const state = getCollection();
+  let totalUsdValue = 0;
+
+  for (const card of ownedCards) {
+    const meta = state.cards[card.id];
+    if (!meta || !meta.owned) continue;
+    const qty = Math.max(0, meta.quantity);
+    if (qty === 0) continue;
+
+    const estPrice = getEstimatedPrice(card);
+    if (!estPrice) continue;
+
+    let valInUsd = estPrice.value;
+    if (estPrice.currency === 'EUR') {
+      valInUsd = estPrice.value * 1.08; // rough EUR to USD conversion for logging
+    }
+    totalUsdValue += valInUsd * qty;
+  }
+
+  if (!state.history) {
+    state.history = [];
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const lastEntry = state.history[state.history.length - 1];
+
+  if (!lastEntry || lastEntry.date !== todayStr) {
+    state.history.push({
+      date: todayStr,
+      value: Math.round(totalUsdValue * 100) / 100,
+    });
+    if (state.history.length > 90) {
+      state.history = state.history.slice(-90);
+    }
+    writeCollection(state);
+  } else if (Math.abs(lastEntry.value - totalUsdValue) > 0.05) {
+    lastEntry.value = Math.round(totalUsdValue * 100) / 100;
+    writeCollection(state);
   }
 }

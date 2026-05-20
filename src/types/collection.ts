@@ -36,9 +36,15 @@ export interface CollectionCardMeta {
   updatedAt: string;
 }
 
+export interface CollectionValueHistoryPoint {
+  date: string;
+  value: number;
+}
+
 export interface CollectionState {
   version: 1;
   cards: Record<string, CollectionCardMeta>;
+  history?: CollectionValueHistoryPoint[];
 }
 
 export interface RecentlyViewedEntry {
@@ -55,6 +61,7 @@ export interface AppSettings {
 export const DEFAULT_COLLECTION: CollectionState = {
   version: 1,
   cards: {},
+  history: [],
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {

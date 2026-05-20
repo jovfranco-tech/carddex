@@ -3,10 +3,16 @@ import React, { useRef, useEffect } from 'react';
 interface EdgeDetectorCanvasProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   active: boolean;
+  onAlignmentChange?: (score: number, isAligned: boolean) => void;
 }
 
-export default function EdgeDetectorCanvas({ videoRef, active }: EdgeDetectorCanvasProps) {
+export default function EdgeDetectorCanvas({
+  videoRef,
+  active,
+  onAlignmentChange,
+}: EdgeDetectorCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastCallbackRef = useRef<number>(0);
 
   useEffect(() => {
     if (!active || !videoRef.current) return;
@@ -54,6 +60,12 @@ export default function EdgeDetectorCanvas({ videoRef, active }: EdgeDetectorCan
           // Clear main canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+          // Expected viewfinder boundaries in processing space (inset: '20px 50px')
+          const borderTop = Math.round((20 / canvas.height) * height);
+          const borderBottom = Math.round(((canvas.height - 20) / canvas.height) * height);
+          const borderLeft = Math.round((50 / canvas.width) * width);
+          const borderRight = Math.round(((canvas.width - 50) / canvas.width) * width);
+
           // We'll draw detected edge segments on the main canvas with glowing style
           ctx.strokeStyle = 'rgba(0, 255, 127, 0.8)'; // Neon Green
           ctx.lineWidth = 2.5;
@@ -63,6 +75,9 @@ export default function EdgeDetectorCanvas({ videoRef, active }: EdgeDetectorCan
 
           const scaleX = canvas.width / width;
           const scaleY = canvas.height / height;
+
+          let boundaryEdgeCount = 0;
+          const margin = 2; // pixel tolerance for boundary check
 
           for (let y = 1; y < height - 1; y += 2) {
             for (let x = 1; x < width - 1; x += 2) {
@@ -88,12 +103,35 @@ export default function EdgeDetectorCanvas({ videoRef, active }: EdgeDetectorCan
                 const py = y * scaleY;
                 ctx.moveTo(px, py);
                 ctx.lineTo(px + 2, py + 2);
+
+                // Detect if this edge pixel matches expected card outline
+                const nearLeft = Math.abs(x - borderLeft) <= margin;
+                const nearRight = Math.abs(x - borderRight) <= margin;
+                const nearTop = Math.abs(y - borderTop) <= margin;
+                const nearBottom = Math.abs(y - borderBottom) <= margin;
+
+                if ((nearLeft || nearRight) && y >= borderTop && y <= borderBottom) {
+                  boundaryEdgeCount++;
+                } else if ((nearTop || nearBottom) && x >= borderLeft && x <= borderRight) {
+                  boundaryEdgeCount++;
+                }
               }
             }
           }
           ctx.stroke();
+
+          // Throttled alignment state update to avoid React state churning
+          const now = Date.now();
+          if (now - lastCallbackRef.current > 150) {
+            lastCallbackRef.current = now;
+            // A score >= 16 indicates clear rectangular alignment with viewfinder bounds
+            const isAligned = boundaryEdgeCount >= 16;
+            if (onAlignmentChange) {
+              onAlignmentChange(boundaryEdgeCount, isAligned);
+            }
+          }
         } catch (e) {
-          // Ignore cross-origin canvas security errors if camera has different host
+          // Ignore cross-origin canvas security errors
         }
       }
 
@@ -105,7 +143,7 @@ export default function EdgeDetectorCanvas({ videoRef, active }: EdgeDetectorCan
     return () => {
       cancelAnimationFrame(animFrameId);
     };
-  }, [active, videoRef]);
+  }, [active, videoRef, onAlignmentChange]);
 
   if (!active) return null;
 

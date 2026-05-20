@@ -201,6 +201,10 @@ export default function ScanScreen() {
     x3: 0, y3: 0, scale3: 1, conf3: 95,
   });
 
+  // Real-time CV edge alignment auto-scan states
+  const [isAligned, setIsAligned] = useState(false);
+  const [autoScanCountdown, setAutoScanCountdown] = useState(0);
+
   useEffect(() => {
     if (state !== 'detected' || !isMulticardMode) return;
 
@@ -532,6 +536,38 @@ export default function ScanScreen() {
     }
   }, [state, runScan]);
 
+  useEffect(() => {
+    if (!isAligned || state !== 'idle' || isMulticardMode) {
+      setAutoScanCountdown(0);
+      return;
+    }
+
+    const duration = 1200; // 1.2 seconds of stable alignment to trigger auto-scan
+    const intervalTime = 40;
+    const step = (intervalTime / duration) * 100;
+
+    const timer = setInterval(() => {
+      setAutoScanCountdown((prev) => {
+        const next = prev + step;
+        if (next >= 100) {
+          clearInterval(timer);
+          triggerHaptic('success');
+          captureFrame().then((file) => {
+            if (file) {
+              runScan({ type: 'file', file });
+            } else {
+              runScan({ type: 'none' });
+            }
+          });
+          return 0;
+        }
+        return next;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [isAligned, state, isMulticardMode, captureFrame, runScan]);
+
   const triggerScan = async () => {
     if (state === 'detected') {
       setState('idle');
@@ -705,7 +741,17 @@ export default function ScanScreen() {
             }}
             aria-hidden
           />
-          <EdgeDetectorCanvas videoRef={videoRef} active={cameraLive && state === 'idle'} />
+           <EdgeDetectorCanvas
+            videoRef={videoRef}
+            active={cameraLive && state === 'idle'}
+            onAlignmentChange={(score, aligned) => {
+              if (state === 'idle') {
+                setIsAligned(aligned);
+              } else {
+                setIsAligned(false);
+              }
+            }}
+          />
           <div
             style={{
               position: 'absolute',
@@ -715,6 +761,72 @@ export default function ScanScreen() {
               mixBlendMode: cameraLive ? 'overlay' : 'normal',
             }}
           />
+
+          {/* Real-time CV HUD overlay when alignment is in progress */}
+          {state === 'idle' && autoScanCountdown > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '24%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(12, 14, 26, 0.85)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(0, 255, 127, 0.25)',
+                borderRadius: 20,
+                padding: '10px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                zIndex: 10,
+                boxShadow: '0 8px 32px rgba(0, 255, 127, 0.15)',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: '#00ff7f',
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: '#00ff7f',
+                  }}
+                />
+                Alineando carta...
+              </div>
+              <div
+                style={{
+                  width: 110,
+                  height: 4,
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${autoScanCountdown}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #00ff7f, #34C759)',
+                    transition: 'width 40ms linear',
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Pulsing glassmorphic overlay during analysis */}
           {state === 'scanning' && (
@@ -755,7 +867,7 @@ export default function ScanScreen() {
         </div>
 
         {/* corner brackets */}
-        {!isMulticardMode && <ScanBrackets state={state} />}
+        {!isMulticardMode && <ScanBrackets state={state} isAligned={isAligned} />}
 
         {/* card preview — appears once scanning starts */}
         {!isMulticardMode && state !== 'idle' && result?.card && (

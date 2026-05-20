@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-b1bafff1'], (function (workbox) { 'use strict';
+define(['./workbox-cff495ae'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -78,13 +78,13 @@ define(['./workbox-b1bafff1'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "index.html",
-    "revision": "0.v1v3vadt35"
+    "revision": "0.epu8mgio53"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
     allowlist: [/^\/$/]
   }));
-  workbox.registerRoute(/^https:\/\/images\.pokemontcg\.io\/.*/i, new workbox.CacheFirst({
+  workbox.registerRoute(/^https:\/\/(images\.pokemontcg\.io|images\.weserv\.nl)\/.*/i, new workbox.CacheFirst({
     "cacheName": "pokemon-cards-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 1000,
@@ -96,11 +96,34 @@ define(['./workbox-b1bafff1'], (function (workbox) { 'use strict';
   workbox.registerRoute(/^https:\/\/api\.pokemontcg\.io\/v2\/.*/i, new workbox.StaleWhileRevalidate({
     "cacheName": "pokemon-api-cache",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 50,
-      maxAgeSeconds: 86400
+      maxEntries: 250,
+      maxAgeSeconds: 604800
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]
   }), 'GET');
+  workbox.registerRoute(/^https:\/\/cdn\.jsdelivr\.net\/npm\/tesseract\.js.*/i, new workbox.CacheFirst({
+    "cacheName": "tesseract-cdn-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 10,
+      maxAgeSeconds: 31536000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/tessdata\.projectnaptha\.com\/.*/i, new workbox.CacheFirst({
+    "cacheName": "tesseract-languages-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 10,
+      maxAgeSeconds: 31536000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/[a-z0-9]+\.supabase\.co\/rest\/v1\/collections.*/i, new workbox.NetworkOnly({
+    plugins: [new workbox.BackgroundSyncPlugin("supabase-collection-sync-queue", {
+      maxRetentionTime: 1440
+    })]
+  }), 'PATCH');
 
 }));

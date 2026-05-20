@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { mergeCollections } from './collectionStorage';
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach } from 'vitest';
+import { mergeCollections, getCollection, saveCardMeta, logCollectionValueSnapshot } from './collectionStorage';
 import type { CollectionState, CollectionCardMeta } from '@/types/collection';
 
 describe('Collection Reconciliation (Delta Merge LWW)', () => {
@@ -124,5 +125,78 @@ describe('Collection Reconciliation (Delta Merge LWW)', () => {
     const result2 = mergeCollections(localNewerCollection, remote);
     expect(result2.cards['sv3-125'].quantity).toBe(10);
     expect(result2.cards['sv3-125'].favorite).toBe(false);
+  });
+});
+
+describe('Historical Value Snapshots', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('should initialize history array and record snapshot matching card prices', () => {
+    // Save card meta to mock collection state
+    saveCardMeta('sv3-125', { owned: true, quantity: 2 });
+
+    const mockCards = [
+      {
+        id: 'sv3-125',
+        name: 'Charizard ex',
+        supertype: 'Pokémon',
+        subtypes: ['Stage 2', 'Tera'],
+        types: ['Fire'],
+        set: { id: 'sv3', name: 'Obsidian Flames', series: 'Scarlet & Violet', printedTotal: 197, total: 230 },
+        number: '125',
+        rarity: 'Double Rare',
+        images: { small: '', large: '' },
+        tcgplayer: {
+          url: '',
+          updatedAt: '2026-05-19',
+          prices: {
+            holofoil: { low: 10, mid: 12, high: 15, market: 12.5, directLow: 11 },
+          },
+        },
+      },
+    ];
+
+    // Log snapshot
+    logCollectionValueSnapshot(mockCards);
+
+    const collection = getCollection();
+    expect(collection.history).toBeDefined();
+    expect(collection.history!.length).toBeGreaterThanOrEqual(1);
+
+    const snapshot = collection.history![collection.history!.length - 1];
+    expect(snapshot.value).toBeCloseTo(25.0, 1); // 12.5 market * 2 qty = 25 USD
+    expect(snapshot.date).toBe(new Date().toISOString().split('T')[0]);
+  });
+
+  it('should not create duplicate entry if called twice on the same day', () => {
+    saveCardMeta('cel25-25', { owned: true, quantity: 1 });
+    const mockCards = [
+      {
+        id: 'cel25-25',
+        name: 'Pikachu',
+        supertype: 'Pokémon',
+        subtypes: [],
+        types: ['Lightning'],
+        set: { id: 'cel25', name: 'Celebrations', series: 'Celebrations', printedTotal: 25, total: 25 },
+        number: '25',
+        rarity: 'Rare',
+        images: { small: '', large: '' },
+        tcgplayer: {
+          url: '',
+          updatedAt: '2026-05-19',
+          prices: { normal: { low: 5, mid: 7, high: 10, market: 6.0, directLow: 5.5 } },
+        },
+      },
+    ];
+
+    logCollectionValueSnapshot(mockCards);
+    logCollectionValueSnapshot(mockCards); // call twice
+
+    const collection = getCollection();
+    const today = new Date().toISOString().split('T')[0];
+    const entriesForToday = collection.history!.filter((h) => h.date === today);
+    expect(entriesForToday.length).toBe(1); // must deduplicate
   });
 });

@@ -2,13 +2,14 @@ import type { ScanState } from '../ScanScreen';
 
 interface ScanBracketsProps {
   state: ScanState;
+  isAligned?: boolean;
 }
 
-export default function ScanBrackets({ state }: ScanBracketsProps) {
+export default function ScanBrackets({ state, isAligned }: ScanBracketsProps) {
   const color =
     state === 'scanning'
       ? 'var(--accent)'
-      : state === 'detected'
+      : state === 'detected' || isAligned
         ? 'var(--success)'
         : '#fff';
 
@@ -63,7 +64,7 @@ export default function ScanBrackets({ state }: ScanBracketsProps) {
             borderTopRightRadius: c.brtr,
             borderBottomLeftRadius: c.brbl,
             borderBottomRightRadius: c.brbr,
-            boxShadow: state === 'detected' ? `0 0 24px ${color}88` : 'none',
+            boxShadow: state === 'detected' || isAligned ? `0 0 24px ${color}88` : 'none',
             transition: 'border-color 200ms ease, box-shadow 200ms ease',
           }}
         />

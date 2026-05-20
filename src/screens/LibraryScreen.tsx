@@ -44,6 +44,7 @@ import {
 import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
 import VisualCollectionStats from '@/components/VisualCollectionStats';
+import { logCollectionValueSnapshot } from '@/lib/collectionStorage';
 
 import {
   type SortKey,
@@ -191,6 +192,12 @@ export default function LibraryScreen() {
         : Promise.resolve([]),
     [collectionIds.join(',')],
   );
+
+  React.useEffect(() => {
+    if (owned.data && owned.data.length > 0) {
+      logCollectionValueSnapshot(owned.data);
+    }
+  }, [owned.data]);
 
   // When viewing "all" + a set filter (or global search query), fetch the cards from the API.
   const setView$ = useAsync(async (signal) => {
