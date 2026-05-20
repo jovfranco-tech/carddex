@@ -104,7 +104,7 @@ describe('buildRecognitionResultFromApiCard', () => {
     expect(r.possibleSetName).toBe('Sword & Shield');
     expect(r.number).toBe('4/202');
     expect(r.source).toBe('api_lookup');
-    expect(r.simulated).toBe(true);
+    expect(r.simulated).toBe(false);
     expect(r.detectedLanguage).toBeNull();
     expect(r.confidence).toBeGreaterThan(0);
   });

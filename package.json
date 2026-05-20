@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.3.4",
+    "@playwright/test": "^1.60.0",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.9.0",
     "@types/react": "^18.3.12",

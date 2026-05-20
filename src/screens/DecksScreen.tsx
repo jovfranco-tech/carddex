@@ -7,6 +7,7 @@ import { PlusIcon, TrashIcon } from '@/components/icons';
 import { ROUTES } from '@/app/routes';
 import DeckBuilderModal from '@/components/DeckBuilderModal';
 import { Toast } from '@/components/Section';
+import { useI18n } from '@/lib/i18n';
 
 export default function DecksScreen() {
   const decksState = useDecks();
@@ -27,6 +28,8 @@ export default function DecksScreen() {
     navigate(ROUTES.deckDetail(deck.id));
   };
 
+  const { t } = useI18n();
+
   return (
     <div style={{ padding: '54px 18px 110px' }}>
       <h1
@@ -38,15 +41,15 @@ export default function DecksScreen() {
           letterSpacing: -0.6,
         }}
       >
-        Mis Mazos
+        {t('decks.title')}
       </h1>
 
       <Surface style={{ padding: 16, marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Crear nuevo mazo</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{t('decks.createNew')}</div>
         <form onSubmit={handleCreate} style={{ display: 'flex', gap: 8 }}>
           <input
             type="text"
-            placeholder="Nombre del mazo (ej. Charizard ex)"
+            placeholder={t('decks.placeholder')}
             value={newDeckName}
             onChange={(e) => setNewDeckName(e.target.value)}
             style={{
@@ -94,7 +97,7 @@ export default function DecksScreen() {
               transition: 'all 200ms ease',
             }}
           >
-            <span>✦ Construir Mazo con Copiloto IA</span>
+            <span>{t('decks.copilot')}</span>
           </button>
         </div>
       </Surface>
@@ -102,7 +105,7 @@ export default function DecksScreen() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {decks.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-            No tienes ningún mazo creado todavía.
+            {t('decks.empty')}
           </div>
         ) : (
           decks.map((deck) => (
@@ -123,12 +126,12 @@ export default function DecksScreen() {
                     {deck.name}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                    {deck.cards.length} / 60 cartas
+                    {t('decks.cardCount', { count: deck.cards.length })}
                   </div>
                 </div>
                 <button
                   onClick={() => {
-                    if (window.confirm('¿Seguro que quieres borrar este mazo?')) {
+                    if (window.confirm(t('decks.deleteConfirm'))) {
                       deleteDeck(deck.id);
                     }
                   }}

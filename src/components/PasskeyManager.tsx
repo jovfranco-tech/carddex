@@ -78,7 +78,7 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
 
         if (credential) {
           localStorage.setItem('carddex.auth.passkey', credential.id);
-          const encrypted = encryptCreds(userEmail || '', password);
+          const encrypted = await encryptCredsAsync(userEmail || '', password);
           localStorage.setItem('carddex.auth.passkey_cred', encrypted);
           setHasPasskey(true);
           onToast('¡Llave de paso (Passkey) registrada en tu dispositivo!');
@@ -99,13 +99,17 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
     }
   };
 
-  const handleSimulatedSuccess = () => {
+  const handleSimulatedSuccess = async () => {
     setShowBiometricScan(false);
     setRegistering(false);
     localStorage.setItem('carddex.auth.passkey', `mock-key-${Date.now()}`);
     if (userEmail && tempPassword) {
-      const encrypted = encryptCreds(userEmail, tempPassword);
-      localStorage.setItem('carddex.auth.passkey_cred', encrypted);
+      try {
+        const encrypted = await encryptCredsAsync(userEmail, tempPassword);
+        localStorage.setItem('carddex.auth.passkey_cred', encrypted);
+      } catch (err) {
+        console.error('[Passkey] Failed to encrypt credentials:', err);
+      }
     }
     setTempPassword('');
     setHasPasskey(true);
@@ -393,29 +397,114 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
   );
 }
 
-// Simple encryption/decryption using XOR and Base64
-const ENCRYPTION_KEY = 'carddex-biometric-secret-key-2026';
+/* ========================================================================== */
+/* Secure Credential Encryption — AES-GCM 256-bit + PBKDF2                   */
+/* Replaces the previous insecure XOR+Base64 approach.                        */
+/* ========================================================================== */
 
-export function encryptCreds(email: string, pass: string): string {
-  const data = JSON.stringify({ email, pass });
-  let result = '';
-  for (let i = 0; i < data.length; i++) {
-    result += String.fromCharCode(data.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+const CRYPTO_AES_KEY_STORAGE = 'carddex.crypto.aes_key.v2';
+
+/**
+ * Returns (or lazily generates) a device-unique AES-GCM 256-bit key.
+ * The key is stored as a JWK in localStorage — it is device-unique and
+ * cannot be recreated from the source code alone (unlike the old XOR approach).
+ */
+async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    throw new Error('Web Crypto API not available');
   }
-  return btoa(unescape(encodeURIComponent(result)));
+  const stored = localStorage.getItem(CRYPTO_AES_KEY_STORAGE);
+  if (stored) {
+    try {
+      const jwk = JSON.parse(stored);
+      return await crypto.subtle.importKey(
+        'jwk',
+        jwk,
+        { name: 'AES-GCM' },
+        true,
+        ['encrypt', 'decrypt'],
+      );
+    } catch {
+      // Corrupted key — generate a fresh one below
+      localStorage.removeItem(CRYPTO_AES_KEY_STORAGE);
+    }
+  }
+
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt'],
+  );
+  const exported = await crypto.subtle.exportKey('jwk', key);
+  localStorage.setItem(CRYPTO_AES_KEY_STORAGE, JSON.stringify(exported));
+  return key;
 }
 
-export function decryptCreds(encrypted: string): { email: string; pass: string } | null {
+/**
+ * Encrypt email + password with AES-GCM 256-bit.
+ * Format: base64(iv[12] || ciphertext)
+ */
+export async function encryptCredsAsync(email: string, pass: string): Promise<string> {
+  const key = await getOrCreateEncryptionKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const payload = new TextEncoder().encode(JSON.stringify({ email, pass }));
+
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, payload);
+
+  // Combine iv + ciphertext into a single buffer
+  const combined = new Uint8Array(iv.byteLength + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), iv.byteLength);
+
+  // Return as Base64 string (prefixed so we can detect format on decrypt)
+  return 'v2:' + btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Decrypt a credential string produced by `encryptCredsAsync`.
+ * Automatically falls back to the old XOR decoder for backward-compat
+ * with any credentials stored before this migration.
+ */
+export async function decryptCredsAsync(
+  encrypted: string,
+): Promise<{ email: string; pass: string } | null> {
+  if (!encrypted) return null;
+
+  // --- New AES-GCM path ---
+  if (encrypted.startsWith('v2:')) {
+    try {
+      const key = await getOrCreateEncryptionKey();
+      const combined = Uint8Array.from(atob(encrypted.slice(3)), (c) => c.charCodeAt(0));
+      const iv = combined.slice(0, 12);
+      const ciphertext = combined.slice(12);
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      return JSON.parse(new TextDecoder().decode(decrypted));
+    } catch (e) {
+      console.error('[Passkey] AES-GCM decrypt failed:', e);
+      return null;
+    }
+  }
+
+  // --- Legacy XOR fallback (for credentials stored before this upgrade) ---
   try {
+    const XOR_KEY = 'carddex-biometric-secret-key-2026';
     const raw = decodeURIComponent(escape(atob(encrypted)));
     let decrypted = '';
     for (let i = 0; i < raw.length; i++) {
-      decrypted += String.fromCharCode(raw.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+      decrypted += String.fromCharCode(
+        raw.charCodeAt(i) ^ XOR_KEY.charCodeAt(i % XOR_KEY.length),
+      );
     }
-    return JSON.parse(decrypted);
+    const creds = JSON.parse(decrypted) as { email: string; pass: string };
+    // Silently re-encrypt with AES-GCM so next login uses the secure path
+    const newEncrypted = await encryptCredsAsync(creds.email, creds.pass);
+    localStorage.setItem('carddex.auth.passkey_cred', newEncrypted);
+    console.info('[Passkey] Legacy XOR credentials migrated to AES-GCM.');
+    return creds;
   } catch (e) {
-    console.error('Failed to decrypt passkey credentials:', e);
+    console.error('[Passkey] Legacy XOR decrypt also failed:', e);
     return null;
   }
 }
+
 

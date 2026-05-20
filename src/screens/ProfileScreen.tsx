@@ -24,12 +24,13 @@ import { prefersMXN, setPrefersMXN, getEstimatedPrice } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
-import PasskeyManager, { decryptCreds } from '@/components/PasskeyManager';
+import PasskeyManager, { decryptCredsAsync } from '@/components/PasskeyManager';
 import { requestPushPermission } from '@/lib/priceMonitor';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
 import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
+import { useI18n } from '@/lib/i18n';
 
 const APP_VERSION = '1.1.0';
 
@@ -37,6 +38,7 @@ const APP_VERSION = '1.1.0';
  * Profile / Settings — info, export/import, clear local data, disclaimer.
  */
 export default function ProfileScreen() {
+  const { t } = useI18n();
   const summary = useCollectionSummary();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -93,26 +95,26 @@ export default function ProfileScreen() {
     try {
       localStorage.setItem('carddex.scanner.language', nextLang);
     } catch {}
-    showToast(`Idioma de escaneo: ${nextLang}`);
+    showToast(t('profile.scanLanguageChanged', { lang: nextLang }) || `Idioma de escaneo: ${nextLang}`);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail || !authPassword) {
-      showToast('Ingresa correo y contraseña');
+      showToast(t('profile.loginRequiredFields') || 'Ingresa correo y contraseña');
       return;
     }
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
     setAuthLoading(false);
     if (error) showToast(error.message);
-    else showToast('Sesión iniciada');
+    else showToast(t('profile.sessionStarted') || 'Sesión iniciada');
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail || !authPassword || !authName) {
-      showToast('Completa todos los campos para registrarte');
+      showToast(t('profile.signupRequiredFields') || 'Completa todos los campos para registrarte');
       return;
     }
     setAuthLoading(true);
@@ -125,12 +127,12 @@ export default function ProfileScreen() {
     });
     setAuthLoading(false);
     if (error) showToast(error.message);
-    else showToast('Cuenta creada y sesión iniciada');
+    else showToast(t('profile.accountCreated') || 'Cuenta creada y sesión iniciada');
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    showToast('Sesión cerrada');
+    showToast(t('profile.loggedOut') || 'Sesión cerrada');
   };
 
   const handleBiometricLogin = async () => {
@@ -145,22 +147,22 @@ export default function ProfileScreen() {
       try {
         const encrypted = localStorage.getItem('carddex.auth.passkey_cred');
         if (!encrypted) {
-          showToast('No se encontraron credenciales biométricas guardadas');
+          showToast(t('profile.noBiometricCreds') || 'No se encontraron credenciales biométricas guardadas');
           setBiometricScanning(false);
           return;
         }
-        
-        const decrypted = decryptCreds(encrypted);
-        if (!decrypted) {
-          showToast('Error al descifrar credenciales');
+        // Try AES-GCM decryption; falls back to legacy XOR inside decryptCredsAsync
+        const creds = await decryptCredsAsync(encrypted);
+        if (!creds) {
+          showToast(t('profile.credDecryptError') || 'Error al descifrar credenciales');
           setBiometricScanning(false);
           return;
         }
 
         setAuthLoading(true);
         const { error } = await supabase.auth.signInWithPassword({
-          email: decrypted.email,
-          password: decrypted.pass,
+          email: creds.email,
+          password: creds.pass,
         });
         setAuthLoading(false);
         setBiometricScanning(false);
@@ -169,16 +171,17 @@ export default function ProfileScreen() {
           showToast(error.message);
           triggerHaptic('warning');
         } else {
-          showToast('Sesión iniciada con biometría');
+          showToast(t('profile.biometricLoginSuccess') || 'Sesión iniciada con biometría');
           triggerHaptic('success');
         }
       } catch (err) {
         console.error(err);
-        showToast('Error en la autenticación biométrica');
+        showToast(t('profile.biometricError') || 'Error en la autenticación biométrica');
         setBiometricScanning(false);
         setAuthLoading(false);
       }
     };
+
 
     if (!isMock && window.isSecureContext && navigator.credentials && navigator.credentials.get) {
       try {
@@ -221,7 +224,7 @@ export default function ProfileScreen() {
     if (error) {
       showToast(error.message);
     } else {
-      showToast('Nombre actualizado');
+      showToast(t('profile.nameUpdated') || 'Nombre actualizado');
       setIsEditingName(false);
     }
   };
@@ -233,9 +236,9 @@ export default function ProfileScreen() {
     const url = `${window.location.origin}/u/${user.id}`;
     try {
       await navigator.clipboard.writeText(url);
-      showToast('Enlace copiado al portapapeles');
+      showToast(t('profile.linkCopied') || 'Enlace copiado al portapapeles');
     } catch {
-      showToast('No se pudo copiar el enlace');
+      showToast(t('profile.linkCopyError') || 'No se pudo copiar el enlace');
     }
   };
 
@@ -257,9 +260,9 @@ export default function ProfileScreen() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('Colección exportada');
+      showToast(t('profile.exportSuccess') || 'Colección exportada');
     } catch {
-      showToast('Error al exportar');
+      showToast(t('profile.exportError') || 'Error al exportar');
     }
   };
 
@@ -273,10 +276,10 @@ export default function ProfileScreen() {
     try {
       const text = await file.text();
       const { imported } = importCollection(text);
-      showToast(`Se importaron ${formatInt(imported)} cartas`);
+      showToast(t('profile.importSuccess', { count: formatInt(imported) }) || `Se importaron ${formatInt(imported)} cartas`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Archivo inválido';
-      showToast(`Error al importar: ${msg}`);
+      showToast(t('profile.importError', { msg }) || `Error al importar: ${msg}`);
     } finally {
       // Reset input so the same file can be re-imported if needed.
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -292,12 +295,12 @@ export default function ProfileScreen() {
     clearCollection();
     clearApiCache();
     setConfirmingClear(false);
-    showToast('Datos locales borrados');
+    showToast(t('profile.dataCleared') || 'Datos locales borrados');
   };
 
   const handleResetRecent = () => {
     resetRecentlyViewed();
-    showToast('Historial reciente vaciado');
+    showToast(t('profile.recentCleared') || 'Historial reciente vaciado');
   };
 
   const handleToggleMxn = () => {
@@ -389,17 +392,17 @@ export default function ProfileScreen() {
               </div>
             </div>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
-              Verificación Biométrica
+              {t('profile.biometricVerification') || 'Verificación Biométrica'}
             </h3>
             <p style={{ margin: '8px 0 24px', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-              Usa Face ID o Touch ID para verificar tu identidad y acceder de forma segura.
+              {t('profile.biometricVerificationDesc') || 'Usa Face ID o Touch ID para verificar tu identidad y acceder de forma segura.'}
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => {
                   setShowBiometricLoginOverlay(false);
                   setBiometricScanning(false);
-                  showToast('Acceso biométrico cancelado');
+                  showToast(t('profile.biometricCancelled') || 'Acceso biométrico cancelado');
                   triggerHaptic('warning');
                 }}
                 style={{
@@ -415,7 +418,7 @@ export default function ProfileScreen() {
                   fontFamily: 'inherit',
                 }}
               >
-                Cancelar
+                {t('profile.cancelButton') || 'Cancelar'}
               </button>
               <button
                 onClick={async () => {
@@ -423,22 +426,22 @@ export default function ProfileScreen() {
                   try {
                     const encrypted = localStorage.getItem('carddex.auth.passkey_cred');
                     if (!encrypted) {
-                      showToast('No se encontraron credenciales biométricas guardadas');
+                      showToast(t('profile.noBiometricCreds') || 'No se encontraron credenciales biométricas guardadas');
                       setBiometricScanning(false);
                       return;
                     }
-                    
-                    const decrypted = decryptCreds(encrypted);
-                    if (!decrypted) {
-                      showToast('Error al descifrar credenciales');
+                    // Try AES-GCM decryption; falls back to legacy XOR inside decryptCredsAsync
+                    const creds = await decryptCredsAsync(encrypted);
+                    if (!creds) {
+                      showToast(t('profile.credDecryptError') || 'Error al descifrar credenciales');
                       setBiometricScanning(false);
                       return;
                     }
 
                     setAuthLoading(true);
                     const { error } = await supabase.auth.signInWithPassword({
-                      email: decrypted.email,
-                      password: decrypted.pass,
+                      email: creds.email,
+                      password: creds.pass,
                     });
                     setAuthLoading(false);
                     setBiometricScanning(false);
@@ -447,16 +450,17 @@ export default function ProfileScreen() {
                       showToast(error.message);
                       triggerHaptic('warning');
                     } else {
-                      showToast('Sesión iniciada con biometría');
+                      showToast(t('profile.biometricLoginSuccess') || 'Sesión iniciada con biometría');
                       triggerHaptic('success');
                     }
                   } catch (err) {
                     console.error(err);
-                    showToast('Error en la autenticación biométrica');
+                    showToast(t('profile.biometricError') || 'Error en la autenticación biométrica');
                     setBiometricScanning(false);
                     setAuthLoading(false);
                   }
                 }}
+
                 style={{
                   flex: 1,
                   padding: 12,
@@ -470,7 +474,7 @@ export default function ProfileScreen() {
                   fontFamily: 'inherit',
                 }}
               >
-                Escanear
+                {t('profile.scanButton') || 'Escanear'}
               </button>
             </div>
           </div>

@@ -5,12 +5,7 @@ import {
   getUnlockedAchievements,
   type Achievement,
 } from '@/lib/achievements';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  ai: '✦ AI-Native',
-  collection: '📦 Colección',
-  social: '🤝 Social',
-};
+import { useI18n } from '@/lib/i18n';
 
 function CategoryIcon({ category }: { category: string }) {
   if (category === 'ai') return <SparklesIcon size={14} />;
@@ -23,8 +18,9 @@ function AchievementCard({ achievement, unlocked, unlockedAt }: {
   unlocked: boolean;
   unlockedAt?: string;
 }) {
+  const { t, locale } = useI18n();
   const dateStr = unlockedAt
-    ? new Date(unlockedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? new Date(unlockedAt).toLocaleDateString(locale === 'es' ? 'es-MX' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
 
   return (
@@ -103,7 +99,7 @@ function AchievementCard({ achievement, unlocked, unlockedAt }: {
             }}
           >
             <CategoryIcon category={achievement.category} />
-            {CATEGORY_LABELS[achievement.category]}
+            {t('achievements.category.' + achievement.category)}
           </span>
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.35 }}>
@@ -111,7 +107,7 @@ function AchievementCard({ achievement, unlocked, unlockedAt }: {
         </div>
         {unlocked && dateStr && (
           <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4, opacity: 0.7 }}>
-            Desbloqueado el {dateStr}
+            {t('achievements.unlockedAt', { date: dateStr })}
           </div>
         )}
       </div>
@@ -139,6 +135,7 @@ function AchievementCard({ achievement, unlocked, unlockedAt }: {
 }
 
 export default function AchievementsScreen() {
+  const { t } = useI18n();
   const unlocked = useMemo(() => getUnlockedAchievements(), []);
   const unlockedCount = Object.keys(unlocked).length;
   const totalCount = ACHIEVEMENT_CATALOGUE.length;
@@ -181,12 +178,12 @@ export default function AchievementsScreen() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <TrophyIcon size={26} color="#FFD700" />
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: -0.6 }}>
-            Logros
+            {t('achievements.title')}
           </h1>
         </div>
 
         <p style={{ margin: '0 0 20px', fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
-          Desbloquea logros usando las funciones AI-native de Carddex.
+          {t('achievements.description')}
         </p>
 
         {/* Progress bar */}
@@ -211,7 +208,7 @@ export default function AchievementsScreen() {
           />
         </div>
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
-          {unlockedCount} / {totalCount} logros desbloqueados · {progress}%
+          {t('achievements.progress', { unlocked: unlockedCount, total: totalCount, percent: progress })}
         </div>
       </div>
 
@@ -228,7 +225,7 @@ export default function AchievementsScreen() {
                 letterSpacing: 1,
                 marginBottom: 12,
               }}>
-                {CATEGORY_LABELS[cat]}
+                {t('achievements.category.' + cat)}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {items.map((a) => (

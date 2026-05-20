@@ -44,8 +44,10 @@ import {
 import { formatInt } from '@/lib/formatters';
 import type { PokemonCard } from '@/types/pokemon';
 import AISynergyFeed from '@/components/AISynergyFeed';
+import { useI18n } from '@/lib/i18n';
 
 export default function HomeScreen() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const collection = useCollection();
   const summary = useCollectionSummary();
@@ -341,26 +343,26 @@ export default function HomeScreen() {
             }}
           >
             <StatCard
-              label="Total de cartas"
+              label={t('home.totalCards')}
               value={formatInt(summary.totalQuantity)}
               accent="#2F80ED"
               glyph={<BookIcon size={16} />}
             />
             <StatCard
-              label="Únicas"
+              label={t('home.uniqueCount')}
               value={formatInt(summary.uniqueCount)}
               accent="#27AE60"
               glyph="⬇"
             />
             <StatCard
-              label="Completado"
+              label={t('home.completed') || 'Completado'}
               value={insights?.bestSet ? `${((insights.bestSet.owned / insights.bestSet.total) * 100).toFixed(1)}%` : '0.0%'}
-              suffix="de la colección"
+              suffix={t('home.completedSuffix') || 'de la colección'}
               accent="#9b51e0"
               glyph="↺"
             />
             <StatCard
-              label="Valor estimado"
+              label={t('home.collectionValue')}
               value={totalValue ? formatCollectionValue(totalValue) : '—'}
               accent="#F2994A"
               glyph="🛡"
@@ -369,7 +371,7 @@ export default function HomeScreen() {
 
           {/* Active search results */}
           {trimmed ? (
-            <Section title={`Resultados para “${trimmed}”`}>
+            <Section title={t('home.searchResults', { query: trimmed }) || `Resultados para “${trimmed}”`}>
               {/* Rarity chips */}
               <div
                 style={{
@@ -397,8 +399,8 @@ export default function HomeScreen() {
                 <ErrorState message={search.error} onRetry={search.reload} />
               ) : searchFiltered.length === 0 ? (
                 <EmptyState
-                  title="Sin resultados"
-                  description={`No encontramos cartas que coincidan con “${trimmed}”.`}
+                  title={t('home.noResults') || 'Sin resultados'}
+                  description={t('home.noResultsDesc', { query: trimmed }) || `No encontramos cartas que coincidan con “${trimmed}”.`}
                 />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -453,7 +455,7 @@ export default function HomeScreen() {
                         e.currentTarget.style.transform = 'none';
                       }}
                     >
-                      ✦ Búsqueda Semántica con IA
+                      {t('home.semanticSearch') || '✦ Búsqueda Semántica con IA'}
                     </button>
                     <button
                       onClick={() => navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false`)}
@@ -487,7 +489,7 @@ export default function HomeScreen() {
                         e.currentTarget.style.transform = 'none';
                       }}
                     >
-                      Ver todos los resultados
+                      {t('home.viewAllResults') || 'Ver todos los resultados'}
                     </button>
                   </div>
                 </div>
@@ -496,7 +498,7 @@ export default function HomeScreen() {
           ) : (
             <>
               {/* Herramientas IA Native */}
-              <Section title="Herramientas IA Native ✦">
+              <Section title={t('home.aiTools') || 'Herramientas IA Native ✦'}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '0 18px 8px' }}>
                   <div
                     onClick={() => {
@@ -517,9 +519,9 @@ export default function HomeScreen() {
                   >
                     <div style={{ fontSize: 24 }}>⚖️</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>Creador Custom</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>{t('home.customCreator') || 'Creador Custom'}</div>
                       <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.3 }}>
-                        Crea cartas TCG únicas en 3D holográfico interactivo.
+                        {t('home.customCreatorDesc') || 'Crea cartas TCG únicas en 3D holográfico interactivo.'}
                       </div>
                     </div>
                   </div>
@@ -543,9 +545,9 @@ export default function HomeScreen() {
                   >
                     <div style={{ fontSize: 24 }}>🔮</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>Copiloto de Mazos</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>{t('home.deckCopilot') || 'Copiloto de Mazos'}</div>
                       <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.3 }}>
-                        Construye y optimiza mazos de competición con IA.
+                        {t('home.deckCopilotDesc') || 'Construye y optimiza mazos de competición con IA.'}
                       </div>
                     </div>
                   </div>
@@ -556,9 +558,9 @@ export default function HomeScreen() {
 
               {/* Featured */}
               <Section
-                title="Cartas destacadas"
+                title={t('home.featuredCards') || 'Cartas destacadas'}
                 action={
-                  <ActionLink onClick={() => navigate('/library')}>Ver todas</ActionLink>
+                  <ActionLink onClick={() => navigate('/library')}>{t('home.viewAll') || 'Ver todas'}</ActionLink>
                 }
               >
                 {owned.loading ? (
@@ -589,7 +591,7 @@ export default function HomeScreen() {
                   </div>
                 ) : featured.length === 0 ? (
                   <div style={{ padding: '0 18px 8px', fontSize: 13, color: 'var(--muted)' }}>
-                    Guarda cartas raras para verlas destacadas aquí.
+                    {t('home.featuredEmpty') || 'Guarda cartas raras para verlas destacadas aquí.'}
                   </div>
                 ) : (
                   <div
@@ -608,9 +610,9 @@ export default function HomeScreen() {
                         onClick={() => navigate(`/card/${c.id}`)}
                       >
                         <CardTile
-                          card={c}
-                          meta={collection.cards[c.id]}
-                          width={110}
+                           card={c}
+                           meta={collection.cards[c.id]}
+                           width={110}
                         />
                         <div
                           style={{
@@ -658,7 +660,7 @@ export default function HomeScreen() {
 
               {/* Insights — collector summary */}
               {insights && (
-                <Section title="Datos de tu colección" tight>
+                <Section title={t('home.collectionInsights') || 'Datos de tu colección'} tight>
                   <div
                     style={{
                       padding: '0 18px',
@@ -669,7 +671,7 @@ export default function HomeScreen() {
                   >
                     {insights.rarest && (
                       <InsightCard
-                        label="Carta más rara"
+                        label={t('home.rarestCard') || 'Carta más rara'}
                         title={insights.rarest.name}
                         sub={rarityLabel(insights.rarest.rarity)}
                         onClick={() =>
@@ -679,7 +681,7 @@ export default function HomeScreen() {
                     )}
                     {insights.mostValuable && (
                       <InsightCard
-                        label="Mayor valor"
+                        label={t('home.highestValue') || 'Mayor valor'}
                         title={insights.mostValuable.name}
                         sub={(() => {
                           const p = getEstimatedPrice(insights.mostValuable);
@@ -692,19 +694,19 @@ export default function HomeScreen() {
                     )}
                     {insights.bestSet && (
                       <InsightCard
-                        label="Set más avanzado"
+                        label={t('home.mostAdvancedSet') || 'Set más avanzado'}
                         title={insights.bestSet.name}
-                        sub={`${insights.bestSet.owned}/${insights.bestSet.total} cartas`}
+                        sub={t('home.setCardCount', { owned: insights.bestSet.owned, total: insights.bestSet.total }) || `${insights.bestSet.owned}/${insights.bestSet.total} cartas`}
                         onClick={() => navigate('/sets')}
                       />
                     )}
                     <InsightCard
-                      label="Duplicadas"
+                      label={t('home.duplicates') || 'Duplicadas'}
                       title={`${insights.duplicates}`}
                       sub={
                         insights.duplicates === 1
-                          ? 'carta con copias'
-                          : 'cartas con copias'
+                          ? t('home.duplicateSingle') || 'carta con copias'
+                          : t('home.duplicateMultiple') || 'cartas con copias'
                       }
                       onClick={() => navigate('/library')}
                     />
@@ -748,10 +750,10 @@ export default function HomeScreen() {
                         letterSpacing: -0.2,
                       }}
                     >
-                      Ordenar por rareza
+                      {t('home.sortByRarity') || 'Ordenar por rareza'}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      Mira tus cartas más raras primero
+                      {t('home.sortByRarityDesc') || 'Mira tus cartas más raras primero'}
                     </div>
                   </div>
                   <span style={{ color: 'var(--muted-3)' }}>
@@ -785,10 +787,10 @@ export default function HomeScreen() {
                         letterSpacing: -0.2,
                       }}
                     >
-                      Expansiones
+                      {t('home.expansions') || 'Expansiones'}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      Ver todas las series
+                      {t('home.expansionsDesc') || 'Ver todas las series'}
                     </div>
                   </div>
                   <span style={{ color: 'var(--muted-3)' }}>
@@ -815,13 +817,14 @@ function HomeEmpty({
   onScan: () => void;
   onSearch: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div style={{ padding: '8px 24px 40px' }}>
       <EmptyState
         large
         icon={<ScanIcon size={42} />}
-        title="Aún no tienes cartas"
-        description="Escanea tu primera carta o búscala por nombre para empezar a construir tu binder digital."
+        title={t('home.emptyTitle') || 'Aún no tienes cartas'}
+        description={t('home.emptyDescription') || 'Escanea tu primera carta o búscala por nombre para empezar a construir tu binder digital.'}
         action={
           <div
             style={{
@@ -851,7 +854,7 @@ function HomeEmpty({
               }}
             >
               <ScanIcon size={18} color="#fff" />
-              Escanear carta
+              {t('home.emptyButton') || 'Escanear carta'}
             </button>
             <button
               onClick={onSearch}
@@ -872,7 +875,7 @@ function HomeEmpty({
               }}
             >
               <SearchIcon size={16} />
-              Buscar cartas
+              {t('home.searchButton') || 'Buscar cartas'}
             </button>
           </div>
         }
