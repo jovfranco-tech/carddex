@@ -44,7 +44,6 @@ import {
 import { formatInt } from '@/lib/formatters';
 import type { PokemonCard } from '@/types/pokemon';
 import AISynergyFeed from '@/components/AISynergyFeed';
-import OnboardingWizard, { isOnboardingComplete } from '@/components/OnboardingWizard';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -52,7 +51,6 @@ export default function HomeScreen() {
   const summary = useCollectionSummary();
   const [query, setQuery] = useState('');
   const [rarityFilter, setRarityFilter] = useState('all');
-  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingComplete());
   const debouncedQuery = useDebounced(query, 320);
 
   const collectionIds = useMemo(
@@ -214,10 +212,6 @@ export default function HomeScreen() {
   /* --------------------------------------------------------------------- */
   /* Render                                                                 */
   /* --------------------------------------------------------------------- */
-
-  if (showOnboarding) {
-    return <OnboardingWizard onComplete={() => setShowOnboarding(false)} />;
-  }
 
   return (
     <div

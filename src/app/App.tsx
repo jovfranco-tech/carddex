@@ -181,9 +181,9 @@ export default function App() {
 
   return (
     <RootErrorBoundary>
-      {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
       <AuthProvider>
         <BrowserRouter>
+          {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
           <AppShell>
             <Suspense fallback={<ScreenLoader />}>
               <Routes>
