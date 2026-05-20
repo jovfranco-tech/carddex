@@ -1430,24 +1430,90 @@ export function computeDHash(base64: string): Promise<string> {
  * Deterministically match an image hash or dHash to an offline catalog card.
  * Uses Hamming distance matching if a 64-bit binary dHash is provided.
  */
-export function getOfflineRecognitionResult(imageHash: string): RecognitionResult {
+/**
+ * Helper to compute an OCR text match score for a card given the extracted text.
+ * Returns a score where higher is a better match.
+ */
+export function scoreOfflineCardMatch(card: PokemonCard, ocrText: string): number {
+  const cleanOcr = ocrText.toLowerCase();
+  let score = 0;
+
+  // 1. Match card number / printed total fraction
+  // E.g. "125/197" or "125 of 197" or "125 de 197"
+  const numberPart = card.number ? card.number.toLowerCase() : '';
+  const printedTotal = card.set.printedTotal ? String(card.set.printedTotal) : '';
+  
+  if (numberPart) {
+    if (printedTotal) {
+      const fractionRegex = new RegExp(`${numberPart}\\s*[\\/|of|de]\\s*${printedTotal}`, 'i');
+      if (fractionRegex.test(cleanOcr)) {
+        score += 15;
+      }
+    }
+    
+    // Check if the number itself appears as a standalone word/token
+    const numberRegex = new RegExp(`(?:^|\\D)${numberPart}(?:$|\\D)`);
+    if (numberRegex.test(cleanOcr)) {
+      score += 8;
+    }
+  }
+
+  // 2. Match Card Name
+  const cleanName = card.name.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+  const nameWords = cleanName.split(/\s+/).filter(w => w.length > 2 && w !== 'the' && w !== 'and');
+  
+  if (cleanOcr.includes(cleanName)) {
+    score += 10;
+  } else {
+    let matchedWords = 0;
+    for (const word of nameWords) {
+      if (cleanOcr.includes(word)) {
+        matchedWords++;
+      }
+    }
+    if (matchedWords > 0) {
+      score += matchedWords * 3;
+    }
+  }
+
+  // 3. Match Set ID or Set Name
+  const setID = card.set.id.toLowerCase();
+  const setName = card.set.name.toLowerCase();
+  if (cleanOcr.includes(setID)) {
+    score += 5;
+  }
+  if (cleanOcr.includes(setName)) {
+    score += 4;
+  }
+
+  return score;
+}
+
+export function getOfflineRecognitionResult(imageHash: string, ocrText?: string): RecognitionResult {
   let card: PokemonCard;
 
   if (/^[01]{64}$/.test(imageHash)) {
-    let minDistance = 999;
+    let minScore = 999;
     let bestMatch = OFFLINE_CARD_CATALOG[0];
 
     for (const c of OFFLINE_CARD_CATALOG) {
       if (c.dhash) {
-        const distance = getHammingDistance(imageHash, c.dhash);
-        if (distance < minDistance) {
-          minDistance = distance;
+        const visualDistance = getHammingDistance(imageHash, c.dhash);
+        let combinedScore = visualDistance;
+
+        if (ocrText) {
+          const ocrScore = scoreOfflineCardMatch(c, ocrText);
+          combinedScore = visualDistance - (ocrScore * 1.2);
+        }
+
+        if (combinedScore < minScore) {
+          minScore = combinedScore;
           bestMatch = c;
         }
       }
     }
     card = bestMatch;
-    console.log(`[Offline Match] Visual dHash matched to ${card.name} with Hamming distance ${minDistance}`);
+    console.log(`[Offline Match] Visual dHash matched to ${card.name} (${card.id}) with final score ${minScore}`);
   } else {
     let sum = 0;
     for (let i = 0; i < imageHash.length; i++) {
@@ -1784,15 +1850,34 @@ export async function recognizeCardFromImage(
           throw err;
         }
         console.warn('[OCR Fallback] Network request failed. Switching to deterministic offline hashing fallback:', err);
+        
+        let ocrText: string | undefined = undefined;
+        if (base64) {
+          try {
+            console.log('[OCR Local] Initializing local Tesseract OCR...');
+            const { createWorker } = await import('tesseract.js');
+            const worker = await createWorker('eng', 1, {
+              workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+              langPath: 'https://tessdata.projectnaptha.com/4.0.0_fast',
+              corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core.wasm.js',
+            });
+            const ret = await worker.recognize(base64);
+            ocrText = ret.data.text;
+            console.log('[OCR Local] Extracted text:', ocrText);
+            await worker.terminate();
+          } catch (ocrErr) {
+            console.warn('[OCR Local] Local Tesseract OCR failed:', ocrErr);
+          }
+        }
+
         if (base64) {
           const visualDHash = await computeDHash(base64);
-          return getOfflineRecognitionResult(visualDHash);
+          return getOfflineRecognitionResult(visualDHash, ocrText);
         } else if (imageHash) {
-          return getOfflineRecognitionResult(imageHash);
+          return getOfflineRecognitionResult(imageHash, ocrText);
         } else {
-          // If base64 reading failed, fall back using a random seed hash
           const fallbackHash = hashString(`offline-fallback-${Date.now()}`);
-          return getOfflineRecognitionResult(fallbackHash.toString());
+          return getOfflineRecognitionResult(fallbackHash.toString(), ocrText);
         }
       }
     }

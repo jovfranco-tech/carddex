@@ -8,6 +8,7 @@ import {
   HIGH_CONFIDENCE_THRESHOLD,
   hashString,
   getOfflineRecognitionResult,
+  scoreOfflineCardMatch,
   OFFLINE_CARD_CATALOG,
   getHammingDistance,
   computeDHash,
@@ -259,6 +260,46 @@ describe('Offline Fallback and Hashing', () => {
     const metapodResult = getOfflineRecognitionResult(noisyMetapodHash);
     expect(metapodResult.card!.id).toBe('sv9-2');
     expect(metapodResult.card!.name).toBe('Metapod');
+  });
+
+  it('scoreOfflineCardMatch calculates correct scores for card attributes', () => {
+    const charizard = OFFLINE_CARD_CATALOG.find(c => c.id === 'sv3-125')!;
+    expect(charizard).toBeDefined();
+
+    // 1. Exact match of number fraction and name should yield high score
+    const score1 = scoreOfflineCardMatch(charizard, 'Charizard ex 125/197 Obsidian Flames');
+    expect(score1).toBeGreaterThanOrEqual(30);
+
+    // 2. Just the exact card name
+    const score2 = scoreOfflineCardMatch(charizard, 'This is a Charizard ex card');
+    expect(score2).toBe(10);
+
+    // 3. Just a word from the card name (partial match)
+    const scoreNameWord = scoreOfflineCardMatch(charizard, 'This is a Charizard card');
+    expect(scoreNameWord).toBe(3);
+
+    // 4. Just the card number standalone
+    const score3 = scoreOfflineCardMatch(charizard, 'Number 125 here');
+    expect(score3).toBe(8);
+
+    // 5. No matches at all
+    const score4 = scoreOfflineCardMatch(charizard, 'Pikachu 25/150');
+    expect(score4).toBe(0);
+  });
+
+  it('getOfflineRecognitionResult uses hybrid OCR matching to resolve visually ambiguous cards', () => {
+    // Pikachu ex pre-calculated dhash signature is:
+    // '0101010111110000101010101100110000001111000011111111000010101010' (printed total 250 in zsv10pt5)
+    const pikachuDHash = '0101010111110000101010101100110000001111000011111111000010101010';
+
+    // Without OCR, the Pikachu dHash matches Pikachu ex
+    const visualOnlyResult = getOfflineRecognitionResult(pikachuDHash);
+    expect(visualOnlyResult.card!.name).toBe('Pikachu ex');
+
+    // With Mewtwo ex OCR text, it should override visual match to Mewtwo ex
+    const hybridResult = getOfflineRecognitionResult(pikachuDHash, 'Mewtwo ex 50/88');
+    expect(hybridResult.card!.name).toBe('Mewtwo ex');
+    expect(hybridResult.card!.id).toBe('me3-50');
   });
 });
 

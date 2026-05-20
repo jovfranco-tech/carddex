@@ -62,6 +62,47 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
+          },
+          {
+            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/npm\/tesseract\.js.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tesseract-cdn-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/tessdata\.projectnaptha\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tesseract-languages-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/[a-z0-9]+\.supabase\.co\/rest\/v1\/collections.*/i,
+            handler: 'NetworkOnly',
+            method: 'PATCH',
+            options: {
+              backgroundSync: {
+                name: 'supabase-collection-sync-queue',
+                options: {
+                  maxRetentionTime: 24 * 60, // 24 hours
+                }
+              }
+            }
           }
         ]
       }
