@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createRateLimiter } from './_rateLimiter';
+import { createRateLimiter } from './_rateLimiter.js';
 
 const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 

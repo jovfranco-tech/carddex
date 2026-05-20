@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createRateLimiter } from './_rateLimiter';
+import { createRateLimiter } from './_rateLimiter.js';
 
 // Custom card generation is expensive (GPT + DALL-E): 5 req/min
 const limiter = createRateLimiter({ maxRequests: 5, windowMs: 60_000 });
