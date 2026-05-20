@@ -61,6 +61,12 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
+    proxy: {
+      '/api': {
+        target: 'https://carddex-coral.vercel.app',
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     environment: 'node',

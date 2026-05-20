@@ -30,6 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
+        response_format: { type: 'json_object' },
         messages: [
           {
             role: 'system',
@@ -61,8 +62,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await response.json();
     const content = data.choices[0].message.content.trim();
     
-    // Si viene con formato markdown (```json ... ```), lo limpiamos
-    const cleanJson = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    // Extraer el bloque JSON usando una expresión regular robusta
+    let cleanJson = content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanJson = jsonMatch[0];
+    }
     const parsed = JSON.parse(cleanJson);
 
     return res.status(200).json(parsed);
