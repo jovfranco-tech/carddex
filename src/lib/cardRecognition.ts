@@ -1578,20 +1578,22 @@ export async function recognizeCardFromImage(
           reader.onerror = error => reject(error);
         });
 
-        // 1.5. Calculate hash & check Cache
+        // 1.5. Calculate hash & check Cache (combining hash and active languageHint)
         imageHash = hashString(base64);
+        const langKey = opts.languageHint || 'AUTO';
+        const cacheIndex = `${imageHash}:${langKey}`;
         const localCache = getOcrCache();
         let ocrData: any;
 
-        if (localCache[imageHash]) {
-          console.log('[OCR Cache] Hit for image hash:', imageHash);
-          ocrData = localCache[imageHash].data;
+        if (localCache[cacheIndex]) {
+          console.log('[OCR Cache] Hit for image cache index:', cacheIndex);
+          ocrData = localCache[cacheIndex].data;
           
           // Refresh access timestamp (LRU update)
-          localCache[imageHash].timestamp = Date.now();
+          localCache[cacheIndex].timestamp = Date.now();
           setOcrCache(localCache);
         } else {
-          console.log('[OCR Cache] Miss for image hash:', imageHash);
+          console.log('[OCR Cache] Miss for image cache index:', cacheIndex);
           // 2. Send to Vercel Serverless Function
           const ocrRes = await fetch('/api/recognize', {
             method: 'POST',
@@ -1606,7 +1608,7 @@ export async function recognizeCardFromImage(
 
           ocrData = await ocrRes.json();
           if (ocrData.cardName) {
-            saveToOcrCache(imageHash, ocrData);
+            saveToOcrCache(cacheIndex, ocrData);
           }
         }
 

@@ -1,18 +1,72 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from '@/components/AppShell';
 import HomeScreen from '@/screens/HomeScreen';
-import ScanScreen from '@/screens/ScanScreen';
-import DetailScreen from '@/screens/DetailScreen';
-import LibraryScreen from '@/screens/LibraryScreen';
-import SetsScreen from '@/screens/SetsScreen';
-import ProfileScreen from '@/screens/ProfileScreen';
-import DecksScreen from '@/screens/DecksScreen';
-import DeckDetailScreen from '@/screens/DeckDetailScreen';
-import DeckShareScreen from '@/screens/DeckShareScreen';
-import PublicProfileScreen from '@/screens/PublicProfileScreen';
 import { ROUTES } from './routes';
 import { AuthProvider } from '@/lib/authContext';
+
+// Dynamic lazy imports for non-critical screens to reduce initial bundle chunk size
+const ScanScreen = lazy(() => import('@/screens/ScanScreen'));
+const DetailScreen = lazy(() => import('@/screens/DetailScreen'));
+const LibraryScreen = lazy(() => import('@/screens/LibraryScreen'));
+const SetsScreen = lazy(() => import('@/screens/SetsScreen'));
+const ProfileScreen = lazy(() => import('@/screens/ProfileScreen'));
+const DecksScreen = lazy(() => import('@/screens/DecksScreen'));
+const DeckDetailScreen = lazy(() => import('@/screens/DeckDetailScreen'));
+const DeckShareScreen = lazy(() => import('@/screens/DeckShareScreen'));
+const PublicProfileScreen = lazy(() => import('@/screens/PublicProfileScreen'));
+
+/**
+ * stand-alone, glassmorphic loading spinner with inline keyframes styling
+ */
+function ScreenLoader() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '75vh',
+        background: 'transparent',
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          border: '3px solid rgba(255, 255, 255, 0.08)',
+          borderTopColor: 'var(--accent)',
+          animation: 'spinScreenLoader 1s linear infinite',
+          marginBottom: 16,
+          boxShadow: '0 0 12px rgba(123, 90, 217, 0.2)',
+        }}
+      />
+      <div
+        style={{
+          fontSize: 12.5,
+          color: 'var(--muted)',
+          fontWeight: 700,
+          letterSpacing: -0.2,
+          animation: 'pulseScreenText 1.5s ease-in-out infinite',
+        }}
+      >
+        Cargando sección…
+      </div>
+      <style>{`
+        @keyframes spinScreenLoader {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulseScreenText {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 /**
  * Top-level error boundary. Catches render errors so the whole app doesn't go
@@ -117,19 +171,21 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <AppShell>
-            <Routes>
-              <Route path={ROUTES.home} element={<HomeScreen />} />
-              <Route path={ROUTES.scan} element={<ScanScreen />} />
-              <Route path={ROUTES.cardDetailPattern} element={<DetailScreen />} />
-              <Route path={ROUTES.library} element={<LibraryScreen />} />
-              <Route path={ROUTES.sets} element={<SetsScreen />} />
-              <Route path={ROUTES.profile} element={<ProfileScreen />} />
-              <Route path={ROUTES.decks} element={<DecksScreen />} />
-              <Route path={ROUTES.deckDetailPattern} element={<DeckDetailScreen />} />
-              <Route path={ROUTES.deckSharePattern} element={<DeckShareScreen />} />
-              <Route path={ROUTES.publicProfilePattern} element={<PublicProfileScreen />} />
-              <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
-            </Routes>
+            <Suspense fallback={<ScreenLoader />}>
+              <Routes>
+                <Route path={ROUTES.home} element={<HomeScreen />} />
+                <Route path={ROUTES.scan} element={<ScanScreen />} />
+                <Route path={ROUTES.cardDetailPattern} element={<DetailScreen />} />
+                <Route path={ROUTES.library} element={<LibraryScreen />} />
+                <Route path={ROUTES.sets} element={<SetsScreen />} />
+                <Route path={ROUTES.profile} element={<ProfileScreen />} />
+                <Route path={ROUTES.decks} element={<DecksScreen />} />
+                <Route path={ROUTES.deckDetailPattern} element={<DeckDetailScreen />} />
+                <Route path={ROUTES.deckSharePattern} element={<DeckShareScreen />} />
+                <Route path={ROUTES.publicProfilePattern} element={<PublicProfileScreen />} />
+                <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
+              </Routes>
+            </Suspense>
           </AppShell>
         </BrowserRouter>
       </AuthProvider>
