@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     || req.socket?.remoteAddress
     || 'unknown';
 
-  if (!limiter.check(ip)) {
+  if (!(await limiter.check(ip))) {
     return res.status(429).json({
       error: 'Demasiadas búsquedas. Espera un momento antes de continuar.',
       retryAfter: limiter.retryAfter(ip),

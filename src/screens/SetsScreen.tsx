@@ -11,6 +11,7 @@ import { formatDateShort, stringHue } from '@/lib/formatters';
 import type { CardSet, PokemonCard } from '@/types/pokemon';
 import { saveCardMeta, removeCard } from '@/lib/collectionStorage';
 import { triggerHaptic } from '@/lib/haptic';
+import { Virtuoso } from 'react-virtuoso';
 
 interface SetWithCounts {
   set: CardSet;
@@ -333,29 +334,22 @@ function SetChecklist({
   }
 
   return (
-    <div
-      style={{
-        marginTop: 12,
-        maxHeight: 280,
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        paddingRight: 4,
-      }}
-    >
-      {cards.map((card) => {
+    <Virtuoso
+      style={{ height: 280, marginTop: 12 }}
+      data={cards}
+      itemContent={(index, card) => {
         const isOwned = Boolean(collection.cards[card.id]?.owned);
         return (
-          <CardChecklistItem
-            key={card.id}
-            card={card}
-            isOwned={isOwned}
-            onToggle={() => handleToggle(card, isOwned)}
-          />
+          <div style={{ paddingBottom: 6, paddingRight: 4 }}>
+            <CardChecklistItem
+              card={card}
+              isOwned={isOwned}
+              onToggle={() => handleToggle(card, isOwned)}
+            />
+          </div>
         );
-      })}
-    </div>
+      }}
+    />
   );
 }
 

@@ -1,11 +1,6 @@
 /**
- * Simple in-memory IP-based rate limiter for Vercel Serverless Functions.
- * Each endpoint maintains its own Map so limits are per-function.
- *
- * Usage:
- *   const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
- *   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
- *   if (!limiter.check(ip)) return res.status(429).json({ error: 'Too many requests' });
+ * Hybrid IP-based rate limiter for Vercel Serverless Functions.
+ * Uses global persistent Redis/KV if available, otherwise falls back to local in-memory.
  */
 
 interface RateLimiterOptions {
@@ -23,11 +18,42 @@ interface LimiterEntry {
 export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimiterOptions) {
   const store = new Map<string, LimiterEntry>();
 
+  const isRedisAvailable = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+
   return {
     /**
      * Returns true if the request is allowed, false if it should be rate-limited.
      */
-    check(ip: string): boolean {
+    async check(ip: string): Promise<boolean> {
+      if (isRedisAvailable) {
+        try {
+          const url = process.env.KV_REST_API_URL;
+          const token = process.env.KV_REST_API_TOKEN;
+          const key = `rate_limit:${ip}`;
+          const windowSec = Math.ceil(windowMs / 1000);
+
+          // Increment count in Redis via REST API
+          const incrRes = await fetch(`${url}/incr/${key}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!incrRes.ok) throw new Error('Redis INCR failed');
+          const { result } = await incrRes.json();
+          const count = Number(result);
+
+          if (count === 1) {
+            // Set expiration for new keys
+            await fetch(`${url}/expire/${key}/${windowSec}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
+
+          return count <= maxRequests;
+        } catch (e) {
+          console.warn('Vercel KV/Redis rate limiter failed, falling back to memory:', e);
+        }
+      }
+
+      // Memory fallback
       const now = Date.now();
       const entry = store.get(ip);
 
@@ -44,11 +70,11 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
       return true;
     },
 
-    /** Returns seconds until the window resets for this IP */
+    /** Returns seconds until the window resets for this IP (Memory fallback only) */
     retryAfter(ip: string): number {
       const entry = store.get(ip);
       if (!entry) return 0;
-      return Math.ceil((entry.resetAt - Date.now()) / 1000);
+      return Math.max(0, Math.ceil((entry.resetAt - Date.now()) / 1000));
     },
   };
 }

@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     || req.socket?.remoteAddress
     || 'unknown';
 
-  if (!limiter.check(ip)) {
+  if (!(await limiter.check(ip))) {
     return res.status(429).json({
       error: 'Demasiadas solicitudes. Espera un momento antes de intentarlo de nuevo.',
       retryAfter: limiter.retryAfter(ip),
