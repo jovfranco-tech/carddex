@@ -85,3 +85,52 @@ export async function resizeImageFile(file: File, maxDim = 1000): Promise<File> 
   });
 }
 
+
+/**
+ * Compresses a base64-encoded image (dataURL or raw base64) to a target size
+ * in KB before sending it to an AI endpoint.
+ *
+ * Strategy:
+ * 1. Decode the base64 into an Image
+ * 2. Draw it on a canvas scaled to a max of 1600×1600px
+ * 3. Re-encode as JPEG at quality 0.82
+ * 4. If still above maxKB, re-encode at quality 0.65 (second pass)
+ * Returns the compressed base64 string (data URL).
+ */
+export async function compressForAI(base64: string, maxKB = 500): Promise<string> {
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    const src = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
+    img.onload = () => {
+      const MAX_DIM = 1600;
+      let { width: w, height: h } = img;
+
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) { h = Math.round((h * MAX_DIM) / w); w = MAX_DIM; }
+        else { w = Math.round((w * MAX_DIM) / h); h = MAX_DIM; }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(base64); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const tryEncode = (quality: number) => {
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Rough size check: base64 length * 0.75 ≈ bytes
+        const approxKB = (dataUrl.length * 0.75) / 1024;
+        if (approxKB <= maxKB || quality <= 0.5) {
+          resolve(dataUrl);
+        } else {
+          tryEncode(quality - 0.15);
+        }
+      };
+
+      tryEncode(0.82);
+    };
+    img.onerror = () => resolve(base64);
+    img.src = src;
+  });
+}

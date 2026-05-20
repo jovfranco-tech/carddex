@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from '@/components/AppShell';
@@ -8,6 +8,8 @@ import { AuthProvider } from '@/lib/authContext';
 import { usePredictiveImagePreloader } from '@/lib/imagePreloader';
 import { checkAndGeneratePriceAlerts } from '@/lib/priceMonitor';
 import OnboardingWizard, { isOnboardingComplete } from '@/components/OnboardingWizard';
+import AchievementToast from '@/components/AchievementToast';
+import type { Achievement } from '@/lib/achievements';
 
 // Dynamic lazy imports for non-critical screens to reduce initial bundle chunk size
 const ScanScreen = lazy(() => import('@/screens/ScanScreen'));
@@ -20,6 +22,7 @@ const DeckDetailScreen = lazy(() => import('@/screens/DeckDetailScreen'));
 const DeckShareScreen = lazy(() => import('@/screens/DeckShareScreen'));
 const PublicProfileScreen = lazy(() => import('@/screens/PublicProfileScreen'));
 const CustomCardScreen = lazy(() => import('@/screens/CustomCardScreen'));
+const AchievementsScreen = lazy(() => import('@/screens/AchievementsScreen'));
 
 /**
  * stand-alone, glassmorphic loading spinner with inline keyframes styling
@@ -170,20 +173,40 @@ class RootErrorBoundary extends Component<
   }
 }
 
+/** Global achievement toast bus — components dispatch to this via custom event */
+export function dispatchAchievement(achievement: Achievement) {
+  window.dispatchEvent(new CustomEvent('carddex:achievement', { detail: achievement }));
+}
+
 export default function App() {
   usePredictiveImagePreloader();
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingComplete());
+  const [pendingAchievement, setPendingAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
     // Generate/update price alerts in background when app boots
     checkAndGeneratePriceAlerts();
   }, []);
 
+  const handleAchievementEvent = useCallback((e: Event) => {
+    const achievement = (e as CustomEvent<Achievement>).detail;
+    setPendingAchievement(achievement);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('carddex:achievement', handleAchievementEvent);
+    return () => window.removeEventListener('carddex:achievement', handleAchievementEvent);
+  }, [handleAchievementEvent]);
+
   return (
     <RootErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
           {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
+          <AchievementToast
+            achievement={pendingAchievement}
+            onDismiss={() => setPendingAchievement(null)}
+          />
           <AppShell>
             <Suspense fallback={<ScreenLoader />}>
               <Routes>
@@ -198,6 +221,7 @@ export default function App() {
                 <Route path={ROUTES.deckSharePattern} element={<DeckShareScreen />} />
                 <Route path={ROUTES.publicProfilePattern} element={<PublicProfileScreen />} />
                 <Route path={ROUTES.customCard} element={<CustomCardScreen />} />
+                <Route path={ROUTES.achievements} element={<AchievementsScreen />} />
                 <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
               </Routes>
             </Suspense>

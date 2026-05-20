@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createDeck, updateDeckCards } from '@/lib/deckStorage';
 import { searchCards } from '@/lib/pokemonTcgApi';
 import { triggerHaptic } from '@/lib/haptic';
+import { SparklesIcon } from '@/components/icons';
+import { processAchievementEvent } from '@/lib/achievements';
+import { dispatchAchievement } from '@/app/App';
 
 interface DeckBuilderModalProps {
   isOpen: boolean;
@@ -18,59 +21,99 @@ export default function DeckBuilderModal({
 }: DeckBuilderModalProps) {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [statusText, setStatusText] = useState('');
-  
+  const [phase, setPhase] = useState<'idle' | 'streaming' | 'resolving' | 'saving'>('idle');
+  const [streamedText, setStreamedText] = useState('');
+  const [resolveStatus, setResolveStatus] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    abortRef.current?.abort();
+    onClose();
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
 
     setLoading(true);
+    setPhase('streaming');
+    setStreamedText('');
+    setResolveStatus('');
     triggerHaptic('medium');
-    setStatusText('Consultando al Copiloto de IA...');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      // 1. Fetch AI deck archetype definition
       const res = await fetch('/api/deck-builder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: prompt.trim() }),
+        signal: controller.signal,
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         throw new Error('Error al conectar con la IA de construcción de mazos.');
       }
 
-      const deckSpec = await res.json();
-      setStatusText('IA ha propuesto un arquetipo. Resolviendo cartas oficiales...');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let deckSpec: any = null;
 
-      // 2. Resolve card names to official TCG database IDs
-      const resolvedCardIds: string[] = [];
-      
-      for (const card of deckSpec.cards) {
-        setStatusText(`Buscando: ${card.name} (x${card.quantity})...`);
-        try {
-          const searchRes = await searchCards({ name: `"${card.name}"`, pageSize: 1 });
-          if (searchRes.data && searchRes.data.length > 0) {
-            const foundCard = searchRes.data[0];
-            for (let i = 0; i < card.quantity; i++) {
-              resolvedCardIds.push(foundCard.id);
-            }
-          } else {
-            // Fallback search with loose matching if exact search yielded nothing
-            const looseRes = await searchCards({ name: card.name, pageSize: 1 });
-            if (looseRes.data && looseRes.data.length > 0) {
-              const foundCard = looseRes.data[0];
-              for (let i = 0; i < card.quantity; i++) {
-                resolvedCardIds.push(foundCard.id);
+      // Read the SSE stream
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: token')) continue;
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.token) {
+                // Typewriter: append streamed token to text
+                setStreamedText((prev) => prev + parsed.token);
+              } else if (parsed.name && parsed.cards) {
+                // Final deck spec received from 'done' event
+                deckSpec = parsed;
+              } else if (parsed.error) {
+                throw new Error(parsed.error);
               }
-            } else {
-              console.warn(`Card name could not be resolved: ${card.name}`);
+            } catch {
+              // Skip invalid JSON lines
             }
           }
-        } catch (err) {
-          console.error(`Error resolving card: ${card.name}`, err);
+        }
+
+        if (deckSpec) break;
+      }
+
+      if (!deckSpec) {
+        throw new Error('No se pudo obtener la propuesta del mazo de la IA.');
+      }
+
+      // Phase 2: Resolve card names to official TCG IDs
+      setPhase('resolving');
+      const resolvedCardIds: string[] = [];
+
+      for (const card of deckSpec.cards) {
+        setResolveStatus(`Buscando: ${card.name} (×${card.quantity})…`);
+        try {
+          const searchRes = await searchCards({ name: `"${card.name}"`, pageSize: 1 });
+          const found = searchRes.data?.[0] ?? (await searchCards({ name: card.name, pageSize: 1 })).data?.[0];
+          if (found) {
+            for (let i = 0; i < card.quantity; i++) resolvedCardIds.push(found.id);
+          }
+        } catch {
+          // Card resolution failed — skip silently
         }
       }
 
@@ -78,32 +121,44 @@ export default function DeckBuilderModal({
         throw new Error('No se pudo encontrar ninguna de las cartas propuestas por la IA.');
       }
 
-      setStatusText('Guardando el mazo de 60 cartas en tu colección local...');
-      
-      // 3. Create the deck and fill it
+      // Phase 3: Save deck
+      setPhase('saving');
       const newDeckName = deckSpec.name || 'Mazo IA Personalizado';
       const created = createDeck(newDeckName);
       updateDeckCards(created.id, resolvedCardIds);
 
       triggerHaptic('success');
-      onShowToast(`Mazo "${newDeckName}" creado con ${resolvedCardIds.length} cartas.`);
+
+      // Fire ai_deck_builder achievement
+      const achieved = processAchievementEvent({ type: 'deck_built_with_ai' });
+      achieved.forEach(dispatchAchievement);
+
+      onShowToast(`🏆 Mazo "${newDeckName}" creado con ${resolvedCardIds.length} cartas.`);
       onSuccess(created.id);
       onClose();
     } catch (err: any) {
-      console.error(err);
-      onShowToast(err.message || 'Error construyendo el mazo.');
+      if (err.name !== 'AbortError') {
+        onShowToast(err.message || 'Error construyendo el mazo.');
+      }
     } finally {
       setLoading(false);
-      setStatusText('');
+      setPhase('idle');
+      setStreamedText('');
+      setResolveStatus('');
     }
   };
+
+  const phaseLabel =
+    phase === 'streaming' ? '✦ IA diseñando arquetipo…' :
+    phase === 'resolving' ? resolveStatus || 'Resolviendo cartas oficiales…' :
+    phase === 'saving' ? 'Guardando mazo en tu colección…' : '';
 
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.6)',
+        background: 'rgba(0,0,0,0.65)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         display: 'flex',
@@ -116,7 +171,7 @@ export default function DeckBuilderModal({
       <div
         style={{
           width: '100%',
-          maxWidth: 420,
+          maxWidth: 460,
           background: 'var(--surface)',
           borderRadius: 24,
           padding: 24,
@@ -125,12 +180,16 @@ export default function DeckBuilderModal({
           animation: 'scaleInDeckBuilder 250ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
-            AI Deck Builder Copilot
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: 'var(--accent)' }}><SparklesIcon size={18} /></span>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
+              AI Deck Builder Copilot
+            </h2>
+          </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={loading}
             style={{
               background: 'transparent',
@@ -139,6 +198,7 @@ export default function DeckBuilderModal({
               fontSize: 20,
               cursor: 'pointer',
               padding: 4,
+              opacity: loading ? 0.4 : 1,
             }}
           >
             ✕
@@ -146,29 +206,115 @@ export default function DeckBuilderModal({
         </div>
 
         {loading ? (
-          <div style={{ padding: '30px 10px', textAlign: 'center' }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                border: '3px solid var(--border)',
-                borderTopColor: 'var(--accent)',
-                animation: 'spinDeckBuilder 1s linear infinite',
-                margin: '0 auto 16px',
-              }}
-            />
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
-              {statusText}
+          <div style={{ padding: '20px 8px' }}>
+            {/* Phase label */}
+            <div style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--accent)',
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+              marginBottom: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: 'var(--accent)',
+                  animation: 'pulseDot 1s ease-in-out infinite',
+                }}
+              />
+              {phaseLabel}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Esto puede tardar unos segundos mientras resolvemos imágenes y cartas oficiales de la API.
+
+            {/* Streaming typewriter text box */}
+            {phase === 'streaming' && streamedText && (
+              <div
+                style={{
+                  background: 'var(--bg)',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  fontSize: 12.5,
+                  color: 'var(--ink)',
+                  fontFamily: 'monospace',
+                  lineHeight: 1.6,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  marginBottom: 16,
+                  border: '1px solid var(--border)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {streamedText}
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 2,
+                    height: 14,
+                    background: 'var(--accent)',
+                    marginLeft: 2,
+                    animation: 'blinkCursor 0.7s step-end infinite',
+                    verticalAlign: 'text-bottom',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Progress spinner for resolve/save phases */}
+            {(phase === 'resolving' || phase === 'saving') && (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    border: '3px solid var(--border)',
+                    borderTopColor: 'var(--accent)',
+                    animation: 'spinDeckBuilder 1s linear infinite',
+                    margin: '0 auto 12px',
+                  }}
+                />
+                <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.4 }}>
+                  {resolveStatus || 'Procesando…'}
+                </div>
+              </div>
+            )}
+
+            {/* Steps indicator */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              {[
+                { key: 'streaming', label: '1. IA diseña' },
+                { key: 'resolving', label: '2. Resuelve cartas' },
+                { key: 'saving',    label: '3. Guarda mazo' },
+              ].map((s) => (
+                <div
+                  key={s.key}
+                  style={{
+                    flex: 1,
+                    height: 4,
+                    borderRadius: 99,
+                    background: phase === s.key
+                      ? 'var(--accent)'
+                      : (phase === 'resolving' && s.key === 'streaming') || (phase === 'saving' && s.key !== 'saving')
+                        ? 'rgba(123,90,217,0.35)'
+                        : 'var(--border)',
+                    transition: 'background 400ms ease',
+                  }}
+                  title={s.label}
+                />
+              ))}
             </div>
           </div>
         ) : (
           <form onSubmit={handleGenerate}>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>
-              Escribe qué tipo de mazo te gustaría armar. La IA diseñará la lista de 60 cartas perfecta con sinergias avanzadas.
+              Escribe qué tipo de mazo te gustaría armar. La IA diseñará la lista de 60 cartas perfecta con sinergias avanzadas y la verás en tiempo real.
             </p>
             <textarea
               required
@@ -195,22 +341,25 @@ export default function DeckBuilderModal({
               type="submit"
               style={{
                 width: '100%',
-                background: 'var(--accent)',
+                background: 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
                 color: '#fff',
                 border: 'none',
                 padding: 14,
                 borderRadius: 14,
-                fontWeight: 700,
+                fontWeight: 800,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
-                boxShadow: '0 4px 16px rgba(123, 90, 217, 0.25)',
+                boxShadow: '0 4px 16px rgba(123, 90, 217, 0.3)',
+                fontSize: 15,
+                letterSpacing: -0.2,
               }}
             >
-              ✦ Generar Mazo con IA
+              <SparklesIcon size={17} />
+              Generar Mazo con IA
             </button>
           </form>
         )}
@@ -224,6 +373,14 @@ export default function DeckBuilderModal({
         @keyframes spinDeckBuilder {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes blinkCursor {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        @keyframes pulseDot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.6; }
         }
       `}</style>
     </div>

@@ -15,6 +15,7 @@ export const ROUTES = {
   publicProfile: (id: string) => `/u/${encodeURIComponent(id)}`,
   publicProfilePattern: '/u/:userId',
   customCard: '/custom-card',
+  achievements: '/achievements',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

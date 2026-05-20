@@ -178,5 +178,28 @@ export const ArrowLeftIcon: SvgIcon = makeIcon(
 );
 
 export const SparklesIcon: SvgIcon = makeIcon(
-  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
+);
+
+export const TrophyIcon: SvgIcon = makeIcon(
+  <>
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+  </>,
+);
+
+export const StarFilledIcon: SvgIcon = makeIcon(
+  <path
+    d="m12 3 2.9 6 6.6.9-4.8 4.7 1.1 6.5L12 18l-5.8 3.1L7.3 14.6 2.5 9.9l6.6-.9L12 3z"
+    fill="currentColor"
+    stroke="none"
+  />,
+);
+
+export const ZapIcon: SvgIcon = makeIcon(
+  <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />,
 );

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Surface from '@/components/Surface';
 import { Toast } from '@/components/Section';
 import {
@@ -26,6 +26,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
 import PasskeyManager from '@/components/PasskeyManager';
 import { requestPushPermission } from '@/lib/priceMonitor';
+import { processAchievementEvent } from '@/lib/achievements';
+import { dispatchAchievement } from '@/app/App';
 import type { PokemonCard } from '@/types/pokemon';
 
 const APP_VERSION = '1.1.0';
@@ -38,6 +40,21 @@ export default function ProfileScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+
+  // Check collection-based achievements on mount
+  useEffect(() => {
+    const collection = getCollection();
+    const ownedCards = Object.values(collection.cards).filter((c) => c.owned);
+    // Detect rare holo or better (we check by card rarity if available in cached data)
+    // For now we proxy with ownedCount thresholds and fire the event
+    const achieved = processAchievementEvent({
+      type: 'collection_updated',
+      ownedCount: ownedCards.length,
+      hasRareHolo: false, // full rarity check done in HomeScreen with card data
+      fireCardCount: 0,   // same
+    });
+    achieved.forEach(dispatchAchievement);
+  }, []);
   const [mxnEnabled, setMxnEnabled] = useState(prefersMXN());
   const { user } = useAuth();
   const [authEmail, setAuthEmail] = useState('');

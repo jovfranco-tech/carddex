@@ -24,6 +24,9 @@ import type { PokemonCard } from '@/types/pokemon';
 import { saveCardMeta } from '@/lib/collectionStorage';
 import { triggerHaptic } from '@/lib/haptic';
 import EdgeDetectorCanvas from '@/components/EdgeDetectorCanvas';
+import { compressForAI } from '@/lib/imageOptimization';
+import { processAchievementEvent } from '@/lib/achievements';
+import { dispatchAchievement } from '@/app/App';
 import GradingDetectedPanel from './scan/GradingDetectedPanel';
 import MulticardDetectedPanel from './scan/MulticardDetectedPanel';
 import LowConfidencePanel from './scan/LowConfidencePanel';
@@ -233,6 +236,10 @@ export default function ScanScreen() {
       }
     });
 
+    // Fire achievement event for scanning
+    const newAchievements = processAchievementEvent({ type: 'scan_saved' });
+    newAchievements.forEach(dispatchAchievement);
+
     // Show beautiful success Toast
     setBatchToastCount(scannedBatch.length);
     setShowBatchSaveToast(true);
@@ -382,7 +389,13 @@ export default function ScanScreen() {
       if (isGradingMode) {
         let payloadGrading;
         if (input.type === 'file') {
-          const base64 = await fileToBase64(input.file);
+          const rawBase64 = await fileToBase64(input.file);
+          const originalKB = Math.round((rawBase64.length * 0.75) / 1024);
+          // Compress client-side before upload: typically 4MB → 300-500KB
+          const base64 = await compressForAI(rawBase64, 500);
+          const compressedKB = Math.round((base64.length * 0.75) / 1024);
+          // eslint-disable-next-line no-console
+          console.info(`[AI Grading] Image compressed: ${originalKB}KB → ${compressedKB}KB`);
           const res = await fetch('/api/grade-card', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

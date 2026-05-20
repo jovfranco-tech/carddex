@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import { ArrowLeftIcon, SparklesIcon, TrashIcon } from '@/components/icons';
 import { triggerHaptic } from '@/lib/haptic';
+import { processAchievementEvent } from '@/lib/achievements';
+import { dispatchAchievement } from '@/app/App';
 
 interface CustomCard {
   id: string;
@@ -158,6 +160,10 @@ export default function CustomCardScreen() {
       localStorage.setItem('carddex.customCards', JSON.stringify(updatedList));
 
       triggerHaptic('success');
+
+      // Fire achievement event for custom card creation
+      const achieved = processAchievementEvent({ type: 'custom_card_created' });
+      achieved.forEach(dispatchAchievement);
     } catch (err) {
       console.error(err);
       setError('No se pudo conectar con el motor de IA. Inténtalo de nuevo.');
