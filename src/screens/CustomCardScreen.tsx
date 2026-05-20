@@ -208,6 +208,126 @@ export default function CustomCardScreen() {
     setTilt({ rx: 0, ry: 0, bx: 50, by: 50 });
   };
 
+  const handleExportPng = async () => {
+    if (!currentCard) return;
+    triggerHaptic('medium');
+
+    try {
+      // Build a 400x560 canvas (standard card ratio 1:1.4)
+      const W = 400;
+      const H = 560;
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const typeColor = ELEMENT_COLORS[currentCard.type] || '#A1A8B8';
+
+      // Background
+      ctx.fillStyle = '#15171e';
+      ctx.roundRect(0, 0, W, H, 18);
+      ctx.fill();
+
+      // Border
+      ctx.strokeStyle = typeColor;
+      ctx.lineWidth = 14;
+      ctx.roundRect(0, 0, W, H, 18);
+      ctx.stroke();
+
+      // Load artwork image
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve(); // Continue even if image fails
+        img.src = currentCard.imageUrl;
+      });
+
+      // Artwork area
+      const artY = 64;
+      const artH = 200;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(20, artY, W - 40, artH, 8);
+      ctx.clip();
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, 20, artY, W - 40, artH);
+      } else {
+        ctx.fillStyle = '#090a0f';
+        ctx.fillRect(20, artY, W - 40, artH);
+      }
+      ctx.restore();
+
+      // Name (top left)
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.fillText(currentCard.name, 20, 50);
+
+      // HP (top right)
+      ctx.fillStyle = '#FF3B30';
+      ctx.font = 'bold 18px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${currentCard.hp} HP`, W - 20, 50);
+      ctx.textAlign = 'left';
+
+      // Attacks section
+      const atkY = artY + artH + 24;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = 'bold 15px system-ui, sans-serif';
+      ctx.fillText(currentCard.attack1.name, 20, atkY);
+      ctx.textAlign = 'right';
+      ctx.fillText(currentCard.attack1.damage, W - 20, atkY);
+      ctx.textAlign = 'left';
+
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText(currentCard.attack1.effect?.slice(0, 60) || '', 20, atkY + 18);
+
+      // Divider
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(20, atkY + 32);
+      ctx.lineTo(W - 20, atkY + 32);
+      ctx.stroke();
+
+      const atk2Y = atkY + 52;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = 'bold 15px system-ui, sans-serif';
+      ctx.fillText(currentCard.attack2.name, 20, atk2Y);
+      ctx.textAlign = 'right';
+      ctx.fillText(currentCard.attack2.damage, W - 20, atk2Y);
+      ctx.textAlign = 'left';
+
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText(currentCard.attack2.effect?.slice(0, 60) || '', 20, atk2Y + 18);
+
+      // Description / flavor text
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.font = 'italic 11px system-ui, sans-serif';
+      const descY = H - 28;
+      ctx.fillText(`"${currentCard.description.slice(0, 70)}..."`, 20, descY, W - 40);
+
+      // Watermark
+      ctx.fillStyle = 'rgba(123,90,217,0.6)';
+      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('✦ Carddex AI', W - 20, H - 12);
+      ctx.textAlign = 'left';
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.download = `${currentCard.name.replace(/\s+/g, '_')}_carddex.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      triggerHaptic('success');
+    } catch (err) {
+      console.error('Error exporting PNG:', err);
+    }
+  };
+
   return (
     <div style={{ paddingBottom: 120 }}>
       {/* Header bar */}
@@ -469,6 +589,30 @@ export default function CustomCardScreen() {
               <span style={{ fontSize: 12, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 💡 Tip: Mueve el mouse sobre la carta para ver el efecto holográfico 3D
               </span>
+              {/* Download as PNG button */}
+              <button
+                onClick={handleExportPng}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '0.5px solid var(--border)',
+                  borderRadius: 12,
+                  padding: '9px 18px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  marginTop: 2,
+                  transition: 'background 150ms ease',
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              >
+                ⬇ Descargar como PNG
+              </button>
             </>
           ) : (
             <div

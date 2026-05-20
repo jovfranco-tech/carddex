@@ -1,8 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createRateLimiter } from './_rateLimiter';
+
+const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+    || req.socket?.remoteAddress
+    || 'unknown';
+
+  if (!limiter.check(ip)) {
+    return res.status(429).json({
+      error: 'Demasiadas solicitudes. Espera un momento antes de construir otro mazo.',
+      retryAfter: limiter.retryAfter(ip),
+    });
   }
 
   try {
@@ -10,6 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!prompt) {
       return res.status(400).json({ error: 'El prompt es requerido' });
     }
+
+    const safePrompt = String(prompt).slice(0, 500);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -46,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
+          { role: 'user', content: safePrompt }
         ],
         max_tokens: 1000,
         temperature: 0.7,
@@ -62,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await response.json();
     const resultText = data.choices[0].message.content.trim();
-    
+
     let parsedResult;
     try {
       parsedResult = JSON.parse(resultText);

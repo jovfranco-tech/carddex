@@ -1,14 +1,28 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createRateLimiter } from './_rateLimiter';
+
+const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+    || req.socket?.remoteAddress
+    || 'unknown';
+
+  if (!limiter.check(ip)) {
+    return res.status(429).json({
+      error: 'Demasiadas solicitudes. Espera un momento para refrescar las sinergias.',
+      retryAfter: limiter.retryAfter(ip),
+    });
+  }
+
   try {
     const { cards } = req.body;
     const cardListString = Array.isArray(cards) && cards.length > 0
-      ? cards.slice(0, 15).join(', ')
+      ? cards.slice(0, 15).map((c: unknown) => String(c).slice(0, 80)).join(', ')
       : 'ninguna (colección vacía)';
 
     const apiKey = process.env.OPENAI_API_KEY;

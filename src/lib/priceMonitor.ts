@@ -67,6 +67,42 @@ export function updateAppBadge(alerts: PriceAlert[]): void {
 }
 
 /**
+ * Requests push notification permission from the user.
+ * Should be called from a user gesture (e.g., button click in ProfileScreen).
+ */
+export async function requestPushPermission(): Promise<NotificationPermission> {
+  if (typeof Notification === 'undefined') return 'denied';
+  if (Notification.permission === 'granted') return 'granted';
+  if (Notification.permission === 'denied') return 'denied';
+  return Notification.requestPermission();
+}
+
+/**
+ * Fires a native PWA push notification for a significant price change.
+ * Only runs when Notification permission is already granted.
+ */
+function sendPriceNotification(alert: PriceAlert): void {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission !== 'granted') return;
+
+  const direction = alert.changePercent > 0 ? '📈' : '📉';
+  const sign = alert.changePercent > 0 ? '+' : '';
+  const title = `${direction} ${alert.cardName} cambió de precio`;
+  const body = `${sign}${alert.changePercent.toFixed(1)}% — de $${alert.oldPrice.toFixed(2)} a $${alert.newPrice.toFixed(2)}`;
+
+  try {
+    new Notification(title, {
+      body,
+      icon: alert.cardImage || '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: `price-alert-${alert.cardId}`,
+    });
+  } catch (err) {
+    console.warn('Push notification failed:', err);
+  }
+}
+
+/**
  * Generates simulated price fluctuations for collection or wishlist items.
  * If collection is empty, generates mockup alerts for iconic cards.
  */
@@ -176,10 +212,18 @@ export async function checkAndGeneratePriceAlerts(force = false): Promise<PriceA
 
   // Cap at 20 alerts maximum
   const finalAlerts = newAlerts.slice(0, 20);
-  
+
   localStorage.setItem(STORAGE_KEYS.alerts, JSON.stringify(finalAlerts));
   updateAppBadge(finalAlerts);
   notifyAlerts();
+
+  // Fire push notifications for new alerts with significant price moves (>20%)
+  const prevIds = new Set(currentAlerts.map((a) => a.id));
+  for (const alert of finalAlerts) {
+    if (!prevIds.has(alert.id) && Math.abs(alert.changePercent) >= 20) {
+      sendPriceNotification(alert);
+    }
+  }
 
   return finalAlerts;
 }

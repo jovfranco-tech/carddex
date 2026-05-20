@@ -1,14 +1,36 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createRateLimiter } from './_rateLimiter';
+
+const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
+
+// Max image size: 5MB in base64 chars (~6.67M chars for 5MB binary)
+const MAX_IMAGE_CHARS = 6_700_000;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+    || req.socket?.remoteAddress
+    || 'unknown';
+
+  if (!limiter.check(ip)) {
+    return res.status(429).json({
+      error: 'Demasiadas solicitudes. Espera un momento antes de intentarlo de nuevo.',
+      retryAfter: limiter.retryAfter(ip),
+    });
+  }
+
   try {
     const { image } = req.body;
     if (!image) {
       return res.status(400).json({ error: 'No image provided' });
+    }
+
+    // Validate image size to avoid runaway token costs
+    if (typeof image === 'string' && image.length > MAX_IMAGE_CHARS) {
+      return res.status(413).json({ error: 'La imagen es demasiado grande (máximo 5 MB).' });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -90,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await response.json();
     const content = data.choices[0].message.content.trim();
-    
+
     let parsed;
     try {
       parsed = JSON.parse(content);

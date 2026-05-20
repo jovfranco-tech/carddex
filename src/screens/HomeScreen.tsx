@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { triggerHaptic } from '@/lib/haptic';
 import Surface from '@/components/Surface';
@@ -44,6 +44,7 @@ import {
 import { formatInt } from '@/lib/formatters';
 import type { PokemonCard } from '@/types/pokemon';
 import AISynergyFeed from '@/components/AISynergyFeed';
+import OnboardingWizard, { isOnboardingComplete } from '@/components/OnboardingWizard';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ export default function HomeScreen() {
   const summary = useCollectionSummary();
   const [query, setQuery] = useState('');
   const [rarityFilter, setRarityFilter] = useState('all');
+  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingComplete());
   const debouncedQuery = useDebounced(query, 320);
 
   const collectionIds = useMemo(
@@ -66,6 +68,39 @@ export default function HomeScreen() {
     (signal) => getCardsByIds(collectionIds.slice(0, 60), { signal }),
     [collectionIds.join(',')],
   );
+
+  // Pull-to-refresh state
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const PULL_THRESHOLD = 60;
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const el = e.currentTarget as HTMLElement;
+    if (el.scrollTop > 0) return; // Only trigger when at the top
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) {
+      setPullY(Math.min(delta * 0.4, PULL_THRESHOLD)); // Rubber-band dampening
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (pullY >= PULL_THRESHOLD) {
+      setIsRefreshing(true);
+      setTimeout(() => {
+        owned.reload();
+        localStorage.removeItem('carddex.cachedSynergies'); // Bust synergy cache
+        setIsRefreshing(false);
+        setPullY(0);
+      }, 900);
+    } else {
+      setPullY(0);
+    }
+  }, [pullY, owned]);
 
   // Search results — only if the user types something.
   const trimmed = debouncedQuery.trim();
@@ -180,8 +215,44 @@ export default function HomeScreen() {
   /* Render                                                                 */
   /* --------------------------------------------------------------------- */
 
+  if (showOnboarding) {
+    return <OnboardingWizard onComplete={() => setShowOnboarding(false)} />;
+  }
+
   return (
-    <div style={{ paddingBottom: 'var(--bottom-nav-clearance)' }}>
+    <div
+      style={{ paddingBottom: 'var(--bottom-nav-clearance)', overflowY: 'auto', height: '100%' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullY > 0 || isRefreshing) && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: isRefreshing ? 48 : pullY,
+            overflow: 'hidden',
+            transition: isRefreshing ? 'none' : 'height 120ms ease',
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              border: '2.5px solid rgba(123,90,217,0.2)',
+              borderTopColor: 'var(--accent)',
+              animation: isRefreshing ? 'homePullSpin 0.7s linear infinite' : 'none',
+              transform: isRefreshing ? undefined : `rotate(${(pullY / PULL_THRESHOLD) * 360}deg)`,
+            }}
+          />
+        </div>
+      )}
+      <style>{`@keyframes homePullSpin { to { transform: rotate(360deg); } }`}</style>
+
       {/* Top Logo */}
       <div style={{ paddingTop: 54, display: 'flex', justifyContent: 'center' }}>
         <img

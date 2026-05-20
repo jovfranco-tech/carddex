@@ -1,8 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createRateLimiter } from './_rateLimiter';
+
+// Custom card generation is expensive (GPT + DALL-E): 5 req/min
+const limiter = createRateLimiter({ maxRequests: 5, windowMs: 60_000 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+    || req.socket?.remoteAddress
+    || 'unknown';
+
+  if (!limiter.check(ip)) {
+    return res.status(429).json({
+      error: 'Demasiadas solicitudes. Espera un momento antes de crear otra carta.',
+      retryAfter: limiter.retryAfter(ip),
+    });
   }
 
   try {
@@ -10,6 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!name || !type) {
       return res.status(400).json({ error: 'Missing name or type' });
     }
+
+    // Sanitize inputs
+    const safeName = String(name).slice(0, 60);
+    const safeType = String(type).slice(0, 30);
+    const safeStyle = String(style || 'Full Art').slice(0, 40);
+    const safeArtPrompt = String(artPrompt || '').slice(0, 300);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -19,9 +40,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 1. Generate Card Stats using GPT
     const statsInstruction = `Eres un diseñador experto del juego de cartas coleccionables Pokémon TCG.
     Crea estadísticas balanceadas y divertidas para una carta de Pokémon personalizada con las siguientes especificaciones:
-    - Nombre del Pokémon: "${name}"
-    - Tipo: "${type}"
-    - Estilo/Estética: "${style || 'Full Art'}"
+    - Nombre del Pokémon: "${safeName}"
+    - Tipo: "${safeType}"
+    - Estilo/Estética: "${safeStyle}"
 
     Devuelve un objeto JSON con el siguiente formato exacto:
     {
@@ -71,8 +92,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stats = JSON.parse(gptText);
 
     // 2. Generate Artwork using DALL-E
-    const imagePrompt = `Pokémon card illustration of ${name}, a ${type} type Pokémon, in ${style || 'Illustration Rare'} style. ${artPrompt || 'Vibrant colors, digital art, high quality, epic pokemon scene'}. Isolated artwork suitable for a card frame, high contrast, clean graphics.`;
-    
+    const imagePrompt = `Pokémon card illustration of ${safeName}, a ${safeType} type Pokémon, in ${safeStyle} style. ${safeArtPrompt || 'Vibrant colors, digital art, high quality, epic pokemon scene'}. Isolated artwork suitable for a card frame, high contrast, clean graphics.`;
+
     let imageUrl = '';
     try {
       const dallResponse = await fetch('https://api.openai.com/v1/images/generations', {
@@ -82,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'dall-e-2', // Usamos DALL-E 2 para mayor rapidez y optimización de costes
+          model: 'dall-e-2',
           prompt: imagePrompt,
           n: 1,
           size: '512x512',
@@ -101,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Fallback image if DALL-E failed
     if (!imageUrl) {
-      imageUrl = `https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=512&q=80`; // Cool anime artwork
+      imageUrl = `https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=512&q=80`;
     }
 
     return res.status(200).json({

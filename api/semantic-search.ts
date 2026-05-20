@@ -1,8 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createRateLimiter } from './_rateLimiter';
+
+const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()
+    || req.socket?.remoteAddress
+    || 'unknown';
+
+  if (!limiter.check(ip)) {
+    return res.status(429).json({
+      error: 'Demasiadas búsquedas. Espera un momento antes de continuar.',
+      retryAfter: limiter.retryAfter(ip),
+    });
   }
 
   try {
@@ -10,6 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!query) {
       return res.status(400).json({ error: 'El query es requerido' });
     }
+
+    const safeQuery = String(query).slice(0, 500);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -52,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: query }
+          { role: 'user', content: safeQuery }
         ],
         max_tokens: 300,
         temperature: 0.2,
@@ -68,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await response.json();
     const parsed = JSON.parse(data.choices[0].message.content.trim());
-    
+
     return res.status(200).json(parsed);
   } catch (error) {
     console.error('Semantic Search API Error:', error);

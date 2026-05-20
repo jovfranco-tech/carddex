@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
 import PasskeyManager from '@/components/PasskeyManager';
+import { requestPushPermission } from '@/lib/priceMonitor';
 import type { PokemonCard } from '@/types/pokemon';
 
 const APP_VERSION = '1.1.0';
@@ -677,6 +678,47 @@ export default function ProfileScreen() {
       </div>
 
       {/* About */}
+      <div style={{ padding: '0 14px 14px' }}>
+        <SectionTitle>Notificaciones</SectionTitle>
+        <Surface style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 600, marginBottom: 10 }}>
+            Alertas de precios en tiempo real
+          </div>
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+            Recibe una notificación push cuando alguna carta de tu colección suba o baje más del 20% de precio.
+          </p>
+          <button
+            onClick={async () => {
+              const permission = await requestPushPermission();
+              if (permission === 'granted') {
+                showToast('✅ Notificaciones de precios activadas');
+              } else if (permission === 'denied') {
+                showToast('Notificaciones bloqueadas en la configuración del navegador');
+              } else {
+                showToast('Permiso de notificaciones requerido');
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'linear-gradient(135deg, rgba(123,90,217,0.12), rgba(47,111,224,0.12))',
+              border: '0.5px solid rgba(123,90,217,0.3)',
+              borderRadius: 12,
+              fontSize: 13,
+              fontWeight: 700,
+              color: 'var(--accent)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            🔔 Activar notificaciones de precios
+          </button>
+        </Surface>
+      </div>
+
       <div style={{ padding: '0 14px 14px' }}>
         <SectionTitle>Acerca de</SectionTitle>
         <Surface style={{ padding: 16 }}>

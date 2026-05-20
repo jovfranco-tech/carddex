@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import EmptyState from '@/components/EmptyState';
@@ -6,9 +6,11 @@ import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import { ChevronIcon, BookIcon } from '@/components/icons';
 import { useAsync, useCollection } from '@/lib/hooks';
-import { getSets } from '@/lib/pokemonTcgApi';
+import { getSets, getCardsBySet } from '@/lib/pokemonTcgApi';
 import { formatDateShort, stringHue } from '@/lib/formatters';
-import type { CardSet } from '@/types/pokemon';
+import type { CardSet, PokemonCard } from '@/types/pokemon';
+import { saveCardMeta, removeCard } from '@/lib/collectionStorage';
+import { triggerHaptic } from '@/lib/haptic';
 
 interface SetWithCounts {
   set: CardSet;
@@ -61,6 +63,8 @@ export default function SetsScreen() {
     if (!setsState.data) return 0;
     return setsState.data.reduce((s, set) => s + (set.total ?? set.printedTotal ?? 0), 0);
   }, [setsState.data]);
+
+  const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
 
   return (
     <div style={{ paddingBottom: 110 }}>
@@ -132,7 +136,12 @@ export default function SetsScreen() {
               key={set.id}
               set={set}
               ownedFromSet={ownedFromSet}
-              onClick={() => navigate(`/library?set=${encodeURIComponent(set.id)}`)}
+              isExpanded={expandedSetId === set.id}
+              onToggleExpand={() => {
+                triggerHaptic('light');
+                setExpandedSetId(expandedSetId === set.id ? null : set.id);
+              }}
+              collection={collection}
             />
           ))}
         </div>
@@ -141,15 +150,229 @@ export default function SetsScreen() {
   );
 }
 
+function CardChecklistItem({
+  card,
+  isOwned,
+  onToggle,
+}: {
+  card: PokemonCard;
+  isOwned: boolean;
+  onToggle: () => void;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 10px',
+        borderRadius: 12,
+        background: 'rgba(255, 255, 255, 0.02)',
+        border: '0.5px solid var(--border-soft)',
+        transition: 'background 0.2s',
+      }}
+    >
+      {/* Custom checkbox */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 7,
+          border: isOwned ? 'none' : '1.5px solid var(--muted-3)',
+          background: isOwned
+            ? 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)'
+            : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 'bold',
+          transition: 'all 0.2s',
+        }}
+      >
+        {isOwned && '✓'}
+      </button>
+
+      {/* Card Info and Link */}
+      <div
+        onClick={() => navigate(`/card/${encodeURIComponent(card.id)}`)}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          cursor: 'pointer',
+          minWidth: 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--muted)',
+            fontFamily: 'monospace',
+            minWidth: 28,
+          }}
+        >
+          #{card.number}
+        </span>
+        
+        {/* Tiny thumbnail */}
+        {card.images?.small && (
+          <img
+            src={card.images.small}
+            alt=""
+            style={{
+              width: 24,
+              height: 33,
+              objectFit: 'contain',
+              borderRadius: 3,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            }}
+            loading="lazy"
+          />
+        )}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: isOwned ? 'var(--ink)' : 'var(--ink-2)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {card.name}
+          </div>
+          {card.rarity && (
+            <div
+              style={{
+                fontSize: 10.5,
+                color: 'var(--muted)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {card.rarity}
+            </div>
+          )}
+        </div>
+
+        {card.cardmarket?.prices?.trendPrice ? (
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
+            ${card.cardmarket.prices.trendPrice.toFixed(2)}
+          </div>
+        ) : null}
+        
+        <span style={{ color: 'var(--muted-3)', fontSize: 11 }}>↗</span>
+      </div>
+    </div>
+  );
+}
+
+function SetChecklist({
+  setId,
+  collection,
+}: {
+  setId: string;
+  collection: any;
+}) {
+  const { data: cards, loading, error } = useAsync(async (signal) => {
+    const res = await getCardsBySet(setId, 1, 250, { signal });
+    return res.data;
+  }, [setId]);
+
+  const handleToggle = (card: PokemonCard, isOwned: boolean) => {
+    triggerHaptic('light');
+    if (isOwned) {
+      removeCard(card.id);
+    } else {
+      saveCardMeta(card.id, {
+        owned: true,
+        quantity: 1,
+        foil: false,
+        condition: 'Near Mint',
+        variant: 'Normal',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '12px 0' }}>
+        <LoadingState variant="inline" message="Cargando checklist..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ color: 'var(--error)', fontSize: 12.5, padding: '12px 0', textAlign: 'center' }}>
+        ⚠️ {error}
+      </div>
+    );
+  }
+
+  if (!cards || cards.length === 0) {
+    return (
+      <div style={{ color: 'var(--muted)', fontSize: 12, padding: '12px 0', textAlign: 'center' }}>
+        No se encontraron cartas en este set.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        maxHeight: 280,
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        paddingRight: 4,
+      }}
+    >
+      {cards.map((card) => {
+        const isOwned = Boolean(collection.cards[card.id]?.owned);
+        return (
+          <CardChecklistItem
+            key={card.id}
+            card={card}
+            isOwned={isOwned}
+            onToggle={() => handleToggle(card, isOwned)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function SetRow({
   set,
   ownedFromSet,
-  onClick,
+  isExpanded,
+  onToggleExpand,
+  collection,
 }: {
   set: CardSet;
   ownedFromSet: number;
-  onClick: () => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  collection: any;
 }) {
+  const navigate = useNavigate();
   const total = set.total ?? set.printedTotal ?? 0;
   const pct = total > 0 ? Math.min(100, Math.round((ownedFromSet / total) * 100)) : 0;
   const hue = stringHue(set.id);
@@ -157,10 +380,9 @@ function SetRow({
 
   return (
     <Surface
-      onClick={onClick}
-      style={{ padding: 16, cursor: 'pointer' }}
+      style={{ padding: 16 }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div onClick={onToggleExpand} style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}>
         <SetLogoTile set={set} fallbackBg={fallbackBg} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -201,7 +423,13 @@ function SetRow({
             {total > 0 ? ` · ${pct}% completo` : ''}
           </div>
         </div>
-        <span style={{ color: 'var(--muted-3)' }}>
+        <span
+          style={{
+            color: 'var(--muted-3)',
+            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+          }}
+        >
           <ChevronIcon size={16} />
         </span>
       </div>
@@ -225,6 +453,34 @@ function SetRow({
               transition: 'width 240ms ease',
             }}
           />
+        </div>
+      )}
+
+      {isExpanded && (
+        <div style={{ marginTop: 12, borderTop: '0.5px solid var(--border-soft)', paddingTop: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/library?set=${encodeURIComponent(set.id)}`);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--accent)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 8px',
+              }}
+            >
+              Ver en la Biblioteca ↗
+            </button>
+          </div>
+          <SetChecklist setId={set.id} collection={collection} />
         </div>
       )}
     </Surface>
