@@ -76,6 +76,43 @@ function safeWrite(key: string, value: unknown): void {
   }
 }
 
+
+export function mergeCollections(
+  local: CollectionState,
+  remote: CollectionState,
+): CollectionState {
+  const mergedCards: Record<string, CollectionCardMeta> = {};
+
+  const localCards = local?.cards ?? {};
+  const remoteCards = remote?.cards ?? {};
+  const allIds = new Set([...Object.keys(localCards), ...Object.keys(remoteCards)]);
+
+  for (const id of allIds) {
+    const localCard = localCards[id];
+    const remoteCard = remoteCards[id];
+
+    if (localCard && remoteCard) {
+      const localTime = new Date(localCard.updatedAt || 0).getTime();
+      const remoteTime = new Date(remoteCard.updatedAt || 0).getTime();
+
+      if (localTime >= remoteTime) {
+        mergedCards[id] = localCard;
+      } else {
+        mergedCards[id] = remoteCard;
+      }
+    } else if (localCard) {
+      mergedCards[id] = localCard;
+    } else if (remoteCard) {
+      mergedCards[id] = remoteCard;
+    }
+  }
+
+  return {
+    version: 1,
+    cards: mergedCards,
+  };
+}
+
 /* ------------------------------------------------------------------------- */
 /* Collection                                                                 */
 /* ------------------------------------------------------------------------- */
@@ -198,9 +235,23 @@ export async function fetchCloudCollection(): Promise<void> {
         .single();
         
       if (!error && data?.state) {
-        safeWrite(KEYS.collection, data.state);
+        const localState = getCollection();
+        const remoteState = data.state as CollectionState;
+        const mergedState = mergeCollections(localState, remoteState);
+        
+        safeWrite(KEYS.collection, mergedState);
         notify();
         setSyncStatus('synced');
+        
+        // If the merged state contains new local modifications not present on the remote database,
+        // instantly push it up to Supabase to unify both states.
+        if (JSON.stringify(mergedState) !== JSON.stringify(remoteState)) {
+          syncToCloud(mergedState).catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error('[Cloud Sync] Failed to auto-unify merged state:', err);
+          });
+        }
+
         setTimeout(() => {
           if (currentSyncStatus === 'synced') {
             setSyncStatus('idle');

@@ -94,6 +94,7 @@ export type RecognitionInput =
 
 export interface RecognizeOptions {
   signal?: AbortSignal;
+  languageHint?: string;
 }
 
 /** Names cycled through for demo captures so successive taps feel varied. */
@@ -1595,7 +1596,7 @@ export async function recognizeCardFromImage(
           const ocrRes = await fetch('/api/recognize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64 }),
+            body: JSON.stringify({ image: base64, languageHint: opts.languageHint }),
             signal: opts.signal,
           });
 

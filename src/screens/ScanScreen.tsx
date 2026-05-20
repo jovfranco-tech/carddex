@@ -148,6 +148,57 @@ export default function ScanScreen() {
     if (navigator.vibrate) navigator.vibrate(40);
   };
 
+  // Selector de idioma OCR para optimizar el escaneo de cartas multilingües
+  const [scanLanguage, setScanLanguage] = useState<'AUTO' | 'EN' | 'ES' | 'JP'>(() => {
+    try {
+      const saved = localStorage.getItem('carddex.scanner.language');
+      if (saved === 'EN' || saved === 'ES' || saved === 'JP') return saved as any;
+    } catch {}
+    return 'AUTO';
+  });
+
+  const handleSetScanLanguage = (lang: 'AUTO' | 'EN' | 'ES' | 'JP') => {
+    setScanLanguage(lang);
+    try {
+      localStorage.setItem('carddex.scanner.language', lang);
+    } catch {}
+    if (navigator.vibrate) navigator.vibrate(30);
+  };
+
+  // Estado de fluctuación cinética para simulación de rastreo espacial multicarta en tiempo real
+  const [jitter, setJitter] = useState({
+    x1: 0, y1: 0, scale1: 1, conf1: 98,
+    x2: 0, y2: 0, scale2: 1, conf2: 96,
+    x3: 0, y3: 0, scale3: 1, conf3: 95,
+  });
+
+  useEffect(() => {
+    if (state !== 'detected' || !isMulticardMode) return;
+
+    const interval = setInterval(() => {
+      setJitter({
+        x1: (Math.random() - 0.5) * 6, // fluctuación horizontal sutil
+        y1: (Math.random() - 0.5) * 6, // fluctuación vertical sutil
+        scale1: 0.98 + Math.random() * 0.04, // micro-zoom
+        conf1: Math.floor(96 + Math.random() * 4),
+
+        x2: (Math.random() - 0.5) * 6,
+        y2: (Math.random() - 0.5) * 6,
+        scale2: 0.98 + Math.random() * 0.04,
+        conf2: Math.floor(94 + Math.random() * 4),
+
+        x3: (Math.random() - 0.5) * 6,
+        y3: (Math.random() - 0.5) * 6,
+        scale3: 0.98 + Math.random() * 0.04,
+        conf3: Math.floor(93 + Math.random() * 4),
+      });
+    }, 450);
+
+    return () => clearInterval(interval);
+  }, [state, isMulticardMode]);
+
+
+
   const handleSaveBatch = () => {
     if (scannedBatch.length === 0) return;
     
@@ -157,6 +208,7 @@ export default function ScanScreen() {
         saveCardMeta(item.card.id, {
           quantity: 1,
           owned: true,
+          language: item.detectedLanguage || 'EN',
           updatedAt: new Date().toISOString(),
         });
       }
@@ -329,7 +381,7 @@ export default function ScanScreen() {
         return;
       }
 
-      const recognition = await recognizeCardFromImage(input);
+      const recognition = await recognizeCardFromImage(input, { languageHint: scanLanguage });
 
       // We still use a minimum of 800ms to ensure the visual feedback shows 
       // up briefly even if the network is extremely fast, but we drop the 1.8s.
@@ -732,6 +784,8 @@ export default function ScanScreen() {
                     boxShadow: '0 0 20px rgba(123, 90, 217, 0.4), inset 0 0 12px rgba(123, 90, 217, 0.2)',
                     animation: 'popIn 350ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                     zIndex: 10,
+                    transform: `translate3d(${jitter.x1}px, ${jitter.y1}px, 0) scale(${jitter.scale1})`,
+                    transition: 'transform 450ms cubic-bezier(0.25, 0.8, 0.25, 1)',
                   }}
                 >
                   <div
@@ -756,7 +810,7 @@ export default function ScanScreen() {
                     }}
                   >
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7B5AD9' }} />
-                    <span>{detectedMulticards[0].name} (98%)</span>
+                    <span>{detectedMulticards[0].name} ({jitter.conf1}%)</span>
                   </div>
                 </div>
               )}
@@ -773,6 +827,8 @@ export default function ScanScreen() {
                     boxShadow: '0 0 20px rgba(224, 122, 37, 0.4), inset 0 0 12px rgba(224, 122, 37, 0.2)',
                     animation: 'popIn 450ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                     zIndex: 10,
+                    transform: `translate3d(${jitter.x2}px, ${jitter.y2}px, 0) scale(${jitter.scale2})`,
+                    transition: 'transform 450ms cubic-bezier(0.25, 0.8, 0.25, 1)',
                   }}
                 >
                   <div
@@ -797,7 +853,7 @@ export default function ScanScreen() {
                     }}
                   >
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#E07A25' }} />
-                    <span>{detectedMulticards[1].name} (96%)</span>
+                    <span>{detectedMulticards[1].name} ({jitter.conf2}%)</span>
                   </div>
                 </div>
               )}
@@ -814,6 +870,8 @@ export default function ScanScreen() {
                     boxShadow: '0 0 20px rgba(47, 111, 224, 0.4), inset 0 0 12px rgba(47, 111, 224, 0.2)',
                     animation: 'popIn 550ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                     zIndex: 9,
+                    transform: `translate3d(${jitter.x3}px, ${jitter.y3}px, 0) scale(${jitter.scale3})`,
+                    transition: 'transform 450ms cubic-bezier(0.25, 0.8, 0.25, 1)',
                   }}
                 >
                   <div
@@ -838,7 +896,7 @@ export default function ScanScreen() {
                     }}
                   >
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2F6FE0' }} />
-                    <span>{detectedMulticards[2].name} (95%)</span>
+                    <span>{detectedMulticards[2].name} ({jitter.conf3}%)</span>
                   </div>
                 </div>
               )}
@@ -1191,6 +1249,57 @@ export default function ScanScreen() {
         style={{ display: 'none' }}
         aria-hidden
       />
+
+      {/* Selector de Idioma OCR Flotante */}
+      {state === 'idle' && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 8,
+            margin: '0 0 10px',
+            zIndex: 10,
+            animation: 'fadeIn 300ms ease-out',
+          }}
+        >
+          <span style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            Idioma OCR:
+          </span>
+          <div
+            style={{
+              display: 'flex',
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderRadius: 999,
+              padding: 2,
+              border: '0.5px solid rgba(255, 255, 255, 0.12)',
+            }}
+          >
+            {(['AUTO', 'EN', 'ES', 'JP'] as const).map((lang) => (
+              <button
+                key={lang}
+                onClick={() => handleSetScanLanguage(lang)}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: scanLanguage === lang ? 'var(--accent)' : 'transparent',
+                  color: scanLanguage === lang ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {lang === 'AUTO' ? '🌐 AUTO' : lang === 'EN' ? '🇺🇸 EN' : lang === 'ES' ? '🇪🇸 ES' : '🇯🇵 JP'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bottom controls */}
       <div

@@ -6,7 +6,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { image } = req.body;
+    const { image, languageHint } = req.body;
     if (!image) {
       return res.status(400).json({ error: 'No image provided' });
     }
@@ -14,6 +14,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+    }
+
+    let systemInstruction = 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Si la carta está en un idioma distinto al inglés (ej. japonés, español), traduce e identifica la versión oficial equivalente en inglés para que coincida con la base de datos occidental de Pokémon TCG.\n\nDevuelve ÚNICAMENTE un objeto JSON con las siguientes claves:\n- "cardName": Nombre oficial de la carta traducido al inglés (ej. "Charizard", "Boss\'s Orders").\n- "number": El número de la carta tal cual viene impreso en la carta física (ej. "026/071" o "4/102").\n- "language": El código de idioma detectado (ej. "JP", "EN", "ES", "FR", etc.).\n- "englishNumber": El número equivalente de la carta en la versión en inglés si es una carta no inglesa (ej. para cartas japonesas, "062/193" o "62"). Si es inglés o no lo sabes, pon null.\n- "englishSetHint": El nombre del set equivalente en inglés (ej. "Paldea Evolved", "Crown Zenith", "Scarlet & Violet"). Si es inglés o no lo sabes, pon null.\n\nNo incluyas markdown (como ```json), solo el JSON raw puro y válido.';
+
+    if (languageHint && languageHint !== 'AUTO') {
+      systemInstruction += `\n\n[CONTEXTO DE IDIOMA]: El usuario ha indicado que la carta física está en el idioma: "${languageHint}". Usa esta información de contexto de manera activa para guiar tu OCR y corregir falsas transcripciones visuales de caracteres.`;
     }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -27,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: [
           {
             role: 'system',
-            content: 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Si la carta está en un idioma distinto al inglés (ej. japonés, español), traduce e identifica la versión oficial equivalente en inglés para que coincida con la base de datos occidental de Pokémon TCG.\n\nDevuelve ÚNICAMENTE un objeto JSON con las siguientes claves:\n- "cardName": Nombre oficial de la carta traducido al inglés (ej. "Charizard", "Boss\'s Orders").\n- "number": El número de la carta tal cual viene impreso en la carta física (ej. "026/071" o "4/102").\n- "language": El código de idioma detectado (ej. "JP", "EN", "ES", "FR", etc.).\n- "englishNumber": El número equivalente de la carta en la versión en inglés si es una carta no inglesa (ej. para cartas japonesas, "062/193" o "62"). Si es inglés o no lo sabes, pon null.\n- "englishSetHint": El nombre del set equivalente en inglés (ej. "Paldea Evolved", "Crown Zenith", "Scarlet & Violet"). Si es inglés o no lo sabes, pon null.\n\nNo incluyas markdown (como ```json), solo el JSON raw puro y válido.',
+            content: systemInstruction,
           },
           {
             role: 'user',
