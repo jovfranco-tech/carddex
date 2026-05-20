@@ -1206,6 +1206,136 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
       }
     },
     dhash: '0000111100001111101010101010101001100110011001101111000000001111'
+  },
+  {
+    id: 'zsv10pt5-25',
+    name: 'Pikachu ex',
+    supertype: 'Pokémon',
+    subtypes: ['Basic', 'ex'],
+    hp: '200',
+    types: ['Lightning'],
+    attacks: [
+      {
+        name: 'Sparking Bolt',
+        cost: ['Lightning', 'Lightning', 'Colorless'],
+        convertedEnergyCost: 3,
+        damage: '120',
+        text: 'This attack does 30 damage to 1 of your opponent\'s Benched Pokémon. (Don\'t apply Weakness and Resistance for Benched Pokémon.)'
+      }
+    ],
+    set: {
+      id: 'zsv10pt5',
+      name: 'Black Bolt',
+      series: 'Scarlet & Violet',
+      printedTotal: 86,
+      total: 100,
+    },
+    number: '25',
+    rarity: 'Double Rare',
+    images: {
+      small: 'https://images.pokemontcg.io/zsv10pt5/25.png',
+      large: 'https://images.pokemontcg.io/zsv10pt5/25_hires.png'
+    },
+    tcgplayer: {
+      prices: {
+        holofoil: {
+          low: 3.00,
+          mid: 5.50,
+          high: 10.00,
+          market: 4.50
+        }
+      }
+    },
+    dhash: '0101010111110000101010101100110000001111000011111111000010101010'
+  },
+  {
+    id: 'sv9-2',
+    name: 'Metapod',
+    supertype: 'Pokémon',
+    subtypes: ['Stage 1'],
+    hp: '80',
+    types: ['Grass'],
+    evolvesFrom: 'Caterpie',
+    attacks: [
+      {
+        name: 'Stun Spore',
+        cost: ['Grass'],
+        convertedEnergyCost: 1,
+        damage: '20',
+        text: 'Flip a coin. If heads, your opponent\'s Active Pokémon is now Paralyzed.'
+      }
+    ],
+    set: {
+      id: 'sv9',
+      name: 'Journey Together',
+      series: 'Scarlet & Violet',
+      printedTotal: 159,
+      total: 190,
+    },
+    number: '2',
+    rarity: 'Common',
+    images: {
+      small: 'https://images.pokemontcg.io/sv9/2.png',
+      large: 'https://images.pokemontcg.io/sv9/2_hires.png'
+    },
+    tcgplayer: {
+      prices: {
+        normal: {
+          low: 0.05,
+          mid: 0.15,
+          high: 0.50,
+          market: 0.10
+        }
+      }
+    },
+    dhash: '1100110011110000000011110101010100111100001111001010101000111100'
+  },
+  {
+    id: 'me3-50',
+    name: 'Mewtwo ex',
+    supertype: 'Pokémon',
+    subtypes: ['Basic', 'ex'],
+    hp: '220',
+    types: ['Psychic'],
+    attacks: [
+      {
+        name: 'Psybeam',
+        cost: ['Psychic', 'Colorless'],
+        convertedEnergyCost: 2,
+        damage: '30',
+        text: 'Your opponent\'s Active Pokémon is now Confused.'
+      },
+      {
+        name: 'Super Psy Bolt',
+        cost: ['Psychic', 'Psychic', 'Colorless'],
+        convertedEnergyCost: 3,
+        damage: '110'
+      }
+    ],
+    set: {
+      id: 'me3',
+      name: 'Perfect Order',
+      series: 'Mega Evolution',
+      printedTotal: 88,
+      total: 110,
+    },
+    number: '50',
+    rarity: 'Double Rare',
+    images: {
+      small: 'https://images.pokemontcg.io/me3/50.png',
+      large: 'https://images.pokemontcg.io/me3/50_hires.png'
+    },
+    tcgplayer: {
+      prices: {
+        holofoil: {
+          low: 2.50,
+          mid: 4.00,
+          high: 8.00,
+          market: 3.50
+        }
+      }
+    },
+    dhash: '0000111111110000101010100110011001100110111100001010101000001111'
   }
 ];
 

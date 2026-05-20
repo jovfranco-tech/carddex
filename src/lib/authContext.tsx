@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
+import { fetchCloudCollection } from './collectionStorage';
 
 interface AuthContextType {
   session: Session | null;
@@ -21,7 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       setIsLoading(false);
       if (session?.user) {
-        import('./collectionStorage').then(({ fetchCloudCollection }) => fetchCloudCollection());
+        fetchCloudCollection();
       }
     });
 
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        import('./collectionStorage').then(({ fetchCloudCollection }) => fetchCloudCollection());
+        fetchCloudCollection();
       }
     });
 

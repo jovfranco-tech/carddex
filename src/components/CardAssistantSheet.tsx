@@ -86,27 +86,20 @@ export default function CardAssistantSheet({
       try {
         const apiMessages = newMessages.map(m => ({ role: m.role, content: m.text }));
         
-        const res = await fetch('/api/chat', {
+        // Intentar llamada al asistente en el servidor (con gpt-4o-mini)
+        const res = await fetch('/api/card-assistant', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: apiMessages,
-            collectionStats: {
-              cardName: context.card.name,
-              setName: context.card.set?.name,
-              estimatedPrice: context.estimatedPrice,
-              collectionMeta: context.collectionMeta,
-              cardDetails: {
-                hp: context.card.hp,
-                types: context.card.types,
-                attacks: context.card.attacks,
-                abilities: context.card.abilities,
-                weaknesses: context.card.weaknesses,
-                retreatCost: context.card.retreatCost
-              }
-            }
+            cardContext: context,
           })
         });
+
+        if (!res.ok) {
+          throw new Error('API server returned error');
+        }
+
         const data = await res.json();
         
         setMessages((prev) => [
@@ -120,14 +113,18 @@ export default function CardAssistantSheet({
           },
         ]);
       } catch (err) {
+        console.warn('Fallo de conexión o error en API. Usando fallback local determinista:', err);
+        
+        // Fallback local offline determinista
+        const localAnswer = answerCardQuestion(trimmed, context);
         setMessages((prev) => [
           ...prev,
           {
             id: `a${Date.now()}`,
             role: 'assistant',
-            text: 'Hubo un error de conexión con la IA. Intenta de nuevo más tarde.',
-            sources: ['Error de red'],
-            unknown: true,
+            text: localAnswer.text,
+            sources: [...(localAnswer.sources ?? []), 'Asistente Local (Offline Fallback)'],
+            unknown: localAnswer.unknown,
           },
         ]);
       } finally {

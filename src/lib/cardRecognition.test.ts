@@ -247,6 +247,18 @@ describe('Offline Fallback and Hashing', () => {
     const result = getOfflineRecognitionResult(noisyMewtwoDHash);
     expect(result.card!.name).toBe('Mewtwo ex');
     expect(result.source).toBe('offline_fallback');
+
+    // Verify 2025/2026 Pikachu ex
+    const noisyPikachuExHash = '0101010111110000101010101100110000001111000011111111000010101011'; // distance 1
+    const pikaResult = getOfflineRecognitionResult(noisyPikachuExHash);
+    expect(pikaResult.card!.id).toBe('zsv10pt5-25');
+    expect(pikaResult.card!.name).toBe('Pikachu ex');
+
+    // Verify 2025/2026 Metapod
+    const noisyMetapodHash = '1100110011110000000011110101010100111100001111001010101000111111'; // distance 2
+    const metapodResult = getOfflineRecognitionResult(noisyMetapodHash);
+    expect(metapodResult.card!.id).toBe('sv9-2');
+    expect(metapodResult.card!.name).toBe('Metapod');
   });
 });
 
