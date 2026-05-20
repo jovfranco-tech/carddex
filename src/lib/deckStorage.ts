@@ -97,3 +97,19 @@ export function removeCardFromDeck(deckId: string, cardId: string): void {
     writeDecksState(state);
   }
 }
+
+export function updateDeckCards(deckId: string, cards: string[]): void {
+  const state = getDecksState();
+  if (!state.decks[deckId]) return;
+  state.decks[deckId].cards = cards;
+  state.decks[deckId].updatedAt = new Date().toISOString();
+  writeDecksState(state);
+}
+
+export function removeCardFromDeckAll(deckId: string, cardId: string): void {
+  const state = getDecksState();
+  if (!state.decks[deckId]) return;
+  state.decks[deckId].cards = state.decks[deckId].cards.filter((id) => id !== cardId);
+  state.decks[deckId].updatedAt = new Date().toISOString();
+  writeDecksState(state);
+}

@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell';
 import HomeScreen from '@/screens/HomeScreen';
 import { ROUTES } from './routes';
 import { AuthProvider } from '@/lib/authContext';
+import { usePredictiveImagePreloader } from '@/lib/imagePreloader';
 
 // Dynamic lazy imports for non-critical screens to reduce initial bundle chunk size
 const ScanScreen = lazy(() => import('@/screens/ScanScreen'));
@@ -166,6 +167,7 @@ class RootErrorBoundary extends Component<
 }
 
 export default function App() {
+  usePredictiveImagePreloader();
   return (
     <RootErrorBoundary>
       <AuthProvider>

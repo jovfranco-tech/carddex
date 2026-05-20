@@ -178,6 +178,10 @@ export function clearApiCache(): void {
   setsCache.expiresAt = 0;
 }
 
+export function getCachedCard(id: string): PokemonCard | undefined {
+  return cardCache.get(id);
+}
+
 /* ------------------------------------------------------------------------- */
 /* Low-level fetch                                                            */
 /* ------------------------------------------------------------------------- */
