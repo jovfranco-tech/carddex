@@ -13,6 +13,7 @@ const KEYS = {
   collection: 'carddex.collection.v1',
   recent: 'carddex.recentlyViewed.v1',
   settings: 'carddex.settings.v1',
+  syncQueue: 'carddex.sync_queue.v1',
 } as const;
 
 const SUBSCRIBERS = new Set<() => void>();
@@ -31,7 +32,7 @@ export function subscribe(listener: () => void): () => void {
 /* Reactive Cloud Sync Status Bus                                            */
 /* ------------------------------------------------------------------------- */
 
-export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
+export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline-pending';
 let currentSyncStatus: SyncStatus = 'idle';
 const SYNC_SUBSCRIBERS = new Set<() => void>();
 
@@ -102,9 +103,61 @@ export function getCollection(): CollectionState {
   return { version: 1, cards: cleanCards };
 }
 
+function getSyncQueue(): CollectionState[] {
+  return safeRead<CollectionState[]>(KEYS.syncQueue, []);
+}
+
+function addToSyncQueue(state: CollectionState) {
+  safeWrite(KEYS.syncQueue, [state]);
+}
+
+export async function flushSyncQueue() {
+  const queue = getSyncQueue();
+  if (queue.length === 0) return;
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return;
+  
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    setSyncStatus('offline-pending');
+    return;
+  }
+  
+  setSyncStatus('syncing');
+  const stateToSync = queue[queue.length - 1];
+  try {
+    const { error } = await supabase
+      .from('collections')
+      .update({ state: stateToSync, updated_at: new Date().toISOString() })
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      setSyncStatus('error');
+    } else {
+      safeWrite(KEYS.syncQueue, []);
+      setSyncStatus('synced');
+      setTimeout(() => {
+        if (currentSyncStatus === 'synced') {
+          setSyncStatus('idle');
+        }
+      }, 2500);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[Cloud Sync] Failed to flush sync queue:', err);
+    setSyncStatus('error');
+  }
+}
+
 async function syncToCloud(state: CollectionState) {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      addToSyncQueue(state);
+      setSyncStatus('offline-pending');
+      return;
+    }
+    
     setSyncStatus('syncing');
     try {
       const { error } = await supabase
@@ -113,7 +166,8 @@ async function syncToCloud(state: CollectionState) {
         .eq('user_id', session.user.id);
       
       if (error) {
-        setSyncStatus('error');
+        addToSyncQueue(state);
+        setSyncStatus('offline-pending');
       } else {
         setSyncStatus('synced');
         // Reset to idle after 2.5 seconds to allow UI animations to complete smoothly
@@ -125,8 +179,9 @@ async function syncToCloud(state: CollectionState) {
       }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[Cloud Sync] Failed to sync collection:', err);
-      setSyncStatus('error');
+      console.error('[Cloud Sync] Failed to sync collection, queueing:', err);
+      addToSyncQueue(state);
+      setSyncStatus('offline-pending');
     }
   }
 }
@@ -382,4 +437,26 @@ export function summarize(): CollectionSummary {
     },
     { uniqueCount: 0, totalQuantity: 0, favoriteCount: 0, wishlistCount: 0, missingCount: 0 },
   );
+}
+
+/* ------------------------------------------------------------------------- */
+/* Initialization & Event Listeners for Offline Sync                         */
+/* ------------------------------------------------------------------------- */
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    flushSyncQueue().catch(console.error);
+  });
+  window.addEventListener('offline', () => {
+    if (getSyncQueue().length > 0) {
+      setSyncStatus('offline-pending');
+    }
+  });
+  
+  // Trigger flush immediately on startup if online
+  if (navigator.onLine) {
+    flushSyncQueue().catch(console.error);
+  } else if (getSyncQueue().length > 0) {
+    setSyncStatus('offline-pending');
+  }
 }

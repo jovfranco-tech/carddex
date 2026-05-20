@@ -1464,6 +1464,23 @@ function ScanBrackets({ state }: { state: ScanState }) {
           }}
         />
       ))}
+      
+      {state === 'scanning' && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: '50%',
+            height: 3,
+            background: 'linear-gradient(90deg, rgba(47, 111, 224, 0) 0%, #2F6FE0 50%, rgba(47, 111, 224, 0) 100%)',
+            boxShadow: '0 0 10px #2F6FE0, 0 0 4px #2F6FE0',
+            animation: 'scanLine 2.2s linear infinite',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -46,11 +46,18 @@ export default function AppShell({ children }: AppShellProps) {
                   <circle cx="8" cy="12" r="1" fill="var(--error)" stroke="none" />
                 </svg>
               )}
+              {syncStatus === 'offline-pending' && (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#FF9500" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="8" cy="8" r="6" />
+                  <path d="M8 5v3h3" />
+                </svg>
+              )}
             </div>
             <span className="sync-text">
               {syncStatus === 'syncing' && 'Sincronizando...'}
               {syncStatus === 'synced' && 'Sincronizado'}
               {syncStatus === 'error' && 'Error de red'}
+              {syncStatus === 'offline-pending' && 'Pendiente (Offline)'}
             </span>
             <span className="sync-dot" />
           </div>
@@ -129,6 +136,11 @@ export default function AppShell({ children }: AppShellProps) {
           background-color: var(--error);
           box-shadow: 0 0 8px var(--error);
           animation: pulseDot 0.8s infinite ease-in-out;
+        }
+        .sync-status-offline-pending .sync-dot {
+          background-color: #FF9500;
+          box-shadow: 0 0 8px #FF9500;
+          animation: pulseDot 1.5s infinite ease-in-out;
         }
         .shell-screen {
           position: relative;
