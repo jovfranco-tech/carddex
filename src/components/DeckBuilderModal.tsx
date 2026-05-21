@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createDeck, updateDeckCards } from '@/lib/deckStorage';
 import { searchCards } from '@/lib/pokemonTcgApi';
 import { triggerHaptic } from '@/lib/haptic';
@@ -25,6 +25,18 @@ export default function DeckBuilderModal({
   const [streamedText, setStreamedText] = useState('');
   const [resolveStatus, setResolveStatus] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+
+  // Copilot chat state (post-generation)
+  const [deckSpec, setDeckSpec] = useState<any>(null);
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatStreamText, setChatStreamText] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory, chatStreamText]);
 
   if (!isOpen) return null;
 
@@ -84,6 +96,7 @@ export default function DeckBuilderModal({
               } else if (parsed.name && parsed.cards) {
                 // Final deck spec received from 'done' event
                 deckSpec = parsed;
+                setDeckSpec(parsed); // Save for copilot chat
               } else if (parsed.error) {
                 throw new Error(parsed.error);
               }
@@ -135,7 +148,12 @@ export default function DeckBuilderModal({
 
       onShowToast(`🏆 Mazo "${newDeckName}" creado con ${resolvedCardIds.length} cartas.`);
       onSuccess(created.id);
-      onClose();
+      // Stay open in copilot mode instead of closing
+      // onClose() — now we switch to chat mode
+      setChatHistory([{
+        role: 'assistant',
+        content: `¡Mazo **${newDeckName}** creado con éxito! 🎉 Tiene ${resolvedCardIds.length} cartas. ¿Quieres que lo refinemos juntos? Puedes preguntarme sobre sinergias, pedirme cambios de cartas o preguntar por estrategias.`
+      }]);
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         onShowToast(err.message || 'Error construyendo el mazo.');
@@ -145,6 +163,74 @@ export default function DeckBuilderModal({
       setPhase('idle');
       setStreamedText('');
       setResolveStatus('');
+    }
+  };
+
+  const handleChatSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading || !deckSpec) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput('');
+    setChatLoading(true);
+    setChatStreamText('');
+    triggerHaptic('light');
+
+    const newHistory = [...chatHistory, { role: 'user' as const, content: userMsg }];
+    setChatHistory(newHistory);
+
+    try {
+      const res = await fetch('/api/deck-refiner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentDeck: deckSpec,
+          userMessage: userMsg,
+          history: chatHistory,
+        }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('Error al conectar con el copiloto.');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: token')) continue;
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.token) {
+                setChatStreamText(prev => prev + parsed.token);
+              } else if (parsed.fullText) {
+                finalText = parsed.fullText;
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+
+      const assistantMsg = finalText || chatStreamText;
+      setChatHistory(prev => [...prev, { role: 'assistant', content: assistantMsg }]);
+      setChatStreamText('');
+      triggerHaptic('success');
+    } catch (err: any) {
+      onShowToast(err.message || 'Error en el copiloto de mazos.');
+      setChatHistory(prev => [...prev, { role: 'assistant', content: '❌ Error al contactar el copiloto. Intenta de nuevo.' }]);
+    } finally {
+      setChatLoading(false);
+      setChatStreamText('');
     }
   };
 
@@ -310,6 +396,120 @@ export default function DeckBuilderModal({
                 />
               ))}
             </div>
+          </div>
+        ) : chatHistory.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', height: 360 }}>
+            {/* Header chat mode */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                ✦ Deck Copilot — Modo Refinamiento
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                Habla con la IA para refinar tu mazo
+              </div>
+            </div>
+            {/* Chat messages */}
+            <div
+              className="no-scrollbar"
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                paddingRight: 4,
+                marginBottom: 12,
+              }}
+            >
+              {chatHistory.map((msg, i) => (
+                <div
+                  key={i}
+                  style={{
+                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: msg.role === 'user'
+                      ? 'linear-gradient(135deg, #7B5AD9, #2F6FE0)'
+                      : 'var(--bg)',
+                    color: msg.role === 'user' ? '#fff' : 'var(--ink)',
+                    borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    border: msg.role === 'assistant' ? '0.5px solid var(--border)' : 'none',
+                    boxShadow: msg.role === 'user' ? '0 2px 8px rgba(123,90,217,0.3)' : 'none',
+                  }}
+                >
+                  {msg.content}
+                </div>
+              ))}
+              {chatStreamText && (
+                <div
+                  style={{
+                    alignSelf: 'flex-start',
+                    maxWidth: '85%',
+                    background: 'var(--bg)',
+                    color: 'var(--ink)',
+                    borderRadius: '16px 16px 16px 4px',
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    border: '0.5px solid var(--border)',
+                  }}
+                >
+                  {chatStreamText}
+                  <span style={{
+                    display: 'inline-block',
+                    width: 2,
+                    height: 13,
+                    background: 'var(--accent)',
+                    marginLeft: 2,
+                    animation: 'blinkCursor 0.7s step-end infinite',
+                    verticalAlign: 'text-bottom',
+                  }} />
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            {/* Chat input */}
+            <form onSubmit={handleChatSend} style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Cambia los Pidgeot ex por Lumineon V..."
+                disabled={chatLoading}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--ink)',
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  opacity: chatLoading ? 0.6 : 1,
+                }}
+              />
+              <button
+                type="submit"
+                disabled={chatLoading || !chatInput.trim()}
+                style={{
+                  padding: '10px 16px',
+                  background: 'linear-gradient(135deg, #7B5AD9, #2F6FE0)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontWeight: 700,
+                  cursor: chatLoading ? 'wait' : 'pointer',
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                  opacity: (!chatInput.trim() || chatLoading) ? 0.5 : 1,
+                }}
+              >
+                {chatLoading ? '…' : '↑'}
+              </button>
+            </form>
           </div>
         ) : (
           <form onSubmit={handleGenerate}>

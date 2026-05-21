@@ -58,6 +58,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     - 3.0 - 3.5: Good
     - 1.0 - 2.5: Poor / Played
 
+    Además, evalúa la VIABILIDAD COMPETITIVA TCG de la carta identificada:
+    - metaScore: número de 1.0 a 10.0 que representa qué tan competitiva es esta carta en el meta actual del formato Estándar de Pokémon TCG (Scarlet & Violet).
+    - metaViability: una de estas opciones: "Alta", "Media", "Baja", "Irrelevante".
+    - metaAnalysis: párrafo de 1-2 oraciones en español explicando por qué esta carta es o no competitiva actualmente (menciona arquetipos, mecánicas, sinergias si aplica).
+
+    El JSON final debe incluir el campo "metaRating" con los tres sub-campos.
+
     Devuelve un JSON con el siguiente formato exacto:
     {
       "cardName": "Charizard ex",
@@ -70,7 +77,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       "issues": [
         "Desgaste leve blanco en la esquina trasera superior derecha",
         "El centrado está ligeramente desplazado a la izquierda (60/40)"
-      ]
+      ],
+      "metaRating": {
+        "metaScore": 8.5,
+        "metaViability": "Alta",
+        "metaAnalysis": "Charizard ex domina el formato Estándar con el arquetipo Charizard/Pidgeot. Excelente carta de inversión."
+      }
     }
 
     No incluyas bloques de código Markdown ni texto adicional. Solo el objeto JSON limpio.`;
@@ -99,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ],
           },
         ],
-        max_tokens: 350,
+        max_tokens: 550,
         temperature: 0.4,
       }),
     });

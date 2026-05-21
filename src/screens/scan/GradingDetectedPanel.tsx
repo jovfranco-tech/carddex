@@ -180,6 +180,64 @@ export default function GradingDetectedPanel({
         </div>
       </div>
 
+      {/* TCG Meta Analysis Section */}
+      {gradingResult.metaRating && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(123,90,217,0.12) 0%, rgba(47,111,224,0.08) 100%)',
+          border: '1px solid rgba(123,90,217,0.3)',
+          borderRadius: 16,
+          padding: '14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 10, color: '#7B5AD9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+              ✦ TCG Meta Analysis
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: gradingResult.metaRating.metaViability === 'Alta' ? 'rgba(52,199,89,0.15)' :
+                          gradingResult.metaRating.metaViability === 'Media' ? 'rgba(255,149,0,0.15)' :
+                          'rgba(255,59,48,0.15)',
+              borderRadius: 20,
+              padding: '4px 10px',
+            }}>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: gradingResult.metaRating.metaViability === 'Alta' ? '#34C759' :
+                       gradingResult.metaRating.metaViability === 'Media' ? '#FF9500' : '#FF3B30',
+              }}>
+                Viabilidad {gradingResult.metaRating.metaViability}
+              </span>
+            </div>
+          </div>
+          {/* Meta score bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22, fontWeight: 900, color: '#7B5AD9', lineHeight: 1, minWidth: 36 }}>
+              {gradingResult.metaRating.metaScore.toFixed(1)}
+            </span>
+            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${gradingResult.metaRating.metaScore * 10}%`,
+                background: 'linear-gradient(90deg, #7B5AD9, #2F6FE0)',
+                borderRadius: 3,
+                transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
+              }} />
+            </div>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>META SCORE</span>
+          </div>
+          {/* Analysis text */}
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, fontStyle: 'italic' }}>
+            {gradingResult.metaRating.metaAnalysis}
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         <button

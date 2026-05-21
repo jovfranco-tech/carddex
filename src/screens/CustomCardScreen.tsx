@@ -68,6 +68,11 @@ export default function CustomCardScreen() {
   const [style, setStyle] = useState('Illustration Rare');
   const [artPrompt, setArtPrompt] = useState('Dragon composed of glowing neural network paths, neon circuitry, epic fantasy landscape');
   
+  // Fusion mode
+  const [isFusionMode, setIsFusionMode] = useState(false);
+  const [fusionCardA, setFusionCardA] = useState('Charizard ex');
+  const [fusionCardB, setFusionCardB] = useState('Mewtwo ex');
+  
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +105,7 @@ export default function CustomCardScreen() {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!isFusionMode && !name.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -126,7 +131,9 @@ export default function CustomCardScreen() {
       const res = await fetch('/api/custom-card', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type, style, artPrompt }),
+        body: isFusionMode
+          ? JSON.stringify({ cardA: fusionCardA, cardB: fusionCardB, type, style })
+          : JSON.stringify({ name, type, style, artPrompt }),
       });
 
       if (!res.ok) {
@@ -137,7 +144,7 @@ export default function CustomCardScreen() {
       
       const newCard: CustomCard = {
         id: `custom-${Date.now()}`,
-        name: name,
+        name: isFusionMode ? (data.name || `${fusionCardA} × ${fusionCardB}`) : name,
         type: type,
         style: style,
         hp: data.hp || '160',
@@ -650,7 +657,57 @@ export default function CustomCardScreen() {
           <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>Configuración de la Carta</h2>
             
-            {/* Name */}
+            {/* Mode Toggle */}
+            <div style={{
+              display: 'flex',
+              background: 'rgba(255,255,255,0.04)',
+              border: '0.5px solid rgba(255,255,255,0.08)',
+              borderRadius: 14,
+              padding: 4,
+              gap: 4,
+            }}>
+              <button
+                type="button"
+                onClick={() => setIsFusionMode(false)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: !isFusionMode ? 'rgba(255,255,255,0.12)' : 'transparent',
+                  color: !isFusionMode ? '#fff' : 'rgba(255,255,255,0.5)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.2s',
+                }}
+              >
+                ✨ Crear Carta
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFusionMode(true)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: isFusionMode ? '1px solid rgba(255,149,0,0.4)' : '1px solid transparent',
+                  background: isFusionMode ? 'linear-gradient(135deg, rgba(255,149,0,0.3), rgba(255,59,48,0.3))' : 'transparent',
+                  color: isFusionMode ? '#FF9500' : 'rgba(255,255,255,0.5)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.2s',
+                }}
+              >
+                🧬 Modo Fusión
+              </button>
+            </div>
+
+            {/* Name (only shown in normal mode) */}
+            {!isFusionMode && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>Nombre del Pokémon</label>
               <input
@@ -658,7 +715,7 @@ export default function CustomCardScreen() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej: Antigravity Coder"
-                required
+                required={!isFusionMode}
                 style={{
                   background: 'rgba(255,255,255,0.04)',
                   border: '1px solid var(--border)',
@@ -670,6 +727,37 @@ export default function CustomCardScreen() {
                 }}
               />
             </div>
+            )}
+
+            {/* Fusion inputs (only in fusion mode) */}
+            {isFusionMode && (
+              <>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pokémon A</label>
+                    <input
+                      value={fusionCardA}
+                      onChange={e => setFusionCardA(e.target.value)}
+                      placeholder="Charizard ex"
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,149,0,0.3)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 10, fontSize: 20 }}>🧬</div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pokémon B</label>
+                    <input
+                      value={fusionCardB}
+                      onChange={e => setFusionCardB(e.target.value)}
+                      placeholder="Mewtwo ex"
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,149,0,0.3)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(255,149,0,0.8)', textAlign: 'center', fontStyle: 'italic' }}>
+                  ✦ La IA fusionará ambos Pokémon en una carta épica con arte generativo
+                </div>
+              </>
+            )}
 
             {/* Type & Style in Row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -717,7 +805,8 @@ export default function CustomCardScreen() {
               </div>
             </div>
 
-            {/* Art Prompt */}
+            {/* Art Prompt (only in normal mode) */}
+            {!isFusionMode && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>Indicación de Arte para IA (DALL-E)</label>
               <textarea
@@ -738,6 +827,7 @@ export default function CustomCardScreen() {
                 }}
               />
             </div>
+            )}
 
             {error && (
               <div style={{ color: 'var(--error)', fontSize: 12.5, fontWeight: 600 }}>

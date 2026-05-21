@@ -21,16 +21,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { name, type, style, artPrompt } = req.body;
-    if (!name || !type) {
+    const { name, type, style, artPrompt, cardA, cardB } = req.body;
+    const isFusionMode = !!(cardA && cardB);
+    if (!isFusionMode && (!name || !type)) {
       return res.status(400).json({ error: 'Missing name or type' });
     }
 
     // Sanitize inputs
-    const safeName = String(name).slice(0, 60);
-    const safeType = String(type).slice(0, 30);
+    const safeName = isFusionMode ? `${String(cardA).slice(0, 30)} × ${String(cardB).slice(0, 30)}` : String(name).slice(0, 60);
+    const safeType = String(type || 'Colorless').slice(0, 30);
     const safeStyle = String(style || 'Full Art').slice(0, 40);
     const safeArtPrompt = String(artPrompt || '').slice(0, 300);
+    const safeCardA = String(cardA || '').slice(0, 60);
+    const safeCardB = String(cardB || '').slice(0, 60);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -38,7 +41,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 1. Generate Card Stats using GPT
-    const statsInstruction = `Eres un diseñador experto del juego de cartas coleccionables Pokémon TCG.
+    const statsInstruction = isFusionMode
+      ? `Eres un diseñador experto del juego de cartas coleccionables Pokémon TCG.
+    Crea una carta FUSIÓN épica que combine dos Pokémon: "${safeCardA}" y "${safeCardB}".
+    La carta fusionada debe:
+    - Tener un nombre que combine ambos Pokémon (ej: "Charizard-Gengar", "MewTwo-Lucario")
+    - Combinar los tipos de ambos Pokémon
+    - Tener ataques que reflejen las habilidades características de ambos Pokémon originales
+    - Tener estadísticas balanceadas y emocionantes
+
+    Devuelve un objeto JSON con el siguiente formato exacto:
+    {
+      "hp": "220",
+      "stage": "Basic",
+      "fusionName": "Nombre de la fusión",
+      "attack1": {
+        "name": "Nombre del Ataque 1 (inspirado en ${safeCardA})",
+        "cost": ["Energía1", "Energía2"],
+        "damage": "80",
+        "effect": "Efecto en español."
+      },
+      "attack2": {
+        "name": "Nombre del Ataque 2 (fusión de ambos)",
+        "cost": ["Energía1", "Energía2", "Energía3"],
+        "damage": "180",
+        "effect": "Efecto combinado épico en español."
+      },
+      "weakness": "Debilidad principal",
+      "resistance": null,
+      "retreatCost": 3,
+      "description": "Descripción épica de la fusión en español."
+    }
+    Devuelve ÚNICAMENTE el objeto JSON sin marcas de Markdown.`
+      : `Eres un diseñador experto del juego de cartas coleccionables Pokémon TCG.
     Crea estadísticas balanceadas y divertidas para una carta de Pokémon personalizada con las siguientes especificaciones:
     - Nombre del Pokémon: "${safeName}"
     - Tipo: "${safeType}"
@@ -50,8 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       "stage": "Basic" o "Stage 1" o "Stage 2",
       "attack1": {
         "name": "Nombre del Ataque 1",
-        "cost": ["Energía1", "Energía2"], // Ej: ["Fire", "Colorless"]
-        "damage": "60", // Puede tener símbolos +, - o x si aplica
+        "cost": ["Energía1", "Energía2"],
+        "damage": "60",
         "effect": "Efecto o descripción del ataque 1 en español."
       },
       "attack2": {
@@ -62,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       "weakness": "Debilidad (ej: Water)",
       "resistance": "Resistencia (ej: Fighting o null)",
-      "retreatCost": 2, // Número de energías para retirar
+      "retreatCost": 2,
       "description": "Una frase poética o descripción de Pokédex en español sobre este Pokémon."
     }
 
@@ -92,7 +127,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stats = JSON.parse(gptText);
 
     // 2. Generate Artwork using DALL-E
-    const imagePrompt = `Pokémon card illustration of ${safeName}, a ${safeType} type Pokémon, in ${safeStyle} style. ${safeArtPrompt || 'Vibrant colors, digital art, high quality, epic pokemon scene'}. Isolated artwork suitable for a card frame, high contrast, clean graphics.`;
+    const imagePrompt = isFusionMode
+      ? `Epic Pokémon card fusion illustration combining ${safeCardA} and ${safeCardB} into a single epic hybrid creature. The creature should visually blend the most iconic features of both Pokémon. Full art style, dynamic pose, vivid colors, glowing energy effects, high detail digital art, suitable for a card frame.`
+      : `Pokémon card illustration of ${safeName}, a ${safeType} type Pokémon, in ${safeStyle} style. ${safeArtPrompt || 'Vibrant colors, digital art, high quality, epic pokemon scene'}. Isolated artwork suitable for a card frame, high contrast, clean graphics.`;
 
     let imageUrl = '';
     try {
@@ -127,6 +164,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       ...stats,
+      name: isFusionMode ? (stats.fusionName || safeName) : safeName,
+      isFusion: isFusionMode,
+      cardA: isFusionMode ? safeCardA : undefined,
+      cardB: isFusionMode ? safeCardB : undefined,
       imageUrl,
     });
   } catch (error) {
