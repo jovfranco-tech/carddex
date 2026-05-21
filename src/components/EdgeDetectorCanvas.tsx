@@ -50,11 +50,20 @@ export default function EdgeDetectorCanvas({
     offscreen.height = height;
     const offCtx = offscreen.getContext('2d');
 
+    let lastProcessTime = 0;
     const tick = () => {
       if (video.paused || video.ended) {
         animFrameId = requestAnimationFrame(tick);
         return;
       }
+
+      const now = Date.now();
+      // Throttle heavy image analysis to ~8 fps (every 120ms) to save CPU/battery and prevent E2E timeouts
+      if (now - lastProcessTime < 120) {
+        animFrameId = requestAnimationFrame(tick);
+        return;
+      }
+      lastProcessTime = now;
 
       // Match display sizes
       if (canvas.width !== video.clientWidth || canvas.height !== video.clientHeight) {

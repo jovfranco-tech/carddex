@@ -17,6 +17,13 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Use fake media streams for testing scanner camera
+    launchOptions: {
+      args: [
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream',
+      ]
+    },
     // Emulate a mobile device to match the PWA's primary use case
     ...devices['iPhone 14'],
   },

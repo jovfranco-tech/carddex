@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, forwardRef } from 'react';
+import { Virtuoso, VirtuosoGrid } from 'react-virtuoso';
 import CardTile from '@/components/CardTile';
 import Surface from '@/components/Surface';
 import TcgCardImage from '@/components/TcgCardImage';
@@ -268,26 +269,42 @@ export default function CardListView({
   if (view === 'grid') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div
-          style={{
-            padding: '0 18px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 12,
-            justifyItems: 'center',
+        <VirtuosoGrid
+          useWindowScroll
+          data={filteredCards.slice(0, visibleCount)}
+          components={{
+            List: forwardRef<HTMLDivElement, any>(({ style, children, ...props }, ref) => (
+              <div
+                ref={ref}
+                {...props}
+                style={{
+                  ...style,
+                  padding: '0 18px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 12,
+                  justifyItems: 'center',
+                }}
+              >
+                {children}
+              </div>
+            )),
+            Item: ({ children, ...props }) => (
+              <div {...props} style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                {children}
+              </div>
+            ),
           }}
-        >
-          {filteredCards.slice(0, visibleCount).map((c) => (
+          itemContent={(index, c) => (
             <CardTile
-              key={c.id}
               card={c}
               meta={collection.cards[c.id]}
               width={104}
               onClick={() => navigate(`/card/${c.id}`)}
               showMissingState={!onlyMine}
             />
-          ))}
-        </div>
+          )}
+        />
         {filteredCards.length > visibleCount ? (
           <div
             ref={observerTargetRef}
@@ -474,64 +491,77 @@ export default function CardListView({
   // ── List view (fallback) ───────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div
-        style={{
-          padding: '0 14px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
+      <Virtuoso
+        useWindowScroll
+        data={filteredCards.slice(0, visibleCount)}
+        components={{
+          List: forwardRef<HTMLDivElement, any>(({ style, children, ...props }, ref) => (
+            <div
+              ref={ref}
+              {...props}
+              style={{
+                ...style,
+                padding: '0 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {children}
+            </div>
+          )),
         }}
-      >
-        {filteredCards.slice(0, visibleCount).map((c) => (
-          <Surface
-            key={c.id}
-            onClick={() => navigate(`/card/${c.id}`)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: 10,
-            }}
-          >
-            <TcgCardImage card={c} width={48} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: 'var(--ink)',
-                  letterSpacing: -0.2,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {c.name}
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginTop: 2,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <RarityBadge rarity={c.rarity} />
-                <span style={{ fontSize: 12, color: 'var(--muted)' }}>{c.number}</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <PriceBadge price={getEstimatedPrice(c)} />
-              {collection.cards[c.id]?.quantity ? (
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  ×{collection.cards[c.id]?.quantity}
+        itemContent={(index, c) => (
+          <div style={{ paddingBottom: 8 }}>
+            <Surface
+              onClick={() => navigate(`/card/${c.id}`)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: 10,
+              }}
+            >
+              <TcgCardImage card={c} width={48} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: 'var(--ink)',
+                    letterSpacing: -0.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {c.name}
                 </div>
-              ) : null}
-            </div>
-          </Surface>
-        ))}
-      </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: 2,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <RarityBadge rarity={c.rarity} />
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{c.number}</span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <PriceBadge price={getEstimatedPrice(c)} />
+                {collection.cards[c.id]?.quantity ? (
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    ×{collection.cards[c.id]?.quantity}
+                  </div>
+                ) : null}
+              </div>
+            </Surface>
+          </div>
+        )}
+      />
       {filteredCards.length > visibleCount ? (
         <div
           ref={observerTargetRef}

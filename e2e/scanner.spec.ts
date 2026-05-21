@@ -7,11 +7,49 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Scanner Screen', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeEach(async ({ page }) => {
+    test.slow();
     // Grant camera permission so the browser doesn't block the scanner
     await page.context().grantPermissions(['camera']);
     await page.addInitScript(() => {
       window.localStorage.setItem('carddex.onboardingComplete', 'true');
+      
+      // Mock window.cv to avoid fetching and compiling heavy 8MB OpenCV.js in tests
+      (window as any).cv = {
+        Mat: class DummyMat {
+          rows = 0;
+          delete() {}
+        },
+        MatVector: class DummyMatVector {
+          size() { return 0; }
+          get() { return null; }
+          delete() {}
+        },
+        Size: class DummySize {
+          constructor() {}
+        },
+        Scalar: class DummyScalar {
+          constructor() {}
+        },
+        BORDER_DEFAULT: 1,
+        RETR_EXTERNAL: 1,
+        CHAIN_APPROX_SIMPLE: 1,
+        CV_32FC2: 6,
+        INTER_LINEAR: 1,
+        BORDER_CONSTANT: 0,
+        approxPolyDP: () => {},
+        imread: () => new (window as any).cv.Mat(),
+        cvtColor: () => {},
+        GaussianBlur: () => {},
+        Canny: () => {},
+        findContours: () => {},
+        matFromArray: () => new (window as any).cv.Mat(),
+        getPerspectiveTransform: () => new (window as any).cv.Mat(),
+        warpPerspective: () => {},
+        imshow: () => {},
+      };
     });
     await page.goto('/scan');
     await page.waitForLoadState('domcontentloaded');
@@ -43,16 +81,12 @@ test.describe('Scanner Screen', () => {
   });
 
   test('scan mode selector is visible and allows switching modes', async ({ page }) => {
-    // The mode selector bar should be visible (Único / Lote / Multicarta / Evaluación)
-    const modeButtons = page.locator('button').filter({
-      hasText: /único|lote|batch|grading|evaluación|multicarta/i,
-    });
-
-    if (await modeButtons.count() > 0) {
-      // Click through the modes and verify no crash
-      const count = Math.min(await modeButtons.count(), 3);
-      for (let i = 0; i < count; i++) {
-        await modeButtons.nth(i).click({ force: true });
+    // Target each mode button specifically by its text to avoid stale element issues
+    const modes = [/único/i, /lote/i, /multi/i, /evaluación/i];
+    for (const mode of modes) {
+      const btn = page.locator('button').filter({ hasText: mode }).first();
+      if (await btn.count() > 0) {
+        await btn.click({ force: true });
         await page.waitForTimeout(200);
         const crashed = await page.locator('text=/uncaught|TypeError/i').count();
         expect(crashed).toBe(0);
