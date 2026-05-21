@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mergeCollections, getCollection, saveCardMeta, logCollectionValueSnapshot } from './collectionStorage';
+import { mergeCollections, getCollection, saveCardMeta, logCollectionValueSnapshot, seedHistoricalData } from './collectionStorage';
 import type { CollectionState, CollectionCardMeta } from '@/types/collection';
 
 describe('Collection Reconciliation (Delta Merge LWW)', () => {
@@ -200,3 +200,90 @@ describe('Historical Value Snapshots', () => {
     expect(entriesForToday.length).toBe(1); // must deduplicate
   });
 });
+
+// ─── seedHistoricalData ───────────────────────────────────────────────────────
+
+describe('seedHistoricalData', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('generates synthetic data points when history is empty', () => {
+    seedHistoricalData(100);
+    const history = getCollection().history ?? [];
+    expect(history.length).toBeGreaterThanOrEqual(28);
+    expect(history.length).toBeLessThanOrEqual(30);
+  });
+
+  it('all generated points have valid ISO date strings and positive values', () => {
+    seedHistoricalData(80);
+    const history = getCollection().history ?? [];
+    history.forEach((p) => {
+      expect(p.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(p.value).toBeGreaterThan(0);
+    });
+  });
+
+  it('values stay within reasonable bounds of currentValue', () => {
+    const current = 200;
+    seedHistoricalData(current);
+    const history = getCollection().history ?? [];
+    history.forEach((p) => {
+      expect(p.value).toBeGreaterThanOrEqual(current * 0.4); // floor with slack
+      expect(p.value).toBeLessThanOrEqual(current * 1.3);   // cap with slack
+    });
+  });
+
+  it('history is sorted chronologically', () => {
+    seedHistoricalData(75);
+    const history = getCollection().history ?? [];
+    for (let i = 1; i < history.length; i++) {
+      expect(history[i].date >= history[i - 1].date).toBe(true);
+    }
+  });
+
+  it('does NOT run when currentValue is 0', () => {
+    seedHistoricalData(0);
+    const history = getCollection().history ?? [];
+    expect(history.length).toBe(0);
+  });
+
+  it('does NOT run when history already has 2 or more real entries', () => {
+    const col = getCollection();
+    col.history = [
+      { date: '2024-01-01', value: 50 },
+      { date: '2024-01-02', value: 55 },
+    ];
+    localStorage.setItem('carddex.collection.v1', JSON.stringify(col));
+
+    seedHistoricalData(100);
+    const history = getCollection().history ?? [];
+    // Must remain unchanged
+    expect(history.length).toBe(2);
+  });
+
+  it('does not add duplicate dates on repeated calls', () => {
+    seedHistoricalData(100);
+    const len1 = (getCollection().history ?? []).length;
+
+    // Second call — history now has >= 2 entries, so seed is a no-op
+    seedHistoricalData(100);
+    const len2 = (getCollection().history ?? []).length;
+    expect(len2).toBe(len1);
+
+    // Dates should still be unique
+    const dates = (getCollection().history ?? []).map((p) => p.date);
+    expect(new Set(dates).size).toBe(dates.length);
+  });
+
+  it('produces deterministic results for the same currentValue', () => {
+    seedHistoricalData(150);
+    const snapshot1 = JSON.stringify(getCollection().history ?? []);
+    localStorage.clear();
+
+    seedHistoricalData(150);
+    const snapshot2 = JSON.stringify(getCollection().history ?? []);
+    expect(snapshot1).toBe(snapshot2);
+  });
+});
+

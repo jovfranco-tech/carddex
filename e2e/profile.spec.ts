@@ -11,6 +11,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Profile Screen', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('carddex.onboardingComplete', 'true');
+    });
     // Navigate directly to profile route — avoids bottom-nav overlay intercept issues
     await page.goto('/profile');
     await page.waitForLoadState('domcontentloaded');

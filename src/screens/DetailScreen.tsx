@@ -48,6 +48,8 @@ import { formatDateShort } from '@/lib/formatters';
 import PriceHistoryChart from '@/components/PriceHistoryChart';
 import type { PokemonCard } from '@/types/pokemon';
 import type { CardCondition, CardVariant } from '@/types/collection';
+import MoreActionsModal from './detail/MoreActionsModal';
+import AddToCollectionPanel from './detail/AddToCollectionPanel';
 
 export default function DetailScreen() {
   const { cardId } = useParams<{ cardId: string }>();
@@ -588,116 +590,19 @@ function Detail({
       )}
 
       {/* Add to collection */}
-      <div style={{ padding: '0 14px 12px' }}>
-        <Surface style={{ padding: 16 }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: 'var(--ink)',
-              letterSpacing: -0.2,
-              marginBottom: 12,
-            }}
-          >
-            Agregar a mi colección
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              marginBottom: 12,
-              flexWrap: 'wrap',
-            }}
-          >
-            <QuantitySelector value={qty} onChange={setQty} min={1} />
-            <FoilToggle value={foil} onChange={setFoil} />
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <SelectField
-              label="Variante"
-              value={variant}
-              onChange={(v) => setVariant(v as CardVariant)}
-              options={['Normal', 'Holo', 'Reverse Holo', 'Promo']}
-            />
-            <SelectField
-              label="Condición"
-              value={condition}
-              onChange={(v) => setCondition(v as CardCondition)}
-              options={[
-                'Mint',
-                'Near Mint',
-                'Lightly Played',
-                'Moderately Played',
-                'Heavily Played',
-                'Damaged',
-              ]}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: saved ? '1fr 1fr' : '1fr', gap: 10 }}>
-            <button
-              onClick={handleSave}
-              style={{
-                width: '100%',
-                padding: '13px',
-                background: saved ? 'var(--success)' : 'var(--accent)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 15,
-                fontWeight: 700,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                letterSpacing: -0.2,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                transition: 'background 200ms',
-              }}
-            >
-              <CheckIcon size={18} color="#fff" />
-              {saved ? 'Guardado' : 'Guardar en mi colección'}
-            </button>
-
-            {saved && (
-              <button
-                onClick={handleRemove}
-                style={{
-                  width: '100%',
-                  padding: '13px',
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  color: '#ef4444',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                  borderRadius: 14,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  letterSpacing: -0.2,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  transition: 'background 200ms, border-color 200ms',
-                }}
-              >
-                <TrashIcon size={18} color="#ef4444" />
-                Quitar
-              </button>
-            )}
-          </div>
-        </Surface>
-      </div>
+      <AddToCollectionPanel
+        qty={qty}
+        setQty={setQty}
+        foil={foil}
+        setFoil={setFoil}
+        variant={variant}
+        setVariant={setVariant}
+        condition={condition}
+        setCondition={setCondition}
+        saved={saved}
+        handleSave={handleSave}
+        handleRemove={handleRemove}
+      />
 
       {/* Add to deck */}
       {decks.length > 0 && (
@@ -827,185 +732,13 @@ function Detail({
 
       {/* 3-dots Context Menu / Modal */}
       {moreOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            background: 'rgba(15, 20, 40, 0.4)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-          }}
-          onClick={() => setMoreOpen(false)}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 520,
-              background: 'rgba(255, 255, 255, 0.85)',
-              backdropFilter: 'blur(24px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: '20px 20px 34px',
-              boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.15)',
-              borderTop: '0.5px solid rgba(255, 255, 255, 0.4)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              animation: 'slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 5,
-                background: 'rgba(0, 0, 0, 0.15)',
-                borderRadius: 3,
-                alignSelf: 'center',
-                marginBottom: 12,
-              }}
-            />
-            
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: 'var(--muted)',
-                marginBottom: 6,
-                paddingLeft: 8,
-              }}
-            >
-              Acciones de Carta
-            </div>
-
-            <button
-              onClick={() => {
-                setMoreOpen(false);
-                handleDownloadImage();
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'rgba(0, 0, 0, 0.03)',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'var(--ink)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                fontFamily: 'inherit',
-              }}
-            >
-              📥 Descargar Imagen
-            </button>
-
-            <button
-              onClick={() => {
-                setMoreOpen(false);
-                handleCopyId();
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'rgba(0, 0, 0, 0.03)',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'var(--ink)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                fontFamily: 'inherit',
-              }}
-            >
-              📋 Copiar ID de Carta
-            </button>
-
-            {card.tcgplayer?.url && (
-              <button
-                onClick={() => {
-                  setMoreOpen(false);
-                  window.open(card.tcgplayer?.url, '_blank');
-                }}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: 'rgba(0, 0, 0, 0.03)',
-                  border: 'none',
-                  borderRadius: 14,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: 'var(--ink)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  fontFamily: 'inherit',
-                }}
-              >
-                🌐 Ver en TCGPlayer
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                setMoreOpen(false);
-                handleCreateDeckWithCard();
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'rgba(123, 90, 217, 0.1)',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'var(--accent)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                fontFamily: 'inherit',
-              }}
-            >
-              ➕ Crear mazo con esta carta
-            </button>
-
-            <button
-              onClick={() => setMoreOpen(false)}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'rgba(0, 0, 0, 0.05)',
-                border: 'none',
-                borderRadius: 14,
-                fontSize: 15,
-                fontWeight: 700,
-                color: 'var(--ink-2)',
-                textAlign: 'center',
-                cursor: 'pointer',
-                marginTop: 8,
-                fontFamily: 'inherit',
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
+        <MoreActionsModal
+          card={card}
+          onClose={() => setMoreOpen(false)}
+          onDownloadImage={handleDownloadImage}
+          onCopyId={handleCopyId}
+          onCreateDeck={handleCreateDeckWithCard}
+        />
       )}
 
       <style>{`
@@ -1222,80 +955,4 @@ function CollectionStateRow({
   );
 }
 
-function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: ReadonlyArray<string>;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label style={{ display: 'block' }}>
-      <div
-        style={{
-          fontSize: 10.5,
-          color: 'var(--muted)',
-          letterSpacing: 0.2,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          position: 'relative',
-          background: 'var(--bg)',
-          borderRadius: 12,
-          border: '0.5px solid var(--border)',
-        }}
-      >
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            fontFamily: 'inherit',
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--ink)',
-            padding: '10px 28px 10px 12px',
-            width: '100%',
-            cursor: 'pointer',
-            letterSpacing: -0.1,
-          }}
-        >
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            right: 12,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--muted)',
-            fontSize: 10,
-            pointerEvents: 'none',
-          }}
-        >
-          ▾
-        </span>
-      </div>
-    </label>
-  );
-}
 

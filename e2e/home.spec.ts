@@ -8,6 +8,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Home Screen', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('carddex.onboardingComplete', 'true');
+    });
     await page.goto('/');
   });
 

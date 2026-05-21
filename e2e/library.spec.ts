@@ -7,6 +7,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Library Screen', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('carddex.onboardingComplete', 'true');
+    });
     // Navigate directly to the library
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');

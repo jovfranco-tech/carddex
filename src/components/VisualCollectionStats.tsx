@@ -282,8 +282,18 @@ export default function VisualCollectionStats({
     });
     areaD += ` L ${coords[coords.length - 1].x} ${H - paddingY} Z`;
 
-    return { points, labels, coords, pathD, areaD, currencySym };
+    return { points, labels, coords, pathD, areaD, currencySym, rawPoints };
   }, [pricingTotals, collection.history]);
+
+  /** Real monthly performance: (last / first - 1) * 100 across the history window. */
+  const monthlyPerf = useMemo(() => {
+    const pts = historyData.rawPoints;
+    if (pts.length < 2) return null;
+    const first = pts[0].value;
+    const last = pts[pts.length - 1].value;
+    if (first <= 0) return null;
+    return ((last - first) / first) * 100;
+  }, [historyData.rawPoints]);
 
   const valueFormatted = formatCollectionValue(pricingTotals);
 
@@ -565,9 +575,23 @@ export default function VisualCollectionStats({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}>Desempeño mensual</span>
-                <span style={{ fontSize: 14, color: '#10B981', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  ▲ +13.6% <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>(último mes)</span>
-                </span>
+                {monthlyPerf !== null ? (
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: monthlyPerf >= 0 ? '#10B981' : '#EF4444',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    {monthlyPerf >= 0 ? '▲' : '▼'} {monthlyPerf >= 0 ? '+' : ''}{monthlyPerf.toFixed(1)}%{' '}
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>(período)</span>
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>—</span>
+                )}
               </div>
               <div style={{ textAlign: 'right', fontSize: 12 }}>
                 <span style={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: 600 }}>Máx: </span>

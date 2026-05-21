@@ -1,5 +1,5 @@
 import { getCardById } from './pokemonTcgApi';
-import { getEstimatedPrice } from './pricing';
+import { getEstimatedPrice, type Currency } from './pricing';
 import type { PokemonCard } from '@/types/pokemon';
 
 export interface PriceAlert {
@@ -17,7 +17,7 @@ export interface PriceAlert {
 /** Stored per-card price baseline: last known price + when it was recorded. */
 export interface PriceBaseline {
   price: number;
-  currency: 'USD' | 'EUR';
+  currency: Currency;
   recordedAt: string; // ISO
 }
 
