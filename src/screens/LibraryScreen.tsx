@@ -44,7 +44,7 @@ import {
 } from '@/lib/priceMonitor';
 import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
-import VisualCollectionStats from '@/components/VisualCollectionStats';
+const VisualCollectionStats = React.lazy(() => import('@/components/VisualCollectionStats'));
 import { logCollectionValueSnapshot } from '@/lib/collectionStorage';
 
 import {
@@ -525,7 +525,9 @@ export default function LibraryScreen() {
 
           {/* Collection statistics panel */}
           {owned.data && owned.data.length > 0 && (
-            <VisualCollectionStats ownedCards={owned.data} collection={collection} />
+            <React.Suspense fallback={<div style={{ minHeight: 80, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>Cargando análisis visual...</div>}>
+              <VisualCollectionStats ownedCards={owned.data} collection={collection} />
+            </React.Suspense>
           )}
 
           {/* Rarest */}

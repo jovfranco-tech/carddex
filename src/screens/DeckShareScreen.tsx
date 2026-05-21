@@ -8,7 +8,8 @@ import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
 import { BackIcon, LayersIcon, DownloadIcon, GalleryIcon } from '@/components/icons';
 import { Toast } from '@/components/Section';
-import VisualCollectionStats from '@/components/VisualCollectionStats';
+import React from 'react';
+const VisualCollectionStats = React.lazy(() => import('@/components/VisualCollectionStats'));
 import type { PokemonCard } from '@/types/pokemon';
 import { ROUTES } from '@/app/routes';
 import PremiumShareModal from '@/components/PremiumShareModal';
@@ -243,12 +244,14 @@ export default function DeckShareScreen() {
 
         {/* Visual Analytics */}
         {deckCards.data && deckCards.data.length > 0 && (
-          <VisualCollectionStats
-            ownedCards={deckCards.data}
-            collection={collectionMock}
-            title="Análisis del Mazo"
-            isDeck={true}
-          />
+          <React.Suspense fallback={<div style={{ minHeight: 80, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>Cargando análisis visual...</div>}>
+            <VisualCollectionStats
+              ownedCards={deckCards.data}
+              collection={collectionMock}
+              title="Análisis del Mazo"
+              isDeck={true}
+            />
+          </React.Suspense>
         )}
 
         {/* Card Grid */}
