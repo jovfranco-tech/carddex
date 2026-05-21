@@ -252,7 +252,7 @@ export default function HomeScreen() {
       {/* Top Logo */}
       <div style={{ paddingTop: 54, display: 'flex', justifyContent: 'center' }}>
         <img
-          src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Pok%C3%A9mon_Trading_Card_Game_logo.svg"
+          src="/logo.svg"
           alt="Pokémon Trading Card Game"
           style={{ height: 68 }}
         />
