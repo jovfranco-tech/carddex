@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
 import CardTile from '@/components/CardTile';
 import Surface from '@/components/Surface';
 import TcgCardImage from '@/components/TcgCardImage';
@@ -204,6 +205,26 @@ export default function CardListView({
   onSetFilter,
 }: CardListViewProps) {
   const navigate = useNavigate();
+  const observerTargetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && filteredCards.length > visibleCount) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+
+    observer.observe(target);
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredCards.length, visibleCount, onLoadMore]);
 
   if (filteredCards.length === 0) {
     return (
@@ -267,9 +288,35 @@ export default function CardListView({
             />
           ))}
         </div>
-        {filteredCards.length > visibleCount && (
-          <LoadMoreButton remaining={filteredCards.length - visibleCount} onLoadMore={onLoadMore} />
-        )}
+        {filteredCards.length > visibleCount ? (
+          <div
+            ref={observerTargetRef}
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '16px 0',
+              opacity: 0.8,
+            }}
+          >
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                border: '2px solid rgba(255, 255, 255, 0.08)',
+                borderTopColor: 'var(--accent)',
+                animation: 'spinLoader 0.8s linear infinite',
+              }}
+            />
+            <style>{`
+              @keyframes spinLoader {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -485,12 +532,35 @@ export default function CardListView({
           </Surface>
         ))}
       </div>
-      {filteredCards.length > visibleCount && (
-        <LoadMoreButton
-          remaining={filteredCards.length - visibleCount}
-          onLoadMore={onLoadMore}
-        />
-      )}
+      {filteredCards.length > visibleCount ? (
+        <div
+          ref={observerTargetRef}
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '16px 0',
+            opacity: 0.8,
+          }}
+        >
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              border: '2px solid rgba(255, 255, 255, 0.08)',
+              borderTopColor: 'var(--accent)',
+              animation: 'spinLoader 0.8s linear infinite',
+            }}
+          />
+          <style>{`
+            @keyframes spinLoader {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      ) : null}
     </div>
   );
 }
