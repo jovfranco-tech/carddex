@@ -39,6 +39,7 @@ import {
   markAllAlertsAsRead,
   clearAllPriceAlerts,
   subscribePriceAlerts,
+  detectRealPriceChanges,
   type PriceAlert
 } from '@/lib/priceMonitor';
 import { triggerHaptic } from '@/lib/haptic';
@@ -57,6 +58,7 @@ import {
 } from './library/libraryHelpers';
 import LibraryFiltersBar from './library/LibraryFiltersBar';
 import PriceAlertsPanel from './library/PriceAlertsPanel';
+import CardListView from './library/CardListView';
 
 
 export default function LibraryScreen() {
@@ -196,6 +198,8 @@ export default function LibraryScreen() {
   React.useEffect(() => {
     if (owned.data && owned.data.length > 0) {
       logCollectionValueSnapshot(owned.data);
+      // Detect real price changes vs. stored baselines (throttled to 3h internally).
+      detectRealPriceChanges(owned.data).catch(console.error);
     }
   }, [owned.data]);
 
@@ -554,315 +558,27 @@ export default function LibraryScreen() {
 
           {/* All cards */}
           <Section title="Todas mis cartas">
-            {filteredCards.length === 0 ? (
-              <EmptyState
-                title="Sin resultados"
-                description="Cambia los filtros o desactiva 'Solo mis cartas' para ver más."
-              />
-            ) : view === 'sets' ? (
-              <div
-                style={{
-                  padding: '0 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                }}
-              >
-                {bySetGroups.map((group) => (
-                  <SetGroupCard
-                    key={group.setId}
-                    setId={group.setId}
-                    setName={group.setName}
-                    setSeries={group.setSeries}
-                    setSymbol={group.setSymbol}
-                    printedTotal={group.printedTotal}
-                    cards={group.cards}
-                    collection={collection}
-                    onCard={(id) => navigate(`/card/${id}`)}
-                    onFilter={(id) =>
-                      setSearchParams((prev) => {
-                        const next = new URLSearchParams(prev);
-                        next.set('set', id);
-                        return next;
-                      })
-                    }
-                  />
-                ))}
-              </div>
-            ) : view === 'grid' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div
-                  style={{
-                    padding: '0 18px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 12,
-                    justifyItems: 'center',
-                  }}
-                >
-                  {filteredCards.slice(0, visibleCount).map((c) => (
-                    <CardTile
-                      key={c.id}
-                      card={c}
-                      meta={collection.cards[c.id]}
-                      width={104}
-                      onClick={() => navigate(`/card/${c.id}`)}
-                      showMissingState={!onlyMine}
-                    />
-                  ))}
-                </div>
-
-                {filteredCards.length > visibleCount && (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 18px' }}>
-                    <button
-                      onClick={() => setVisibleCount((prev) => prev + 24)}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        color: 'var(--ink)',
-                        borderRadius: 16,
-                        border: '1px solid var(--border)',
-                        padding: '14px 28px',
-                        fontSize: 14,
-                        fontWeight: 700,
-                        fontFamily: 'inherit',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-                        transition: 'all 200ms ease',
-                        width: '100%',
-                        maxWidth: 260,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                        e.currentTarget.style.transform = 'none';
-                      }}
-                    >
-                      Cargar más ({filteredCards.length - visibleCount} restantes)
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : view === 'binder' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-                {/* Visual Binder Sheet */}
-                <div className="binder-sheet">
-                  {/* Left ring binder margin with punch holes */}
-                  <div className="binder-spine">
-                    <div className="punch-hole" />
-                    <div className="punch-hole" />
-                    <div className="punch-hole" />
-                    <div className="punch-hole" />
-                  </div>
-                  
-                  {/* 3x3 Grid of Pockets */}
-                  <div className="binder-grid">
-                    {Array.from({ length: 9 }).map((_, index) => {
-                      const card = binderCards[index];
-                      if (card) {
-                        return (
-                          <div key={card.id} className="binder-pocket">
-                            <CardTile
-                              card={card}
-                              meta={collection.cards[card.id]}
-                              width={92}
-                              onClick={() => navigate(`/card/${card.id}`)}
-                              showMissingState={!onlyMine}
-                            />
-                            <div className="pocket-reflection" />
-                          </div>
-                        );
-                      } else {
-                        // Empty sleeve pocket
-                        return (
-                          <div key={`empty-${index}`} className="binder-pocket empty-pocket">
-                            <div className="empty-pocket-inner">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.25 }}>
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <line x1="9" y1="3" x2="9" y2="21" />
-                                <line x1="15" y1="3" x2="15" y2="21" />
-                                <line x1="3" y1="9" x2="21" y2="9" />
-                                <line x1="3" y1="15" x2="21" y2="15" />
-                              </svg>
-                            </div>
-                            <div className="pocket-reflection" />
-                          </div>
-                        );
-                      }
-                    })}
-                  </div>
-                </div>
-
-                {/* Floating controls for binder pages */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: '8px 16px',
-                  borderRadius: 99,
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--border)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                  marginTop: 6,
-                }}>
-                  <button
-                    disabled={binderPage === 1}
-                    onClick={() => setBinderPage(p => Math.max(1, p - 1))}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: binderPage === 1 ? 'var(--muted-3)' : 'var(--ink)',
-                      cursor: binderPage === 1 ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 4,
-                      opacity: binderPage === 1 ? 0.4 : 1,
-                    }}
-                    aria-label="Página anterior"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                  </button>
-                  
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', minWidth: 100, textAlign: 'center' }}>
-                    Pág. {binderPage} de {totalBinderPages}
-                  </span>
-
-                  <button
-                    disabled={binderPage === totalBinderPages}
-                    onClick={() => setBinderPage(p => Math.min(totalBinderPages, p + 1))}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: binderPage === totalBinderPages ? 'var(--muted-3)' : 'var(--ink)',
-                      cursor: binderPage === totalBinderPages ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 4,
-                      opacity: binderPage === totalBinderPages ? 0.4 : 1,
-                    }}
-                    aria-label="Página siguiente"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div
-                  style={{
-                    padding: '0 14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                  }}
-                >
-                  {filteredCards.slice(0, visibleCount).map((c) => (
-                    <Surface
-                      key={c.id}
-                      onClick={() => navigate(`/card/${c.id}`)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: 10,
-                      }}
-                    >
-                      <TcgCardImage card={c} width={48} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            color: 'var(--ink)',
-                            letterSpacing: -0.2,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {c.name}
-                        </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            marginTop: 2,
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <RarityBadge rarity={c.rarity} />
-                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{c.number}</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <PriceBadge price={getEstimatedPrice(c)} />
-                        {collection.cards[c.id]?.quantity ? (
-                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                            ×{collection.cards[c.id]?.quantity}
-                          </div>
-                        ) : null}
-                      </div>
-                    </Surface>
-                  ))}
-                </div>
-
-                {filteredCards.length > visibleCount && (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 14px' }}>
-                    <button
-                      onClick={() => setVisibleCount((prev) => prev + 24)}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        color: 'var(--ink)',
-                        borderRadius: 16,
-                        border: '1px solid var(--border)',
-                        padding: '14px 28px',
-                        fontSize: 14,
-                        fontWeight: 700,
-                        fontFamily: 'inherit',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-                        transition: 'all 200ms ease',
-                        width: '100%',
-                        maxWidth: 260,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                        e.currentTarget.style.transform = 'none';
-                      }}
-                    >
-                      Cargar más ({filteredCards.length - visibleCount} restantes)
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            <CardListView
+              view={view}
+              filteredCards={filteredCards}
+              collection={collection}
+              onlyMine={onlyMine}
+              visibleCount={visibleCount}
+              onLoadMore={() => setVisibleCount((prev) => prev + 24)}
+              binderPage={binderPage}
+              totalBinderPages={totalBinderPages}
+              binderCards={binderCards}
+              onBinderPrev={() => setBinderPage((p) => Math.max(1, p - 1))}
+              onBinderNext={() => setBinderPage((p) => Math.min(totalBinderPages, p + 1))}
+              bySetGroups={bySetGroups}
+              onSetFilter={(id) =>
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set('set', id);
+                  return next;
+                })
+              }
+            />
           </Section>
         </>
       )}
