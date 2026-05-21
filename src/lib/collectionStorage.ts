@@ -10,6 +10,7 @@ import {
 import { supabase } from './supabaseClient';
 import { getEstimatedPrice } from './pricing';
 import type { PokemonCard } from '@/types/pokemon';
+import { saveCollectionBackupToDb, getCollectionBackupFromDb } from './indexedDb';
 
 const KEYS = {
   collection: 'carddex.collection.v1',
@@ -73,6 +74,12 @@ function safeWrite(key: string, value: unknown): void {
   if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    if (key === KEYS.collection) {
+      saveCollectionBackupToDb(value).catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[Backup Sync] Mirror write to IndexedDB failed:', err),
+      );
+    }
   } catch {
     /* localStorage may be full or disabled — silently ignore. */
   }
@@ -511,6 +518,25 @@ export function summarize(): CollectionSummary {
 /* ------------------------------------------------------------------------- */
 /* Initialization & Event Listeners for Offline Sync                         */
 /* ------------------------------------------------------------------------- */
+
+export async function initializeCollectionStorage(): Promise<void> {
+  if (typeof localStorage === 'undefined') return;
+  const raw = localStorage.getItem(KEYS.collection);
+  if (!raw) {
+    try {
+      const backup = await getCollectionBackupFromDb();
+      if (backup && typeof backup === 'object' && backup.cards) {
+        safeWrite(KEYS.collection, backup);
+        notify();
+        // eslint-disable-next-line no-console
+        console.log('[Backup Sync] Restored collection from IndexedDB backup:', Object.keys(backup.cards).length, 'cards');
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Backup Sync] Failed to restore backup on initialization:', err);
+    }
+  }
+}
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {

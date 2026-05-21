@@ -48,6 +48,7 @@ import { formatDateShort } from '@/lib/formatters';
 import PriceHistoryChart from '@/components/PriceHistoryChart';
 import type { PokemonCard } from '@/types/pokemon';
 import type { CardCondition, CardVariant } from '@/types/collection';
+import { translateCardText } from '@/lib/translation';
 import MoreActionsModal from './detail/MoreActionsModal';
 import AddToCollectionPanel from './detail/AddToCollectionPanel';
 
@@ -119,6 +120,7 @@ function Detail({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [deckSavedId, setDeckSavedId] = useState<string | null>(null);
+  const [lang, setLang] = useState<'EN' | 'ES'>('EN');
 
   const decksState = useDecks();
   const decks = Object.values(decksState.decks);
@@ -470,7 +472,53 @@ function Detail({
 
       {/* Details paragraph + ataques */}
       <div style={{ padding: '0 18px 16px' }}>
-        <UpperLabel>Detalles</UpperLabel>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <UpperLabel>Detalles</UpperLabel>
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '999px',
+            padding: '2px',
+            gap: '2px',
+            backdropFilter: 'blur(8px)',
+          }}>
+            <button
+              onClick={() => { setLang('EN'); triggerHaptic('light'); }}
+              style={{
+                background: lang === 'EN' ? 'var(--ink)' : 'transparent',
+                color: lang === 'EN' ? 'var(--canvas)' : 'var(--ink-3)',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '4px 10px',
+                fontSize: 10,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => { setLang('ES'); triggerHaptic('light'); }}
+              style={{
+                background: lang === 'ES' ? 'var(--accent)' : 'transparent',
+                color: lang === 'ES' ? '#000000' : 'var(--ink-3)',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '4px 10px',
+                fontSize: 10,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                textShadow: lang === 'ES' ? '0 0 4px rgba(0,255,127,0.4)' : 'none',
+              }}
+            >
+              ES
+            </button>
+          </div>
+        </div>
+
         <p
           style={{
             margin: '6px 0 0',
@@ -480,12 +528,64 @@ function Detail({
             letterSpacing: -0.1,
           }}
         >
-          {card.flavorText ??
+          {lang === 'ES' ? (translateCardText(card.flavorText) || 'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.') : (card.flavorText ??
             (card.artist
               ? `Ilustrada por ${card.artist}.`
-              : 'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.')}
+              : 'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.'))}
         </p>
 
+        {/* Abilities Section */}
+        {card.abilities && card.abilities.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <UpperLabel>Habilidades</UpperLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {card.abilities.map((ab, i) => (
+                <Surface key={`ability-${i}`} style={{ padding: 12, background: 'rgba(255, 65, 54, 0.04)', border: '1px solid rgba(255, 65, 54, 0.15)' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      style={{
+                        background: '#ff413622',
+                        color: '#ff4136',
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        letterSpacing: 0.5,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {lang === 'ES' ? 'HABILIDAD' : 'ABILITY'}
+                    </span>
+                    <span style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 13 }}>
+                      {ab.name}
+                    </span>
+                  </div>
+                  {ab.text && (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        lineHeight: 1.4,
+                        color: 'var(--ink-2)',
+                      }}
+                    >
+                      {lang === 'ES' ? translateCardText(ab.text) : ab.text}
+                    </p>
+                  )}
+                </Surface>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Attacks Section */}
         {card.attacks && card.attacks.length > 0 && (
           <div style={{ marginTop: 14 }}>
             <UpperLabel>Ataques</UpperLabel>
@@ -546,9 +646,32 @@ function Detail({
                         color: 'var(--ink-3)',
                       }}
                     >
-                      {a.text}
+                      {lang === 'ES' ? translateCardText(a.text) : a.text}
                     </p>
                   )}
+                </Surface>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rules Section */}
+        {card.rules && card.rules.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <UpperLabel>Reglas</UpperLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              {card.rules.map((rule, i) => (
+                <Surface key={`rule-${i}`} style={{ padding: 10, borderLeft: '3px solid var(--accent)' }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      lineHeight: 1.4,
+                      color: 'var(--ink-2)',
+                    }}
+                  >
+                    {lang === 'ES' ? translateCardText(rule) : rule}
+                  </p>
                 </Surface>
               ))}
             </div>

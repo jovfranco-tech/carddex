@@ -7,6 +7,7 @@ import { ROUTES } from './routes';
 import { AuthProvider } from '@/lib/authContext';
 import { usePredictiveImagePreloader } from '@/lib/imagePreloader';
 import { checkAndGeneratePriceAlerts } from '@/lib/priceMonitor';
+import { initializeCollectionStorage } from '@/lib/collectionStorage';
 import OnboardingWizard, { isOnboardingComplete } from '@/components/OnboardingWizard';
 import AchievementToast from '@/components/AchievementToast';
 import type { Achievement } from '@/lib/achievements';
@@ -185,7 +186,9 @@ export default function App() {
 
   useEffect(() => {
     // Generate/update price alerts in background when app boots
-    checkAndGeneratePriceAlerts();
+    initializeCollectionStorage().finally(() => {
+      checkAndGeneratePriceAlerts();
+    });
   }, []);
 
   const handleAchievementEvent = useCallback((e: Event) => {

@@ -1,7 +1,27 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { mergeCollections, getCollection, saveCardMeta, logCollectionValueSnapshot, seedHistoricalData } from './collectionStorage';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  mergeCollections,
+  getCollection,
+  saveCardMeta,
+  logCollectionValueSnapshot,
+  seedHistoricalData,
+  initializeCollectionStorage,
+} from './collectionStorage';
 import type { CollectionState, CollectionCardMeta } from '@/types/collection';
+
+const mockBackupDb = {
+  state: null as any,
+};
+
+vi.mock('./indexedDb', () => ({
+  saveCollectionBackupToDb: vi.fn(async (state: any) => {
+    mockBackupDb.state = state;
+  }),
+  getCollectionBackupFromDb: vi.fn(async () => {
+    return mockBackupDb.state;
+  }),
+}));
 
 describe('Collection Reconciliation (Delta Merge LWW)', () => {
   it('should merge two empty collections correctly', () => {
@@ -284,6 +304,68 @@ describe('seedHistoricalData', () => {
     seedHistoricalData(150);
     const snapshot2 = JSON.stringify(getCollection().history ?? []);
     expect(snapshot1).toBe(snapshot2);
+  });
+});
+
+describe('initializeCollectionStorage', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockBackupDb.state = null;
+  });
+
+  it('should restore collection from IndexedDB backup if localStorage is empty', async () => {
+    const originalCollection = {
+      version: 1,
+      cards: {
+        'sv3-125': {
+          cardId: 'sv3-125',
+          owned: true,
+          quantity: 3,
+        },
+      },
+      history: [],
+    };
+
+    // Simulate having a backup in IndexedDB
+    mockBackupDb.state = originalCollection;
+
+    // Local storage is empty initially
+    expect(localStorage.getItem('carddex.collection.v1')).toBeNull();
+
+    // Initialize
+    await initializeCollectionStorage();
+
+    // Local storage should now have the restored collection
+    const restored = getCollection();
+    expect(restored.cards['sv3-125']).toBeDefined();
+    expect(restored.cards['sv3-125'].quantity).toBe(3);
+  });
+
+  it('should not overwrite existing localStorage collection if already present', async () => {
+    // 1. Save local card
+    saveCardMeta('sv3-125', { owned: true, quantity: 1 });
+    const localCollection = getCollection();
+
+    // 2. Simulate having a DIFFERENT backup in IndexedDB
+    mockBackupDb.state = {
+      version: 1,
+      cards: {
+        'cel25-25': {
+          cardId: 'cel25-25',
+          owned: true,
+          quantity: 10,
+        },
+      },
+      history: [],
+    };
+
+    // 3. Initialize
+    await initializeCollectionStorage();
+
+    // Local storage should NOT be overwritten because it was not empty
+    const restored = getCollection();
+    expect(restored.cards['sv3-125']).toBeDefined();
+    expect(restored.cards['cel25-25']).toBeUndefined();
   });
 });
 

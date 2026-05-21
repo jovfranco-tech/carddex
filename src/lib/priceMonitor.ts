@@ -139,6 +139,33 @@ function sendPriceNotification(alert: PriceAlert): void {
   } catch (err) {
     console.warn('Push notification failed:', err);
   }
+
+  // Dispatch Web Push notification through serverless API gateway if subscription exists
+  if (typeof localStorage !== 'undefined') {
+    const subRaw = localStorage.getItem('carddex_push_subscription');
+    if (subRaw) {
+      try {
+        const subscription = JSON.parse(subRaw);
+        fetch('/api/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription,
+            payload: {
+              title,
+              body,
+              icon: alert.cardImage || '/icons/icon-192.png',
+              tag: `price-alert-${alert.cardId}`,
+            },
+          }),
+        }).catch((e) => {
+          console.warn('[Web Push API] Dispatch failed:', e);
+        });
+      } catch (e) {
+        console.warn('[Web Push API] Failed to parse subscription:', e);
+      }
+    }
+  }
 }
 
 /**

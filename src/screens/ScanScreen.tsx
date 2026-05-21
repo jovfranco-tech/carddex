@@ -24,6 +24,7 @@ import type { PokemonCard } from '@/types/pokemon';
 import { saveCardMeta } from '@/lib/collectionStorage';
 import { triggerHaptic } from '@/lib/haptic';
 import EdgeDetectorCanvas from '@/components/EdgeDetectorCanvas';
+import { loadOpenCv } from '@/lib/openCvLoader';
 import { compressForAI } from '@/lib/imageOptimization';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
@@ -306,6 +307,13 @@ export default function ScanScreen() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingInputRef = useRef<RecognitionInput>({ type: 'none' });
 
+  // Load OpenCV early on mount to reduce latency
+  useEffect(() => {
+    loadOpenCv().catch((err) => {
+      console.warn('[ScanScreen] OpenCV load error:', err);
+    });
+  }, []);
+
   // Live camera stream lifecycle.
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
   useEffect(() => {
@@ -364,14 +372,69 @@ export default function ScanScreen() {
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (w === 0 || h === 0) return null;
+    
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, w, h);
+
+    const cv = (window as any).cv;
+    const quad = (window as any).lastDetectedCardQuad;
+
+    let targetCanvas = canvas;
+
+    if (cv && cv.Mat && cv.matFromArray && cv.getPerspectiveTransform && cv.warpPerspective && quad && quad.length === 4) {
+      // Perspective Warp with OpenCV
+      let src: any = null;
+      let dst: any = null;
+      let srcTri: any = null;
+      let dstTri: any = null;
+      let M: any = null;
+      try {
+        const destWidth = 500;
+        const destHeight = 700;
+        src = cv.imread(canvas);
+        dst = new cv.Mat();
+        
+        srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+          quad[0].x, quad[0].y,
+          quad[1].x, quad[1].y,
+          quad[2].x, quad[2].y,
+          quad[3].x, quad[3].y,
+        ]);
+        
+        dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+          0, 0,
+          destWidth, 0,
+          destWidth, destHeight,
+          0, destHeight,
+        ]);
+
+        M = cv.getPerspectiveTransform(srcTri, dstTri);
+        const dsize = new cv.Size(destWidth, destHeight);
+        cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+
+        const warpCanvas = document.createElement('canvas');
+        warpCanvas.width = destWidth;
+        warpCanvas.height = destHeight;
+        cv.imshow(warpCanvas, dst);
+        targetCanvas = warpCanvas;
+        console.info('[OpenCV Perspective Warp] Successfully rectified card bounds.');
+      } catch (err) {
+        console.error('[OpenCV Perspective Warp] Error warping frame, using full capture:', err);
+      } finally {
+        if (src) src.delete();
+        if (dst) dst.delete();
+        if (srcTri) srcTri.delete();
+        if (dstTri) dstTri.delete();
+        if (M) M.delete();
+      }
+    }
+
     return new Promise<File | null>((resolve) => {
-      canvas.toBlob(
+      targetCanvas.toBlob(
         (blob) => {
           if (!blob) return resolve(null);
           resolve(

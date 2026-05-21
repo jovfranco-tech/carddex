@@ -25,7 +25,11 @@ import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
 import PasskeyManager, { decryptCredsAsync } from '@/components/PasskeyManager';
-import { requestPushPermission } from '@/lib/priceMonitor';
+import {
+  getPushSubscription,
+  subscribeToPushNotifications,
+  unsubscribeFromPushNotifications,
+} from '@/lib/webPush';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
 import { triggerHaptic } from '@/lib/haptic';
@@ -43,6 +47,40 @@ export default function ProfileScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  const [prefetchTotal, setPrefetchTotal] = useState(0);
+  const [prefetchCurrent, setPrefetchCurrent] = useState(0);
+  const [prefetchStatus, setPrefetchStatus] = useState<'idle' | 'fetching_cards' | 'prefetching_images' | 'success' | 'error'>('idle');
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+
+  useEffect(() => {
+    getPushSubscription().then((sub) => {
+      setIsPushSubscribed(!!sub);
+    });
+  }, []);
+
+  const handlePushToggle = async () => {
+    try {
+      if (isPushSubscribed) {
+        const success = await unsubscribeFromPushNotifications();
+        if (success) {
+          setIsPushSubscribed(false);
+          showToast('Alertas de precios desactivadas.');
+        }
+      } else {
+        const subscription = await subscribeToPushNotifications();
+        if (subscription) {
+          setIsPushSubscribed(true);
+          showToast('¡Alertas push activadas con éxito! 🚀');
+        }
+      }
+      triggerHaptic('light');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Error al configurar alertas push.');
+      triggerHaptic('medium');
+    }
+  };
 
   // Check collection-based achievements on mount
   useEffect(() => {
@@ -308,6 +346,75 @@ export default function ProfileScreen() {
     setPrefersMXN(next);
     setMxnEnabled(next);
     window.location.reload();
+  };
+
+  const handlePrefetchImages = async () => {
+    if (isPrefetching) return;
+    triggerHaptic('light');
+    
+    const col = getCollection();
+    const ownedIds = Object.values(col.cards)
+      .filter((c) => c.owned)
+      .map((c) => c.cardId);
+
+    if (ownedIds.length === 0) {
+      showToast("No tienes cartas en tu colección para precargar.");
+      return;
+    }
+
+    setIsPrefetching(true);
+    setPrefetchStatus('fetching_cards');
+    setPrefetchCurrent(0);
+    setPrefetchTotal(ownedIds.length);
+    
+    try {
+      const { getCardsByIds } = await import('@/lib/pokemonTcgApi');
+      const cards = await getCardsByIds(ownedIds);
+      
+      const urls: string[] = [];
+      cards.forEach((card) => {
+        if (card.images?.small) urls.push(card.images.small);
+        if (card.images?.large) urls.push(card.images.large);
+      });
+
+      if (urls.length === 0) {
+        setPrefetchStatus('success');
+        setIsPrefetching(false);
+        showToast("Colección offline actualizada (sin imágenes pendientes).");
+        return;
+      }
+
+      setPrefetchStatus('prefetching_images');
+      setPrefetchTotal(urls.length);
+      setPrefetchCurrent(0);
+
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+        const batch = urls.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async (url) => {
+            try {
+              await fetch(url, { mode: 'no-cors', cache: 'force-cache' });
+            } catch (e) {
+              console.warn('[Offline Cache] Failed to prefetch image:', url, e);
+            } finally {
+              setPrefetchCurrent((prev) => prev + 1);
+            }
+          })
+        );
+      }
+
+      setPrefetchStatus('success');
+      triggerHaptic('success');
+      showToast("¡Colección offline lista para usar!");
+    } catch (err) {
+      console.error('[Offline Cache] Prefetch failed:', err);
+      setPrefetchStatus('error');
+      triggerHaptic('warning');
+      showToast("Ocurrió un error al precargar las imágenes.");
+    } finally {
+      setIsPrefetching(false);
+    }
   };
 
   const getShowcaseCards = (): PokemonCard[] => {
@@ -748,6 +855,221 @@ export default function ProfileScreen() {
         </Surface>
       </div>
 
+      {/* Offline Collection Prefetcher */}
+      <div style={{ padding: '0 14px 14px' }}>
+        <SectionTitle>Colección Offline</SectionTitle>
+        <Surface style={{ padding: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 11,
+                  background: 'rgba(123, 90, 217, 0.12)',
+                  color: 'var(--accent)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                }}
+              >
+                📶
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: 'var(--ink)',
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  Acceso Offline Total
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                  Pre-descarga las imágenes de tu binder para visualizarlas sin conexión.
+                </div>
+              </div>
+            </div>
+
+            {prefetchStatus !== 'idle' && (
+              <div style={{ marginTop: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>
+                  <span>
+                    {prefetchStatus === 'fetching_cards' && "Obteniendo datos de las cartas..."}
+                    {prefetchStatus === 'prefetching_images' && `Descargando imágenes: ${prefetchCurrent} de ${prefetchTotal}`}
+                    {prefetchStatus === 'success' && "¡Completado! Todas las imágenes en caché"}
+                    {prefetchStatus === 'error' && "Error en la descarga. Intenta de nuevo."}
+                  </span>
+                  {prefetchTotal > 0 && prefetchStatus === 'prefetching_images' && (
+                    <span>{Math.round((prefetchCurrent / prefetchTotal) * 100)}%</span>
+                  )}
+                </div>
+                <div
+                  style={{
+                    height: 6,
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      background: prefetchStatus === 'error' ? 'var(--error)' : 'linear-gradient(90deg, var(--accent), #00BCD4)',
+                      width: prefetchTotal > 0 ? `${(prefetchCurrent / prefetchTotal) * 100}%` : '0%',
+                      transition: 'width 200ms ease-out',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handlePrefetchImages}
+              disabled={isPrefetching}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: isPrefetching 
+                  ? 'rgba(255,255,255,0.04)' 
+                  : prefetchStatus === 'success'
+                    ? 'rgba(52,199,89,0.1)'
+                    : 'linear-gradient(135deg, rgba(123,90,217,0.12), rgba(0,188,212,0.12))',
+                border: isPrefetching
+                  ? '1px solid rgba(255,255,255,0.06)'
+                  : prefetchStatus === 'success'
+                    ? '1px solid rgba(52,199,89,0.3)'
+                    : '1px solid rgba(123,90,217,0.3)',
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 700,
+                color: prefetchStatus === 'success' ? 'var(--success)' : 'var(--accent)',
+                cursor: isPrefetching ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                transition: 'all 200ms ease',
+              }}
+            >
+              {isPrefetching ? (
+                <>
+                  <span className="spinner-mini" style={{
+                    width: 14,
+                    height: 14,
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    borderTopColor: 'var(--accent)',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    animation: 'spinScreenLoader 1s linear infinite'
+                  }} />
+                  <span style={{ marginLeft: 8 }}>Descargando colección...</span>
+                </>
+              ) : prefetchStatus === 'success' ? (
+                <span>✓ Colección precargada con éxito</span>
+              ) : (
+                <span>⚡ Pre-descargar Imágenes de mi Colección</span>
+              )}
+            </button>
+          </div>
+        </Surface>
+      </div>
+
+      {/* Premium Price Alerts (Web Push) */}
+      <div style={{ padding: '0 14px 14px' }}>
+        <SectionTitle>Notificaciones Premium</SectionTitle>
+        <Surface style={{ padding: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 11,
+                  background: 'linear-gradient(135deg, rgba(255, 179, 0, 0.15), rgba(242, 201, 76, 0.15))',
+                  color: '#FFB300',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  boxShadow: '0 0 10px rgba(255, 179, 0, 0.2)',
+                }}
+              >
+                🔔
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: 'var(--ink)',
+                    letterSpacing: -0.2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  Alertas en Tiempo Real
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      color: '#FFB300',
+                      background: 'rgba(255, 179, 0, 0.12)',
+                      padding: '2px 6px',
+                      borderRadius: 6,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                      border: '0.5px solid rgba(255, 179, 0, 0.3)',
+                    }}
+                  >
+                    PRO
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>
+                  Monitoreo en segundo plano de tu binder. Recibe notificaciones push si alguna carta sube o baja más del 20%.
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePushToggle}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: isPushSubscribed
+                  ? 'rgba(255, 179, 0, 0.08)'
+                  : 'linear-gradient(135deg, rgba(255, 179, 0, 0.12), rgba(242, 201, 76, 0.12))',
+                border: isPushSubscribed
+                  ? '1px solid rgba(255, 179, 0, 0.4)'
+                  : '1px solid rgba(255, 179, 0, 0.25)',
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#FFB300',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                transition: 'all 200ms ease',
+                boxShadow: isPushSubscribed ? 'none' : '0 4px 12px rgba(255, 179, 0, 0.05)',
+              }}
+            >
+              {isPushSubscribed ? (
+                <span>✓ Alertas Push Activadas (Premium)</span>
+              ) : (
+                <span>⚡ Activar Alertas de Precios Instantáneas</span>
+              )}
+            </button>
+          </div>
+        </Surface>
+      </div>
+
       {/* API key status */}
       <div style={{ padding: '0 14px 14px' }}>
         <SectionTitle>Conexión con la API</SectionTitle>
@@ -951,47 +1273,6 @@ export default function ProfileScreen() {
       </div>
 
       {/* About */}
-      <div style={{ padding: '0 14px 14px' }}>
-        <SectionTitle>Notificaciones</SectionTitle>
-        <Surface style={{ padding: 16 }}>
-          <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 600, marginBottom: 10 }}>
-            Alertas de precios en tiempo real
-          </div>
-          <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
-            Recibe una notificación push cuando alguna carta de tu colección suba o baje más del 20% de precio.
-          </p>
-          <button
-            onClick={async () => {
-              const permission = await requestPushPermission();
-              if (permission === 'granted') {
-                showToast('✅ Notificaciones de precios activadas');
-              } else if (permission === 'denied') {
-                showToast('Notificaciones bloqueadas en la configuración del navegador');
-              } else {
-                showToast('Permiso de notificaciones requerido');
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              background: 'linear-gradient(135deg, rgba(123,90,217,0.12), rgba(47,111,224,0.12))',
-              border: '0.5px solid rgba(123,90,217,0.3)',
-              borderRadius: 12,
-              fontSize: 13,
-              fontWeight: 700,
-              color: 'var(--accent)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            🔔 Activar notificaciones de precios
-          </button>
-        </Surface>
-      </div>
-
       <div style={{ padding: '0 14px 14px' }}>
         <SectionTitle>Acerca de</SectionTitle>
         <Surface style={{ padding: 16 }}>
