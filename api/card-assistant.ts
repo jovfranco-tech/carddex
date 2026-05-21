@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createRateLimiter } from './_rateLimiter';
+import { createRateLimiter } from './_rateLimiter.js';
 
 /** 30 requests per hour per IP — enough for normal use, stops abuse. */
 const limiter = createRateLimiter({ maxRequests: 30, windowMs: 60 * 60 * 1000 });

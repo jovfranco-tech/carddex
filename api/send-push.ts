@@ -17,6 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // If web-push exists, execute full signature dispatch, otherwise simulate it.
     let webPush: any = null;
     try {
+      // @ts-ignore
       webPush = await import('web-push');
     } catch {
       // package is not installed/loaded, default to simulated premium gateway
