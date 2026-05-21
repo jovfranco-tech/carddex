@@ -6,15 +6,7 @@
 
 export function getOptimizedImageUrl(url: string | undefined, width?: number): string {
   if (!url) return '';
-  
-  if (!url.startsWith('https://images.pokemontcg.io/')) {
-    return url;
-  }
-
-  const cleanUrl = encodeURIComponent(url);
-  const wParam = width ? `&w=${Math.round(width * 1.5)}` : '';
-  
-  return `https://images.weserv.nl/?url=${cleanUrl}${wParam}&output=webp&q=80`;
+  return url;
 }
 
 /**
