@@ -1249,8 +1249,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Promo',
     artist: 'Ultimateinudog',
     images: {
-      small: '/images/custom/mep-la-030.jpg',
-      large: '/images/custom/mep-la-030.jpg'
+      small: '/images/custom/mep-la-030.png',
+      large: '/images/custom/mep-la-030.png'
     },
     dhash: '1111000011110000111111001100110010101010101010100011110000111100'
   },
