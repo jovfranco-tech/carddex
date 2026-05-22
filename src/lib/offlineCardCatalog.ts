@@ -1245,8 +1245,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     number: '030',
     rarity: 'Promo',
     images: {
-      small: 'https://images.pokemontcg.io/xy6/101.png',
-      large: 'https://images.pokemontcg.io/xy6/101_hires.png'
+      small: 'https://images.pokemontcg.io/xy2/13.png',
+      large: 'https://images.pokemontcg.io/xy2/13_hires.png'
     },
     dhash: '1111000011110000111111001100110010101010101010100011110000111100'
   },
