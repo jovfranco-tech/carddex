@@ -6,7 +6,27 @@
 
 export function getOptimizedImageUrl(url: string | undefined, width?: number): string {
   if (!url) return '';
-  return url;
+  
+  // If it's already a local, blob, data, or local dev URL, serve it directly
+  if (
+    url.startsWith('/') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:') ||
+    url.startsWith('http://localhost') ||
+    url.startsWith('http://127.0.0.1')
+  ) {
+    return url;
+  }
+
+  // Strip protocol to comply with weserv.nl query expectations
+  const cleanUrl = url.replace(/^https?:\/\//, '');
+  let optimizedUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&default=${encodeURIComponent(url)}`;
+  
+  if (width) {
+    optimizedUrl += `&w=${width}&fit=contain`;
+  }
+  
+  return optimizedUrl;
 }
 
 /**

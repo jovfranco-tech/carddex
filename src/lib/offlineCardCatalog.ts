@@ -1221,20 +1221,23 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     subtypes: ['Mega', 'ex', 'Stage 2'],
     hp: '360',
     types: ['Fire'],
-    evolvesFrom: 'Charizard ex',
+    evolvesFrom: 'Charmeleon',
     rules: [
-      'Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.',
-      'Mega Evolution rule: When 1 of your Pokémon becomes a Mega Evolution Pokémon, your turn ends.'
+      'Regla de Megaevolución ex: Cuando 1 de tus Pokémon se convierte en un Pokémon de Megaevolución, tu turno termina.',
+      'Regla Pokémon ex: Cuando tu Pokémon ex queda Fuera de Combate, tu rival toma 2 cartas de Premio.'
     ],
     attacks: [
       {
         name: 'Explosión Y',
-        cost: ['Fire', 'Fire', 'Fire'],
+        cost: ['Fire', 'Fire', 'Colorless'],
         convertedEnergyCost: 3,
-        damage: '300',
-        text: 'This attack cannot be reduced or prevented by effects.',
+        damage: '280',
+        text: 'Descarta 3 Energías de este Pokémon, y este ataque hace 280 puntos de daño a 1 de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).',
       }
     ],
+    weaknesses: [{ type: 'Water', value: 'x2' }],
+    retreatCost: ['Colorless'],
+    convertedRetreatCost: 1,
     set: {
       id: 'mep-la',
       name: 'MEP Latino América',
@@ -1244,9 +1247,10 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     },
     number: '030',
     rarity: 'Promo',
+    artist: 'Ultimateinudog',
     images: {
-      small: 'https://images.pokemontcg.io/xy2/13.png',
-      large: 'https://images.pokemontcg.io/xy2/13_hires.png'
+      small: '/images/custom/mep-la-030.jpg',
+      large: '/images/custom/mep-la-030.jpg'
     },
     dhash: '1111000011110000111111001100110010101010101010100011110000111100'
   },
