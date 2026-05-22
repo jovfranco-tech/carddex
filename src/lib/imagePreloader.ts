@@ -72,6 +72,13 @@ class BackgroundImageQueue {
 const backgroundQueue = new BackgroundImageQueue();
 
 /**
+ * Manually queue a set of image URLs for background preloading.
+ */
+export function prefetchImages(urls: string[]): void {
+  backgroundQueue.add(urls);
+}
+
+/**
  * Performs a predictive scan of all collection and deck cards.
  * Automatically fetches missing metadata and caches the images.
  */

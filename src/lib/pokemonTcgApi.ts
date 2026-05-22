@@ -12,7 +12,6 @@ import {
   pruneCardsDb,
   clearCardsDb,
 } from './indexedDb';
-import { OFFLINE_CARD_CATALOG } from './offlineCardCatalog';
 
 
 const BASE_URL = (
@@ -75,7 +74,7 @@ function loadPersistedCardCache(cacheMap: Map<string, PokemonCard>): void {
       Object.entries(parsed).forEach(([id, entry]) => {
         if (entry && entry.card && entry.card.id && entry.card.name) {
           const card = entry.card;
-          const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || OFFLINE_CARD_CATALOG.some(c => c.id === card.id);
+          const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom');
           // Defensive check on load — must have images if it's an external card
           if (isLocal || (card.images && (card.images.small || card.images.large))) {
             // Set in superclass directly to avoid trigger loop/persisting on load
@@ -154,7 +153,7 @@ async function initPersistedCardCache(cacheMap: Map<string, PokemonCard>): Promi
     dbEntries.forEach((entry) => {
       if (entry && entry.card && entry.card.id && entry.card.name) {
         const card = entry.card;
-        const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || OFFLINE_CARD_CATALOG.some(c => c.id === card.id);
+        const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom');
         // Defensive check on load — must have images if it's an external card
         if (isLocal || (card.images && (card.images.small || card.images.large))) {
           Map.prototype.set.call(cacheMap, entry.id, card);
@@ -188,7 +187,7 @@ class PersistedCardCache extends Map<string, PokemonCard> {
   get(key: string): PokemonCard | undefined {
     const card = super.get(key);
     if (card) {
-      const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || OFFLINE_CARD_CATALOG.some(c => c.id === card.id);
+      const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom');
       // Defensive check on retrieval — if external card is corrupt/lacks images, clear it from memory and return undefined to force reload
       if (!isLocal && (!card.images || (!card.images.small && !card.images.large))) {
         super.delete(key);
@@ -527,7 +526,8 @@ export function cleanLuceneQueryForLocalSearch(query: string): string {
  * Searches the offline catalog and user custom cards for cards matching the name query.
  * Returns matching PokemonCard objects (normalized from CustomCard format).
  */
-function searchLocalCards(nameQuery: string, setId?: string): PokemonCard[] {
+export async function searchLocalCards(nameQuery: string, setId?: string): Promise<PokemonCard[]> {
+  const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
   const trimmedQuery = (nameQuery || '').trim();
 
   // Load custom cards first since we will need them in both empty and non-empty queries
@@ -652,7 +652,7 @@ export async function searchCards(
 
   // When localOnly is requested, skip the API entirely and return only local results.
   if (params.localOnly) {
-    const localMatches = searchLocalCards(localNameQuery);
+    const localMatches = await searchLocalCards(localNameQuery);
     return {
       data: localMatches,
       page: 1,
@@ -664,7 +664,7 @@ export async function searchCards(
 
   // When custom set or custom cards are queried, skip the API entirely and return only local results.
   if (params.setId && (params.setId.startsWith('mep') || params.setId === 'custom')) {
-    const localMatches = searchLocalCards(localNameQuery, params.setId);
+    const localMatches = await searchLocalCards(localNameQuery, params.setId);
     
     // Sort local matches by number if number is numeric
     const sortedMatches = localMatches.sort((a, b) => {
@@ -704,7 +704,7 @@ export async function searchCards(
     searchCache.set(cacheKey, { value: apiResponse, expiresAt: Date.now() + 5 * 60 * 1000 });
   } catch (err) {
     // If offline or API error, return only local results
-    const localMatches = searchLocalCards(localNameQuery);
+    const localMatches = await searchLocalCards(localNameQuery);
     if (localMatches.length > 0) {
       return { data: localMatches, page: 1, pageSize: localMatches.length, count: localMatches.length, totalCount: localMatches.length };
     }
@@ -713,7 +713,7 @@ export async function searchCards(
 
   // Merge local matches that aren't already in the API results
   if (localNameQuery) {
-    const localMatches = searchLocalCards(localNameQuery);
+    const localMatches = await searchLocalCards(localNameQuery);
     const apiIds = new Set(apiResponse.data.map((c) => c.id));
     const uniqueLocal = localMatches.filter((c) => !apiIds.has(c.id));
     if (uniqueLocal.length > 0) {
@@ -733,8 +733,9 @@ export async function searchCards(
 /**
  * Recupera una carta localmente (ya sea del catálogo offline o de las customCards guardadas).
  */
-export function getLocalCardById(id: string): PokemonCard | undefined {
+export async function getLocalCardById(id: string): Promise<PokemonCard | undefined> {
   // 1. Buscar en el catálogo offline
+  const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
   const offlineMatch = OFFLINE_CARD_CATALOG.find((c) => c.id === id);
   if (offlineMatch) return offlineMatch;
 
@@ -800,7 +801,7 @@ export async function getCardById(
   opts: RequestOptions = {},
 ): Promise<PokemonCard> {
   // Interceptar si es una carta local (catálogo offline o custom) - SIEMPRE PRIMERO para evitar caches corruptos
-  const localCard = getLocalCardById(id);
+  const localCard = await getLocalCardById(id);
   if (localCard) {
     cardCache.set(id, localCard);
     return localCard;
@@ -842,7 +843,7 @@ export async function getCardsByIds(
 
   for (const id of unique) {
     // Interceptar localmente primero para ignorar caches corruptos/obsoletos
-    const localCard = getLocalCardById(id);
+    const localCard = await getLocalCardById(id);
     if (localCard) {
       cardCache.set(id, localCard);
       results.push(localCard);

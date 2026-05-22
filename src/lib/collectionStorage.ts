@@ -131,10 +131,34 @@ export function mergeCollections(
     .map(([date, value]) => ({ date, value }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  // Merge custom cards (deduplicate by id, keeping the one with the newest updatedAt/createdAt timestamp)
+  const mergedCustomCards: any[] = [];
+  const customCardsMap = new Map<string, any>();
+
+  const localCustom = local?.customCards ?? [];
+  const remoteCustom = remote?.customCards ?? [];
+
+  [...localCustom, ...remoteCustom].forEach((card) => {
+    if (!card || !card.id) return;
+    const existing = customCardsMap.get(card.id);
+    if (!existing) {
+      customCardsMap.set(card.id, card);
+    } else {
+      const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+      const cardTime = new Date(card.updatedAt || card.createdAt || 0).getTime();
+      if (cardTime > existingTime) {
+        customCardsMap.set(card.id, card);
+      }
+    }
+  });
+
+  customCardsMap.forEach((card) => mergedCustomCards.push(card));
+
   return {
     version: 1,
     cards: mergedCards,
     history: historyList,
+    customCards: mergedCustomCards,
   };
 }
 
@@ -145,10 +169,10 @@ export function mergeCollections(
 export function getCollection(): CollectionState {
   const raw = safeRead<unknown>(KEYS.collection, DEFAULT_COLLECTION);
   // Defensive — fix shape if a previous version stored something different.
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_COLLECTION, cards: {} };
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_COLLECTION, cards: {}, customCards: safeRead<any[]>('carddex.customCards', []) };
   const obj = raw as Partial<CollectionState>;
   if (!obj.cards || typeof obj.cards !== 'object') {
-    return { ...DEFAULT_COLLECTION, cards: {} };
+    return { ...DEFAULT_COLLECTION, cards: {}, customCards: safeRead<any[]>('carddex.customCards', []) };
   }
   // Filter out clearly malformed card entries (missing cardId, non-object).
   const cleanCards: Record<string, CollectionCardMeta> = {};
@@ -162,7 +186,12 @@ export function getCollection(): CollectionState {
       cardId: id,
     };
   }
-  return { version: 1, cards: cleanCards, history: obj.history || [] };
+  return {
+    version: 1,
+    cards: cleanCards,
+    history: obj.history || [],
+    customCards: safeRead<any[]>('carddex.customCards', []),
+  };
 }
 
 function getSyncQueue(): CollectionState[] {
@@ -264,6 +293,11 @@ export async function fetchCloudCollection(): Promise<void> {
         const remoteState = data.state as CollectionState;
         const mergedState = mergeCollections(localState, remoteState);
         
+        // Write the merged custom cards list back to localStorage
+        if (mergedState.customCards) {
+          safeWrite('carddex.customCards', mergedState.customCards);
+        }
+
         safeWrite(KEYS.collection, mergedState);
         notify();
         setSyncStatus('synced');
@@ -296,9 +330,19 @@ export async function fetchCloudCollection(): Promise<void> {
 }
 
 function writeCollection(state: CollectionState): void {
-  safeWrite(KEYS.collection, state);
+  const localCustom = safeRead<any[]>('carddex.customCards', []);
+  const stateWithCustom: CollectionState = {
+    ...state,
+    customCards: localCustom,
+  };
+  safeWrite(KEYS.collection, stateWithCustom);
   notify();
-  syncToCloud(state).catch(console.error);
+  syncToCloud(stateWithCustom).catch(console.error);
+}
+
+export function triggerCustomCardsSync(): void {
+  const state = getCollection();
+  writeCollection(state);
 }
 
 export function getCardMeta(cardId: string): CollectionCardMeta | undefined {

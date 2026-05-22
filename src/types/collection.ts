@@ -45,6 +45,7 @@ export interface CollectionState {
   version: 1;
   cards: Record<string, CollectionCardMeta>;
   history?: CollectionValueHistoryPoint[];
+  customCards?: any[];
 }
 
 export interface RecentlyViewedEntry {

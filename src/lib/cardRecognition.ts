@@ -123,9 +123,7 @@ function nextDemoName(): string {
 }
 
 
-/* Offline Card Catalog — extracted to offlineCardCatalog.ts for maintainability */
-import { OFFLINE_CARD_CATALOG } from './offlineCardCatalog';
-export { OFFLINE_CARD_CATALOG };
+/* Offline Card Catalog — extracted to offlineCardCatalog.ts and dynamically imported when needed */
 
 /**
  * Computes the Hamming distance between two 64-bit binary hashes.
@@ -277,7 +275,8 @@ export function scoreOfflineCardMatch(card: PokemonCard, ocrText: string): numbe
   return score;
 }
 
-export function getOfflineRecognitionResult(imageHash: string, ocrText?: string): RecognitionResult {
+export async function getOfflineRecognitionResult(imageHash: string, ocrText?: string): Promise<RecognitionResult> {
+  const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
   let card: PokemonCard;
 
   if (/^[01]{64}$/.test(imageHash)) {
@@ -667,12 +666,12 @@ export async function recognizeCardFromImage(
 
         if (base64) {
           const visualDHash = await computeDHash(base64);
-          return getOfflineRecognitionResult(visualDHash, ocrText);
+          return await getOfflineRecognitionResult(visualDHash, ocrText);
         } else if (imageHash) {
-          return getOfflineRecognitionResult(imageHash, ocrText);
+          return await getOfflineRecognitionResult(imageHash, ocrText);
         } else {
           const fallbackHash = hashString(`offline-fallback-${Date.now()}`);
-          return getOfflineRecognitionResult(fallbackHash.toString(), ocrText);
+          return await getOfflineRecognitionResult(fallbackHash.toString(), ocrText);
         }
       }
     }
@@ -764,7 +763,8 @@ export async function recognizeCardFromImage(
     if (res.data.length === 0) {
       // Fallback: search locally in the catalog or custom cards since custom cards are not in the official Pokemon TCG API
       const cleanSeedLower = seed.toLowerCase().trim();
-      const localMatch = OFFLINE_CARD_CATALOG.find((card) => {
+      const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
+      const localMatch = OFFLINE_CARD_CATALOG.find((card: PokemonCard) => {
         const nameMatch = card.name.toLowerCase().includes(cleanSeedLower) || cleanSeedLower.includes(card.name.toLowerCase());
         if (!nameMatch) return false;
         

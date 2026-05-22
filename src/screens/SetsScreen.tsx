@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import EmptyState from '@/components/EmptyState';
@@ -12,6 +12,8 @@ import type { CardSet, PokemonCard } from '@/types/pokemon';
 import { saveCardMeta, removeCard } from '@/lib/collectionStorage';
 import { triggerHaptic } from '@/lib/haptic';
 import TcgCardImage from '@/components/TcgCardImage';
+import { prefetchImages } from '@/lib/imagePreloader';
+import { getOptimizedImageUrl } from '@/lib/imageOptimization';
 
 interface SetWithCounts {
   set: CardSet;
@@ -163,6 +165,31 @@ function SetChecklist({
     const res = await getCardsBySet(setId, 1, 250, { signal });
     return res.data;
   }, [setId]);
+
+  useEffect(() => {
+    if (!cards || cards.length === 0) return;
+
+    // Filter first 12 cards not owned by the user
+    const unownedCards = cards
+      .filter((c) => !collection.cards[c.id]?.owned)
+      .slice(0, 12);
+
+    const urlsToPrefetch: string[] = [];
+    unownedCards.forEach((c) => {
+      if (c.images) {
+        if (c.images.small) {
+          urlsToPrefetch.push(getOptimizedImageUrl(c.images.small, 110));
+        }
+        if (c.images.large) {
+          urlsToPrefetch.push(getOptimizedImageUrl(c.images.large, 240));
+        }
+      }
+    });
+
+    if (urlsToPrefetch.length > 0) {
+      prefetchImages(urlsToPrefetch);
+    }
+  }, [cards, collection.cards]);
 
   const handleToggle = (card: PokemonCard, isOwned: boolean) => {
     triggerHaptic('light');

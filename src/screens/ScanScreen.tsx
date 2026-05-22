@@ -18,7 +18,6 @@ import {
   resetRecognitionDemo,
   type RecognitionInput,
   type RecognitionResult,
-  OFFLINE_CARD_CATALOG,
 } from '@/lib/cardRecognition';
 import type { PokemonCard } from '@/types/pokemon';
 import { saveCardMeta } from '@/lib/collectionStorage';
@@ -480,6 +479,7 @@ export default function ScanScreen() {
           payloadGrading = await res.json();
         } else {
           // Simulated demo mode
+          const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
           const randomOffline = OFFLINE_CARD_CATALOG[Math.floor(Math.random() * OFFLINE_CARD_CATALOG.length)];
           payloadGrading = {
             cardName: randomOffline?.name || 'Charizard ex',
@@ -521,6 +521,7 @@ export default function ScanScreen() {
 
       if (isMulticardMode) {
         // Simular escaneo de 2 o 3 cartas populares del catálogo offline
+        const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
         const charizard = OFFLINE_CARD_CATALOG.find(c => c.id === 'sv3-125') || OFFLINE_CARD_CATALOG[0];
         const pikachu = OFFLINE_CARD_CATALOG.find(c => c.id === 'cel25-25') || OFFLINE_CARD_CATALOG[1];
         const mewtwo = OFFLINE_CARD_CATALOG.find(c => c.id === 'sv4-58') || OFFLINE_CARD_CATALOG[2];

@@ -9,11 +9,11 @@ import {
   hashString,
   getOfflineRecognitionResult,
   scoreOfflineCardMatch,
-  OFFLINE_CARD_CATALOG,
   getHammingDistance,
   computeDHash,
   stringToBinary64,
 } from './cardRecognition';
+import { OFFLINE_CARD_CATALOG } from './offlineCardCatalog';
 
 function makeCard(over: Partial<PokemonCard> = {}): PokemonCard {
   return {
@@ -189,12 +189,12 @@ describe('Offline Fallback and Hashing', () => {
     expect(hash1.length).toBeGreaterThan(0);
   });
 
-  it('getOfflineRecognitionResult deterministically maps hashes to valid cards', () => {
+  it('getOfflineRecognitionResult deterministically maps hashes to valid cards', async () => {
     const hash1 = hashString('some-captured-image-bytes-1');
     const hash2 = hashString('some-captured-image-bytes-2');
 
-    const result1 = getOfflineRecognitionResult(hash1);
-    const result2 = getOfflineRecognitionResult(hash2);
+    const result1 = await getOfflineRecognitionResult(hash1);
+    const result2 = await getOfflineRecognitionResult(hash2);
 
     expect(result1.card).not.toBeNull();
     expect(result2.card).not.toBeNull();
@@ -208,7 +208,7 @@ describe('Offline Fallback and Hashing', () => {
     expect(result1.detectedLanguage).toBe('EN');
 
     // Repeated call with same hash gives identical result
-    const repeatResult = getOfflineRecognitionResult(hash1);
+    const repeatResult = await getOfflineRecognitionResult(hash1);
     expect(repeatResult.card!.id).toBe(result1.card!.id);
   });
 
@@ -237,7 +237,7 @@ describe('Offline Fallback and Hashing', () => {
     expect(/^[01]{64}$/.test(dhash)).toBe(true);
   });
 
-  it('getOfflineRecognitionResult handles 64-bit binary dHash visual matching via Hamming distance', () => {
+  it('getOfflineRecognitionResult handles 64-bit binary dHash visual matching via Hamming distance', async () => {
     // Mewtwo ex pre-calculated dhash signature is:
     // '0000111100001111110011001100110010101010101010100011110000111100'
     const targetMewtwoDHash = '0000111100001111110011001100110010101010101010100011110000111100';
@@ -245,19 +245,19 @@ describe('Offline Fallback and Hashing', () => {
     // We create a slightly modified dhash (with Hamming distance 2)
     const noisyMewtwoDHash = '0000111100001111110011001100110010101010101010100011110000111111';
 
-    const result = getOfflineRecognitionResult(noisyMewtwoDHash);
+    const result = await getOfflineRecognitionResult(noisyMewtwoDHash);
     expect(result.card!.name).toBe('Mewtwo ex');
     expect(result.source).toBe('offline_fallback');
 
     // Verify 2025/2026 Pikachu ex
     const noisyPikachuExHash = '0101010111110000101010101100110000001111000011111111000010101011'; // distance 1
-    const pikaResult = getOfflineRecognitionResult(noisyPikachuExHash);
+    const pikaResult = await getOfflineRecognitionResult(noisyPikachuExHash);
     expect(pikaResult.card!.id).toBe('zsv10pt5-25');
     expect(pikaResult.card!.name).toBe('Pikachu ex');
 
     // Verify 2025/2026 Metapod
     const noisyMetapodHash = '1100110011110000000011110101010100111100001111001010101000111111'; // distance 2
-    const metapodResult = getOfflineRecognitionResult(noisyMetapodHash);
+    const metapodResult = await getOfflineRecognitionResult(noisyMetapodHash);
     expect(metapodResult.card!.id).toBe('sv9-2');
     expect(metapodResult.card!.name).toBe('Metapod');
   });
@@ -287,17 +287,17 @@ describe('Offline Fallback and Hashing', () => {
     expect(score4).toBe(0);
   });
 
-  it('getOfflineRecognitionResult uses hybrid OCR matching to resolve visually ambiguous cards', () => {
+  it('getOfflineRecognitionResult uses hybrid OCR matching to resolve visually ambiguous cards', async () => {
     // Pikachu ex pre-calculated dhash signature is:
     // '0101010111110000101010101100110000001111000011111111000010101010' (printed total 250 in zsv10pt5)
     const pikachuDHash = '0101010111110000101010101100110000001111000011111111000010101010';
 
     // Without OCR, the Pikachu dHash matches Pikachu ex
-    const visualOnlyResult = getOfflineRecognitionResult(pikachuDHash);
+    const visualOnlyResult = await getOfflineRecognitionResult(pikachuDHash);
     expect(visualOnlyResult.card!.name).toBe('Pikachu ex');
 
     // With Mewtwo ex OCR text, it should override visual match to Mewtwo ex
-    const hybridResult = getOfflineRecognitionResult(pikachuDHash, 'Mewtwo ex 50/88');
+    const hybridResult = await getOfflineRecognitionResult(pikachuDHash, 'Mewtwo ex 50/88');
     expect(hybridResult.card!.name).toBe('Mewtwo ex');
     expect(hybridResult.card!.id).toBe('me3-50');
   });

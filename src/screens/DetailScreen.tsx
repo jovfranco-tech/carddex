@@ -33,6 +33,7 @@ import {
   toggleFavorite,
   toggleMissing,
   toggleWishlist,
+  triggerCustomCardsSync,
 } from '@/lib/collectionStorage';
 import {
   getEstimatedPrice,
@@ -147,6 +148,7 @@ function Detail({
           return c;
         });
         localStorage.setItem('carddex.customCards', JSON.stringify(updated));
+        triggerCustomCardsSync();
       }
     } catch (e) {
       console.error('Error saving custom card image:', e);

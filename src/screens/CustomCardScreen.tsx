@@ -5,6 +5,7 @@ import { ArrowLeftIcon, SparklesIcon, TrashIcon } from '@/components/icons';
 import { triggerHaptic } from '@/lib/haptic';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
+import { triggerCustomCardsSync } from '@/lib/collectionStorage';
 
 interface CustomCard {
   id: string;
@@ -165,6 +166,7 @@ export default function CustomCardScreen() {
       const updatedList = [newCard, ...savedCards];
       setSavedCards(updatedList);
       localStorage.setItem('carddex.customCards', JSON.stringify(updatedList));
+      triggerCustomCardsSync();
 
       triggerHaptic('success');
 
@@ -188,6 +190,7 @@ export default function CustomCardScreen() {
     const updated = savedCards.filter(c => c.id !== id);
     setSavedCards(updated);
     localStorage.setItem('carddex.customCards', JSON.stringify(updated));
+    triggerCustomCardsSync();
     if (currentCard?.id === id) {
       setCurrentCard(updated[0] || null);
     }
