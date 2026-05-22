@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   type CollectionState,
   type CollectionCardMeta,
@@ -146,3 +147,28 @@ export function useSyncStatus(): SyncStatus {
   }, []);
   return status;
 }
+
+export function useViewTransitionNavigate() {
+  const navigate = useNavigate();
+  return useCallback(
+    (to: string | number, options?: any) => {
+      if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+        (document as any).startViewTransition(() => {
+          if (typeof to === 'number') {
+            navigate(to);
+          } else {
+            navigate(to, options);
+          }
+        });
+      } else {
+        if (typeof to === 'number') {
+          navigate(to);
+        } else {
+          navigate(to, options);
+        }
+      }
+    },
+    [navigate],
+  );
+}
+

@@ -165,7 +165,7 @@ export default function PriceAlertsPanel({
               No tienes alertas de precios en este momento.
             </div>
           ) : (
-            alerts.map((alert) => {
+            alerts.map((alert, index) => {
               const isUp = alert.changePercent >= 0;
               return (
                 <React.Fragment key={alert.id}>
@@ -186,6 +186,8 @@ export default function PriceAlertsPanel({
                     cursor: 'pointer',
                     transition: 'background 0.2s',
                     boxShadow: alert.read ? 'none' : '0 4px 12px rgba(123, 90, 217, 0.04)',
+                    animation: 'alertReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
+                    animationDelay: `${index * 60}ms`,
                   }}
                 >
                   <img

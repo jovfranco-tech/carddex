@@ -24,7 +24,7 @@ import {
   DecksIcon,
   TrashIcon,
 } from '@/components/icons';
-import { useAsync, useCardMeta, useDecks } from '@/lib/hooks';
+import { useAsync, useCardMeta, useDecks, useViewTransitionNavigate } from '@/lib/hooks';
 import { getCardById, getSimilarCardsByName, clearApiCache } from '@/lib/pokemonTcgApi';
 import {
   addRecentlyViewed,
@@ -55,7 +55,7 @@ import AddToCollectionPanel from './detail/AddToCollectionPanel';
 
 export default function DetailScreen() {
   const { cardId } = useParams<{ cardId: string }>();
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
 
   const card = useAsync((signal) => getCardById(cardId!, { signal }), [cardId]);
   const meta = useCardMeta(cardId);
@@ -111,7 +111,7 @@ function Detail({
   card: PokemonCard;
   meta: ReturnType<typeof useCardMeta>;
 }) {
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
 
   const [qty, setQty] = useState<number>(Math.max(1, meta?.quantity ?? 1));
   const [foil, setFoil] = useState<boolean>(meta?.foil ?? false);
@@ -352,7 +352,7 @@ function Detail({
           background: `radial-gradient(60% 50% at 50% 35%, ${heroBgTint} 0%, transparent 70%)`,
         }}
       >
-        <TcgCardImage card={card} width={250} hero large />
+        <TcgCardImage card={card} width={250} hero large viewTransitionName={`card-image-${card.id}`} />
         {isCustom && <CustomImageUploader onImageUploaded={handleCustomImageUploaded} />}
       </div>
 

@@ -6,7 +6,7 @@ import EmptyState from '@/components/EmptyState';
 import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import { ChevronIcon, BookIcon } from '@/components/icons';
-import { useAsync, useCollection } from '@/lib/hooks';
+import { useAsync, useCollection, useViewTransitionNavigate } from '@/lib/hooks';
 import { getSets, getCardsBySet } from '@/lib/pokemonTcgApi';
 import { formatDateShort, stringHue } from '@/lib/formatters';
 import type { CardSet, PokemonCard } from '@/types/pokemon';
@@ -27,7 +27,7 @@ interface SetWithCounts {
  * `setId-cardNumber` format, e.g. `swsh1-12`).
  */
 export default function SetsScreen() {
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const collection = useCollection();
 
   const setsState = useAsync<CardSet[]>(async (signal) => {
@@ -161,7 +161,7 @@ function SetChecklist({
   setId: string;
   collection: any;
 }) {
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const { data: cards, loading, error } = useAsync(async (signal) => {
     const res = await getCardsBySet(setId, 1, 250, { signal });
     return res.data;
@@ -368,6 +368,7 @@ function SetChecklist({
                 transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
                 transform: isOwned ? 'none' : 'scale(0.96)',
               }}
+              viewTransitionName={`card-image-${card.id}`}
             />
 
             {/* Floating add button if not owned */}

@@ -1,5 +1,6 @@
 import { type ComponentType, useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import { useViewTransitionNavigate } from '@/lib/hooks';
 import {
   HomeIcon,
   ScanIcon,
@@ -31,7 +32,7 @@ const SEEN_KEY = 'carddex.achievements.lastSeenCount';
 
 export default function BottomNavigation() {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const [badgeCount, setBadgeCount] = useState(0);
 
   useEffect(() => {

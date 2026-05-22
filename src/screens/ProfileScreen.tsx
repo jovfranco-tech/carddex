@@ -35,6 +35,7 @@ import { dispatchAchievement } from '@/app/App';
 import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
 import { useI18n } from '@/lib/i18n';
+import { THEME_ACCENTS, applyThemeAccent, getAppliedThemeAccent } from '@/lib/themeAccent';
 
 const APP_VERSION = '1.1.0';
 
@@ -97,6 +98,36 @@ export default function ProfileScreen() {
     achieved.forEach(dispatchAchievement);
   }, []);
   const [mxnEnabled, setMxnEnabled] = useState(prefersMXN());
+  const [activeTheme, setActiveTheme] = useState(getAppliedThemeAccent);
+  const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('carddex_auto_scan_enabled');
+      return stored !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleCycleThemeAccent = () => {
+    const currentId = activeTheme.id;
+    const currentIndex = THEME_ACCENTS.findIndex((t) => t.id === currentId);
+    const nextIndex = (currentIndex + 1) % THEME_ACCENTS.length;
+    const nextTheme = THEME_ACCENTS[nextIndex];
+    applyThemeAccent(nextTheme.id);
+    setActiveTheme(nextTheme);
+    triggerHaptic('medium');
+    showToast(`Tema cambiado a ${nextTheme.emoji} ${nextTheme.name}`);
+  };
+
+  const handleToggleAutoScan = () => {
+    const next = !autoScanEnabled;
+    setAutoScanEnabled(next);
+    try {
+      localStorage.setItem('carddex_auto_scan_enabled', String(next));
+    } catch {}
+    triggerHaptic('light');
+    showToast(next ? '👁️ Auto-escaneo OpenCV activado' : 'Auto-escaneo desactivado. Captura manual activa.');
+  };
   const { user } = useAuth();
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -1139,6 +1170,20 @@ export default function ProfileScreen() {
             label="Idioma de Escaneo (OCR)"
             description={`Idioma prioritario actual: ${scanLanguage}`}
             onClick={handleToggleScanLanguage}
+          />
+          <Divider />
+          <ActionRow
+            icon={<span style={{ fontSize: 16 }}>🎨</span>}
+            label="Color de Acento (Tema)"
+            description={`Acento actual: ${activeTheme.emoji} ${activeTheme.name}`}
+            onClick={handleCycleThemeAccent}
+          />
+          <Divider />
+          <ActionRow
+            icon={<span style={{ fontSize: 16 }}>👁️</span>}
+            label="Auto-Escaneo Inteligente (OpenCV)"
+            description={autoScanEnabled ? 'Captura automática al alinear la carta' : 'Desactivado (toca para capturar)'}
+            onClick={handleToggleAutoScan}
           />
         </Surface>
       </div>

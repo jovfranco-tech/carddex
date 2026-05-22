@@ -14,6 +14,8 @@ export interface TcgCardImageProps {
   style?: CSSProperties;
   /** Apply a subtle drop shadow appropriate for hero placements. */
   hero?: boolean;
+  /** Custom view transition identifier for fluid routing animations. */
+  viewTransitionName?: string;
 }
 
 /**
@@ -49,6 +51,7 @@ export default function TcgCardImage({
   onClick,
   style,
   hero,
+  viewTransitionName,
 }: TcgCardImageProps) {
   const useLarge = large ?? width >= 160;
   const initialRawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
@@ -171,6 +174,44 @@ export default function TcgCardImage({
     setRotate({ x: 0, y: 0 });
   };
 
+  // Mobile Touch handlers
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isHolo) return;
+    setActive(true);
+    handleTouchMove(e);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isHolo) return;
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    // Constrain touch coordinates within the card element boundaries
+    const boundedX = Math.max(0, Math.min(rect.width, x));
+    const boundedY = Math.max(0, Math.min(rect.height, y));
+
+    const px = boundedX / rect.width - 0.5;
+    const py = boundedY / rect.height - 0.5;
+
+    setRotate({
+      x: -py * 25, // slightly more dramatic rotation for mobile drag-tilt
+      y: px * 25,
+    });
+
+    setHoloPos({
+      x: (boundedX / rect.width) * 100,
+      y: (boundedY / rect.height) * 100,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (!isHolo) return;
+    setActive(false);
+    setRotate({ x: 0, y: 0 });
+  };
+
   // Base styling with 3D transform support
   const tiltStyle: CSSProperties = isHolo
     ? {
@@ -194,21 +235,24 @@ export default function TcgCardImage({
       : '0 1px 2px rgba(15,20,40,0.06), 0 4px 12px rgba(15,20,40,0.08)',
     cursor: onClick ? 'pointer' : undefined,
     position: 'relative',
+    viewTransitionName,
     ...tiltStyle,
     ...style,
   };
 
-  // Tailored holographic gradient color map
+  // Tailored holographic gradient color map — multi-layered rainbow spectrum
   const holoColors = isRainbow
     ? {
-        primary: 'rgba(255, 190, 225, 0.55)',
-        secondary: 'rgba(120, 225, 255, 0.35)',
-        accent: 'rgba(255, 225, 130, 0.35)',
+        primary: 'rgba(255, 190, 225, 0.65)',
+        secondary: 'rgba(120, 225, 255, 0.45)',
+        accent: 'rgba(255, 225, 130, 0.45)',
+        rainbow: 'linear-gradient(115deg, rgba(255,0,0,.15), rgba(255,120,0,.15), rgba(255,230,0,.15), rgba(0,255,100,.15), rgba(0,200,255,.15), rgba(150,0,255,.15), rgba(255,0,220,.15))'
       }
     : {
-        primary: 'rgba(255, 255, 255, 0.45)',
-        secondary: 'rgba(255, 220, 0, 0.2)',
-        accent: 'rgba(0, 240, 255, 0.2)',
+        primary: 'rgba(255, 255, 255, 0.55)',
+        secondary: 'rgba(0, 220, 255, 0.3)',
+        accent: 'rgba(255, 0, 128, 0.25)',
+        rainbow: 'linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(0,220,255,0.12) 30%, rgba(255,0,128,0.12) 50%, rgba(255,220,0,0.12) 70%, rgba(255,255,255,0) 100%)'
       };
 
   const holoOverlayStyle: CSSProperties = {
@@ -216,20 +260,23 @@ export default function TcgCardImage({
     inset: 0,
     zIndex: 2,
     mixBlendMode: 'color-dodge',
-    opacity: active ? 0.78 : 0,
+    opacity: active ? 0.82 : 0,
     background: `
       linear-gradient(
-        115deg,
-        transparent 0%,
-        ${holoColors.primary} ${holoPos.x}%,
-        transparent 100%
+        125deg,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.25) ${holoPos.x - 15}%,
+        rgba(255, 255, 255, 0.45) ${holoPos.x}%,
+        rgba(255, 255, 255, 0.25) ${holoPos.x + 15}%,
+        rgba(255, 255, 255, 0.15) 100%
       ),
+      ${holoColors.rainbow},
       radial-gradient(
         circle at ${holoPos.x}% ${holoPos.y}%,
-        ${holoColors.primary} 0%,
-        ${holoColors.secondary} 32%,
-        ${holoColors.accent} 55%,
-        transparent 75%
+        rgba(255, 255, 255, 0.8) 0%,
+        ${holoColors.secondary} 25%,
+        ${holoColors.accent} 45%,
+        transparent 70%
       )
     `,
     pointerEvents: 'none',
@@ -243,6 +290,9 @@ export default function TcgCardImage({
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       aria-label={card.name}
     >
       {/* Holographic overlay */}

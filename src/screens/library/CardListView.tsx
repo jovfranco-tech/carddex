@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useRef, useEffect, forwardRef } from 'react';
+import { useViewTransitionNavigate } from '@/lib/hooks';
 import { Virtuoso, VirtuosoGrid } from 'react-virtuoso';
 import CardTile from '@/components/CardTile';
 import Surface from '@/components/Surface';
@@ -108,6 +109,7 @@ function SetGroupCard({
               meta={collection.cards[c.id]}
               width={72}
               onClick={() => onCard(c.id)}
+              viewTransitionName={`card-image-${c.id}`}
             />
           </div>
         ))}
@@ -205,7 +207,7 @@ export default function CardListView({
   bySetGroups,
   onSetFilter,
 }: CardListViewProps) {
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -302,6 +304,7 @@ export default function CardListView({
               width={104}
               onClick={() => navigate(`/card/${c.id}`)}
               showMissingState={!onlyMine}
+              viewTransitionName={`card-image-${c.id}`}
             />
           )}
         />
@@ -365,6 +368,7 @@ export default function CardListView({
                       width={92}
                       onClick={() => navigate(`/card/${card.id}`)}
                       showMissingState={!onlyMine}
+                      viewTransitionName={`card-image-${card.id}`}
                     />
                     <div className="pocket-reflection" />
                   </div>
@@ -522,7 +526,7 @@ export default function CardListView({
                 padding: 10,
               }}
             >
-              <TcgCardImage card={c} width={48} />
+              <TcgCardImage card={c} width={48} viewTransitionName={`card-image-${c.id}`} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{

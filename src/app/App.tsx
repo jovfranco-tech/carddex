@@ -11,6 +11,7 @@ import { initializeCollectionStorage } from '@/lib/collectionStorage';
 import OnboardingWizard, { isOnboardingComplete } from '@/components/OnboardingWizard';
 import AchievementToast from '@/components/AchievementToast';
 import type { Achievement } from '@/lib/achievements';
+import { initThemeAccent } from '@/lib/themeAccent';
 
 // Dynamic lazy imports for non-critical screens to reduce initial bundle chunk size
 const ScanScreen = lazy(() => import('@/screens/ScanScreen'));
@@ -185,6 +186,9 @@ export default function App() {
   const [pendingAchievement, setPendingAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
+    // Initialize dynamic theme accent colors
+    initThemeAccent();
+
     // Generate/update price alerts in background when app boots
     initializeCollectionStorage().finally(() => {
       checkAndGeneratePriceAlerts();

@@ -25,6 +25,7 @@ import {
   useCollection,
   useCollectionSummary,
   useDebounced,
+  useViewTransitionNavigate,
 } from '@/lib/hooks';
 import {
   getCardsByIds,
@@ -49,7 +50,7 @@ import { useI18n } from '@/lib/i18n';
 
 export default function HomeScreen() {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const collection = useCollection();
   const summary = useCollectionSummary();
   const [query, setQuery] = useState('');
@@ -540,6 +541,7 @@ export default function HomeScreen() {
                         meta={collection.cards[c.id]}
                         width={104}
                         onClick={() => navigate(`/card/${c.id}`)}
+                        viewTransitionName={`card-image-${c.id}`}
                       />
                     ))}
                   </div>
@@ -733,6 +735,7 @@ export default function HomeScreen() {
                            card={c}
                            meta={collection.cards[c.id]}
                            width={110}
+                           viewTransitionName={`card-image-${c.id}`}
                         />
                         <div
                           style={{

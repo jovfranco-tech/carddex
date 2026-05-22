@@ -10,6 +10,8 @@ export interface CardTileProps {
   onClick?: () => void;
   /** When true and meta says not owned, render a dashed "Falta" placeholder. */
   showMissingState?: boolean;
+  /** Custom view transition identifier for fluid routing animations. */
+  viewTransitionName?: string;
 }
 
 /**
@@ -23,6 +25,7 @@ export default function CardTile({
   width = 104,
   onClick,
   showMissingState = false,
+  viewTransitionName,
 }: CardTileProps) {
   const owned = !!meta?.owned && (meta.quantity ?? 1) > 0;
   const treatMissing = showMissingState && !owned;
@@ -43,7 +46,7 @@ export default function CardTile({
           transition: 'filter 200ms',
         }}
       >
-        <TcgCardImage card={card} width={width} />
+        <TcgCardImage card={card} width={width} viewTransitionName={viewTransitionName} />
       </div>
 
       {treatMissing && (

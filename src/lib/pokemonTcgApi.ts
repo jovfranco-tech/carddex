@@ -237,6 +237,7 @@ export function getCachedCard(id: string): PokemonCard | undefined {
 
 interface RequestOptions {
   signal?: AbortSignal;
+  isPrefetch?: boolean;
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -702,6 +703,18 @@ export async function searchCards(
     // Warm the per-card cache so subsequent getCardById calls are free.
     apiResponse.data.forEach((c) => cardCache.set(c.id, c));
     searchCache.set(cacheKey, { value: apiResponse, expiresAt: Date.now() + 5 * 60 * 1000 });
+
+    // Step 1: Intelligent Pagination Prefetching
+    // Verify if results length matches the requested page size (default to 24)
+    const requestedPageSize = params.pageSize ?? 24;
+    if (!opts.isPrefetch && apiResponse.data.length === requestedPageSize) {
+      const nextPage = (params.page ?? 1) + 1;
+      setTimeout(() => {
+        searchCards({ ...params, page: nextPage }, { isPrefetch: true }).catch(() => {
+          // Silent catch to prevent background errors from bubbling
+        });
+      }, 1000);
+    }
   } catch (err) {
     // If offline or API error, return only local results
     const localMatches = await searchLocalCards(localNameQuery);

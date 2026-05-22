@@ -17,7 +17,10 @@ const KEYS = {
   recent: 'carddex.recentlyViewed.v1',
   settings: 'carddex.settings.v1',
   syncQueue: 'carddex.sync_queue.v1',
+  lastSyncTimestamp: 'carddex.lastSyncTimestamp.v1',
 } as const;
+
+let syncDebounceTimer: any = null;
 
 const SUBSCRIBERS = new Set<() => void>();
 function notify() {
@@ -216,16 +219,18 @@ export async function flushSyncQueue() {
   
   setSyncStatus('syncing');
   const stateToSync = queue[queue.length - 1];
+  const updatedAt = new Date().toISOString();
   try {
     const { error } = await supabase
       .from('collections')
-      .update({ state: stateToSync, updated_at: new Date().toISOString() })
+      .update({ state: stateToSync, updated_at: updatedAt })
       .eq('user_id', session.user.id);
       
     if (error) {
       setSyncStatus('error');
     } else {
       safeWrite(KEYS.syncQueue, []);
+      localStorage.setItem(KEYS.lastSyncTimestamp, updatedAt);
       setSyncStatus('synced');
       setTimeout(() => {
         if (currentSyncStatus === 'synced') {
@@ -250,16 +255,18 @@ async function syncToCloud(state: CollectionState) {
     }
     
     setSyncStatus('syncing');
+    const updatedAt = new Date().toISOString();
     try {
       const { error } = await supabase
         .from('collections')
-        .update({ state, updated_at: new Date().toISOString() })
+        .update({ state, updated_at: updatedAt })
         .eq('user_id', session.user.id);
       
       if (error) {
         addToSyncQueue(state);
         setSyncStatus('offline-pending');
       } else {
+        localStorage.setItem(KEYS.lastSyncTimestamp, updatedAt);
         setSyncStatus('synced');
         // Reset to idle after 2.5 seconds to allow UI animations to complete smoothly
         setTimeout(() => {
@@ -284,38 +291,60 @@ export async function fetchCloudCollection(): Promise<void> {
     try {
       const { data, error } = await supabase
         .from('collections')
-        .select('state')
+        .select('state, updated_at')
         .eq('user_id', session.user.id)
         .single();
         
-      if (!error && data?.state) {
-        const localState = getCollection();
-        const remoteState = data.state as CollectionState;
-        const mergedState = mergeCollections(localState, remoteState);
+      if (!error && data) {
+        const remoteUpdatedAt = data.updated_at;
+        const lastSync = localStorage.getItem(KEYS.lastSyncTimestamp);
         
-        // Write the merged custom cards list back to localStorage
-        if (mergedState.customCards) {
-          safeWrite('carddex.customCards', mergedState.customCards);
+        // If remote timestamp matches our last sync timestamp, and there is no sync queue, we can skip merging
+        if (remoteUpdatedAt && lastSync === remoteUpdatedAt && getSyncQueue().length === 0) {
+          setSyncStatus('synced');
+          setTimeout(() => {
+            if (currentSyncStatus === 'synced') {
+              setSyncStatus('idle');
+            }
+          }, 2500);
+          return;
         }
 
-        safeWrite(KEYS.collection, mergedState);
-        notify();
-        setSyncStatus('synced');
-        
-        // If the merged state contains new local modifications not present on the remote database,
-        // instantly push it up to Supabase to unify both states.
-        if (JSON.stringify(mergedState) !== JSON.stringify(remoteState)) {
-          syncToCloud(mergedState).catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error('[Cloud Sync] Failed to auto-unify merged state:', err);
-          });
-        }
-
-        setTimeout(() => {
-          if (currentSyncStatus === 'synced') {
-            setSyncStatus('idle');
+        if (data.state) {
+          const localState = getCollection();
+          const remoteState = data.state as CollectionState;
+          const mergedState = mergeCollections(localState, remoteState);
+          
+          // Write the merged custom cards list back to localStorage
+          if (mergedState.customCards) {
+            safeWrite('carddex.customCards', mergedState.customCards);
           }
-        }, 2500);
+
+          safeWrite(KEYS.collection, mergedState);
+          notify();
+          
+          const newSyncTime = remoteUpdatedAt || new Date().toISOString();
+          localStorage.setItem(KEYS.lastSyncTimestamp, newSyncTime);
+          
+          setSyncStatus('synced');
+          
+          // If the merged state contains new local modifications not present on the remote database,
+          // instantly push it up to Supabase to unify both states.
+          if (JSON.stringify(mergedState) !== JSON.stringify(remoteState)) {
+            syncToCloud(mergedState).catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error('[Cloud Sync] Failed to auto-unify merged state:', err);
+            });
+          }
+
+          setTimeout(() => {
+            if (currentSyncStatus === 'synced') {
+              setSyncStatus('idle');
+            }
+          }, 2500);
+        } else {
+          setSyncStatus('idle');
+        }
       } else if (error) {
         setSyncStatus('error');
       } else {
@@ -337,7 +366,15 @@ function writeCollection(state: CollectionState): void {
   };
   safeWrite(KEYS.collection, stateWithCustom);
   notify();
-  syncToCloud(stateWithCustom).catch(console.error);
+
+  // Debounced cloud sync
+  if (syncDebounceTimer) {
+    clearTimeout(syncDebounceTimer);
+  }
+  syncDebounceTimer = setTimeout(() => {
+    syncDebounceTimer = null;
+    syncToCloud(stateWithCustom).catch(console.error);
+  }, 4000);
 }
 
 export function triggerCustomCardsSync(): void {

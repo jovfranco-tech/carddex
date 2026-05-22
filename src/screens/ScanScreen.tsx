@@ -206,6 +206,26 @@ export default function ScanScreen() {
   const [isAligned, setIsAligned] = useState(false);
   const [autoScanCountdown, setAutoScanCountdown] = useState(0);
 
+  const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('carddex_auto_scan_enabled');
+      return stored !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const stored = localStorage.getItem('carddex_auto_scan_enabled');
+        setAutoScanEnabled(stored !== 'false');
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   useEffect(() => {
     if (state !== 'detected' || !isMulticardMode) return;
 
@@ -602,7 +622,7 @@ export default function ScanScreen() {
   }, [state, runScan]);
 
   useEffect(() => {
-    if (!isAligned || state !== 'idle' || isMulticardMode) {
+    if (!autoScanEnabled || !isAligned || state !== 'idle' || isMulticardMode) {
       setAutoScanCountdown(0);
       return;
     }
@@ -631,7 +651,7 @@ export default function ScanScreen() {
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [isAligned, state, isMulticardMode, captureFrame, runScan]);
+  }, [autoScanEnabled, isAligned, state, isMulticardMode, captureFrame, runScan]);
 
   const triggerScan = async () => {
     if (state === 'detected') {
@@ -832,64 +852,115 @@ export default function ScanScreen() {
             <div
               style={{
                 position: 'absolute',
-                bottom: '24%',
+                top: '50%',
                 left: '50%',
-                transform: 'translateX(-50%)',
-                background: 'rgba(12, 14, 26, 0.85)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                border: '1px solid rgba(0, 255, 127, 0.25)',
-                borderRadius: 20,
-                padding: '10px 16px',
+                transform: 'translate(-50%, -50%)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 6,
+                justifyContent: 'center',
+                gap: 14,
                 zIndex: 10,
-                boxShadow: '0 8px 32px rgba(0, 255, 127, 0.15)',
                 pointerEvents: 'none',
               }}
             >
+              {/* Glowing circular loader */}
               <div
                 style={{
+                  position: 'relative',
+                  width: 90,
+                  height: 90,
+                  background: 'rgba(12, 14, 26, 0.82)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  borderRadius: '50%',
+                  border: '1px solid rgba(0, 255, 127, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 32px rgba(0, 255, 127, 0.2), inset 0 0 12px rgba(0, 255, 127, 0.05)',
+                }}
+              >
+                <svg width="76" height="76" viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)', display: 'block' }}>
+                  {/* Track ring */}
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.06)"
+                    strokeWidth="4"
+                  />
+                  {/* Progress ring with glow */}
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    fill="none"
+                    stroke="url(#neonGlowGradient)"
+                    strokeWidth="4"
+                    strokeDasharray={`${2 * Math.PI * 34}`}
+                    strokeDashoffset={`${2 * Math.PI * 34 * (1 - autoScanCountdown / 100)}`}
+                    strokeLinecap="round"
+                    style={{
+                      transition: 'stroke-dashoffset 40ms linear',
+                      filter: 'drop-shadow(0px 0px 5px #00ff7f)',
+                    }}
+                  />
+                  <defs>
+                    <linearGradient id="neonGlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#00ff7f" />
+                      <stop offset="100%" stopColor="#34C759" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                {/* Countdown percentage */}
+                <div style={{
+                  position: 'absolute',
+                  fontSize: 15,
+                  fontWeight: 900,
+                  color: '#00ff7f',
+                  letterSpacing: -0.5,
+                  textShadow: '0 0 8px rgba(0, 255, 127, 0.65)',
+                }}>
+                  {Math.min(100, Math.round(autoScanCountdown))}%
+                </div>
+              </div>
+              <div
+                style={{
+                  background: 'rgba(12, 14, 26, 0.85)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(0, 255, 127, 0.25)',
+                  borderRadius: 20,
+                  padding: '6px 14px',
                   fontSize: 10,
                   fontWeight: 900,
                   color: '#00ff7f',
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                   textTransform: 'uppercase',
+                  boxShadow: '0 4px 16px rgba(0, 255, 127, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
                 }}
               >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    backgroundColor: '#00ff7f',
-                  }}
-                />
-                Alineando carta...
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: '#00ff7f',
+                  boxShadow: '0 0 6px #00ff7f',
+                  animation: 'pulseIndicator 1s ease-in-out infinite',
+                }} />
+                Auto-Escaneando
               </div>
-              <div
-                style={{
-                  width: 110,
-                  height: 4,
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    width: `${autoScanCountdown}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #00ff7f, #34C759)',
-                    transition: 'width 40ms linear',
-                  }}
-                />
-              </div>
+              <style>{`
+                @keyframes pulseIndicator {
+                  0%, 100% { opacity: 0.5; transform: scale(0.9); }
+                  50% { opacity: 1; transform: scale(1.1); }
+                }
+              `}</style>
             </div>
           )}
 
