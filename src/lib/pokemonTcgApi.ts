@@ -486,26 +486,32 @@ function composeQuery(opts: SearchCardsParams): string | undefined {
  */
 function searchLocalCards(nameQuery: string): PokemonCard[] {
   if (!nameQuery || nameQuery.trim().length < 2) return [];
-  const normalized = nameQuery
+
+  // Extract meaningful words from query (strip API Lucene syntax like name:*x*)
+  const rawQuery = nameQuery
+    .replace(/name:\*?([^*\s]+)\*?/gi, '$1') // strip name:*word* -> word
+    .replace(/["*]/g, '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 
+  const words = rawQuery.split(/\s+/).filter((w) => w.length >= 2);
+  if (words.length === 0) return [];
+
   const matched: PokemonCard[] = [];
   const seenIds = new Set<string>();
 
-  // 1. Search offline catalog
+  // 1. Search offline catalog — a card matches if ANY search word appears in its name
   for (const card of OFFLINE_CARD_CATALOG) {
     const cardName = (card.name || '')
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
-    if (cardName.includes(normalized)) {
-      if (!seenIds.has(card.id)) {
-        seenIds.add(card.id);
-        matched.push(card);
-      }
+    const anyWordMatches = words.some((w) => cardName.includes(w));
+    if (anyWordMatches && !seenIds.has(card.id)) {
+      seenIds.add(card.id);
+      matched.push(card);
     }
   }
 
@@ -531,7 +537,7 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '');
-          if (ccName.includes(normalized) && !seenIds.has(cc.id)) {
+          if (words.some((w) => ccName.includes(w)) && !seenIds.has(cc.id)) {
             seenIds.add(cc.id);
             // Normalize CustomCard to PokemonCard shape
             const asCard: PokemonCard = {
@@ -593,8 +599,8 @@ export async function searchCards(
     return cached.value;
   }
 
-  // Determine the name being searched to query local cards
-  const localNameQuery = params.name ?? '';
+  // Derive the local name query from params.name, or from params.q as fallback
+  const localNameQuery = params.name ?? params.q ?? '';
 
   let apiResponse: ApiListResponse<PokemonCard>;
   try {

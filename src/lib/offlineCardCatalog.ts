@@ -1243,7 +1243,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
       total: 100,
     },
     number: '030',
-    rarity: 'Ultra Rare',
+    rarity: 'Promo',
     images: {
       small: 'https://images.pokemontcg.io/xy6/101.png',
       large: 'https://images.pokemontcg.io/xy6/101_hires.png'
@@ -1282,7 +1282,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
       total: 120,
     },
     number: '070',
-    rarity: 'Common',
+    rarity: 'Promo',
     images: {
       small: 'https://images.pokemontcg.io/xy6/56.png',
       large: 'https://images.pokemontcg.io/xy6/56_hires.png'

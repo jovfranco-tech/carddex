@@ -130,6 +130,11 @@ export const RARITY_FILTERS: ReadonlyArray<{
     label: 'Secretas',
     groups: ['Secret Rare', 'Hyper Rare', 'Special Illustration Rare'],
   },
+  {
+    key: 'promo',
+    label: 'Promos',
+    groups: ['Promo'],
+  },
 ];
 
 /* ------------------------------------------------------------------------- */
