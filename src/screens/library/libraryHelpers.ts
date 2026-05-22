@@ -1,4 +1,5 @@
 import type { PokemonCard } from '@/types/pokemon';
+import { cleanLuceneQueryForLocalSearch } from '@/lib/pokemonTcgApi';
 
 export type SortKey = 'rarity' | 'value' | 'name' | 'recent';
 
@@ -94,14 +95,16 @@ export function matchesAdvancedFilters(c: PokemonCard, f: AdvancedFilters): bool
       .replace(/\s+/g, ' ')
       .trim();
 
-    const cleanSearchQuery = f.name
+    // Clean the Lucene query terms for robust clientside matching
+    const cleanSearchQueryRaw = cleanLuceneQueryForLocalSearch(f.name);
+    const cleanSearchQuery = cleanSearchQueryRaw
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
     const queryWords = cleanSearchQuery.split(' ').filter(Boolean);
-    const wordMatch = queryWords.length > 0 && queryWords.every(word => cleanCardName.includes(word));
+    const wordMatch = queryWords.length === 0 || queryWords.every(word => cleanCardName.includes(word));
 
     const numMatch = c.number?.toLowerCase().includes(f.name);
     const setMatch = c.set?.name?.toLowerCase().includes(f.name) || c.set?.id?.toLowerCase().includes(f.name);

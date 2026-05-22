@@ -74,8 +74,13 @@ function loadPersistedCardCache(cacheMap: Map<string, PokemonCard>): void {
       const parsed = JSON.parse(raw) as Record<string, CacheEntry>;
       Object.entries(parsed).forEach(([id, entry]) => {
         if (entry && entry.card && entry.card.id && entry.card.name) {
-          // Set in superclass directly to avoid trigger loop/persisting on load
-          Map.prototype.set.call(cacheMap, id, entry.card);
+          const card = entry.card;
+          const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || OFFLINE_CARD_CATALOG.some(c => c.id === card.id);
+          // Defensive check on load — must have images if it's an external card
+          if (isLocal || (card.images && (card.images.small || card.images.large))) {
+            // Set in superclass directly to avoid trigger loop/persisting on load
+            Map.prototype.set.call(cacheMap, id, card);
+          }
         }
       });
       // eslint-disable-next-line no-console
@@ -148,7 +153,12 @@ async function initPersistedCardCache(cacheMap: Map<string, PokemonCard>): Promi
     const dbEntries = await getAllCardsFromDb();
     dbEntries.forEach((entry) => {
       if (entry && entry.card && entry.card.id && entry.card.name) {
-        Map.prototype.set.call(cacheMap, entry.id, entry.card);
+        const card = entry.card;
+        const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || OFFLINE_CARD_CATALOG.some(c => c.id === card.id);
+        // Defensive check on load — must have images if it's an external card
+        if (isLocal || (card.images && (card.images.small || card.images.large))) {
+          Map.prototype.set.call(cacheMap, entry.id, card);
+        }
       }
     });
     // eslint-disable-next-line no-console
@@ -178,6 +188,12 @@ class PersistedCardCache extends Map<string, PokemonCard> {
   get(key: string): PokemonCard | undefined {
     const card = super.get(key);
     if (card) {
+      const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || OFFLINE_CARD_CATALOG.some(c => c.id === card.id);
+      // Defensive check on retrieval — if external card is corrupt/lacks images, clear it from memory and return undefined to force reload
+      if (!isLocal && (!card.images || (!card.images.small && !card.images.large))) {
+        super.delete(key);
+        return undefined;
+      }
       setTimeout(() => updateAccessTimestamp(key), 0);
     }
     return card;
@@ -484,6 +500,30 @@ function composeQuery(opts: SearchCardsParams): string | undefined {
 /* ------------------------------------------------------------------------- */
 
 /**
+ * Clean Lucene or AI generated queries to extract only the core search words.
+ * Used for robust local searches when semantic/AI filters are active.
+ */
+export function cleanLuceneQueryForLocalSearch(query: string): string {
+  if (!query) return '';
+
+  // 1. Remove non-name fields (types:fire, rarity:"Rare Holo", hp:[200 TO *])
+  let clean = query.replace(/\b(types|hp|supertype|subtypes|rarity|rules|set\.id|set\.name)\s*:\s*(?:"[^"]*"|\[[^\]]*\]|[^\s)]+)/gi, '');
+
+  // 2. Extract values from 'name:' fields
+  clean = clean.replace(/\bname\s*:\s*"([^"]*)"/gi, ' $1 ');
+  clean = clean.replace(/\bname\s*:\s*([^\s)]+)/gi, ' $1 ');
+
+  // 3. Clean special chars, quotes, parentheses and asterisks
+  clean = clean.replace(/["*()]/g, ' ');
+
+  // 4. Remove Lucene operators / reserved words
+  clean = clean.replace(/\b(and|or|not|to)\b/gi, ' ');
+
+  // 5. Normalize spaces
+  return clean.replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Searches the offline catalog and user custom cards for cards matching the name query.
  * Returns matching PokemonCard objects (normalized from CustomCard format).
  */
@@ -550,18 +590,16 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
     return [...OFFLINE_CARD_CATALOG, ...customCards];
   }
 
-  if (trimmedQuery.length < 2) return [];
-
-  // Extract meaningful words from query (strip API Lucene syntax like name:*x*)
-  const cleanSearchQuery = nameQuery
-    .replace(/name:\*?([^*\s]+)\*?/gi, '$1') // strip name:*word* -> word
-    .replace(/["*]/g, '')
+  // Clean and prepare the query
+  const cleanSearchQuery = cleanLuceneQueryForLocalSearch(nameQuery)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  if (cleanSearchQuery.length < 2) return [];
 
   const words = cleanSearchQuery.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
@@ -608,6 +646,16 @@ export async function searchCards(
   params: SearchCardsParams = {},
   opts: RequestOptions = {},
 ): Promise<ApiListResponse<PokemonCard>> {
+  // If params.name contains Lucene syntax or fields (AND, OR, types:, hp:, etc.),
+  // rewrite it to params.q so that composeQuery processes it correctly without breaking.
+  if (params.name && (
+    /\b(types|hp|supertype|subtypes|rarity|rules|id|set\.id|set\.name)\s*:/i.test(params.name) ||
+    /\b(AND|OR|NOT)\b/.test(params.name)
+  )) {
+    params.q = params.name;
+    params.name = undefined;
+  }
+
   // Derive the local name query from params.name, or from params.q as fallback
   const localNameQuery = params.name ?? params.q ?? '';
 
