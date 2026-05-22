@@ -585,6 +585,21 @@ export async function searchCards(
   params: SearchCardsParams = {},
   opts: RequestOptions = {},
 ): Promise<ApiListResponse<PokemonCard>> {
+  // Derive the local name query from params.name, or from params.q as fallback
+  const localNameQuery = params.name ?? params.q ?? '';
+
+  // When localOnly is requested, skip the API entirely and return only local results.
+  if (params.localOnly) {
+    const localMatches = searchLocalCards(localNameQuery);
+    return {
+      data: localMatches,
+      page: 1,
+      pageSize: localMatches.length,
+      count: localMatches.length,
+      totalCount: localMatches.length,
+    };
+  }
+
   const q = composeQuery(params);
   const qs = buildQueryString({
     q,
@@ -598,9 +613,6 @@ export async function searchCards(
   if (cached && Date.now() < cached.expiresAt) {
     return cached.value;
   }
-
-  // Derive the local name query from params.name, or from params.q as fallback
-  const localNameQuery = params.name ?? params.q ?? '';
 
   let apiResponse: ApiListResponse<PokemonCard>;
   try {

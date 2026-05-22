@@ -206,6 +206,16 @@ export default function LibraryScreen() {
   // When viewing "all" + a set filter (or global search query), fetch the cards from the API.
   const setView$ = useAsync(async (signal) => {
     if (onlyMine) return [];
+
+    // Promo filter: show ONLY local offline-catalog + custom cards (no API mix-in)
+    if (rarityFilter === 'promo' && !setFilter) {
+      const { data } = await searchCards(
+        { name: translatedQuery.trim() || ' ', pageSize: 250, localOnly: true },
+        { signal },
+      );
+      return data;
+    }
+
     if (!setFilter && !translatedQuery.trim()) return [];
 
     if (setFilter) {
@@ -221,11 +231,11 @@ export default function LibraryScreen() {
       );
       return data;
     }
-  }, [onlyMine, setFilter, translatedQuery]);
+  }, [onlyMine, setFilter, translatedQuery, rarityFilter]);
 
   const baseCards = onlyMine
     ? owned.data ?? []
-    : ((setFilter || translatedQuery.trim()) ? setView$.data : null) ?? owned.data ?? [];
+    : ((setFilter || translatedQuery.trim() || rarityFilter === 'promo') ? setView$.data : null) ?? owned.data ?? [];
 
   const filteredCards = useMemo(() => {
     let list = baseCards;

@@ -146,4 +146,9 @@ export interface SearchCardsParams {
   rarity?: string;
   /** Filter by element type (e.g. "Fire"). */
   type?: string;
+  /**
+   * When true, skip the remote API and return ONLY results from the offline
+   * card catalog and the user's localStorage custom cards.
+   */
+  localOnly?: boolean;
 }
