@@ -660,12 +660,84 @@ export async function searchCards(
   return apiResponse;
 }
 
+/**
+ * Recupera una carta localmente (ya sea del catálogo offline o de las customCards guardadas).
+ */
+export function getLocalCardById(id: string): PokemonCard | undefined {
+  // 1. Buscar en el catálogo offline
+  const offlineMatch = OFFLINE_CARD_CATALOG.find((c) => c.id === id);
+  if (offlineMatch) return offlineMatch;
+
+  // 2. Buscar en las cartas personalizadas guardadas (customCards)
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('carddex.customCards');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<{
+          id: string;
+          name: string;
+          type: string;
+          hp: string;
+          stage: string;
+          imageUrl: string;
+          attack1?: { name: string; cost: string[]; damage: string; effect: string };
+          attack2?: { name: string; cost: string[]; damage: string; effect: string };
+          weakness?: string;
+          createdAt?: string;
+        }>;
+        const cc = parsed.find((card) => card.id === id);
+        if (cc) {
+          return {
+            id: cc.id,
+            name: cc.name,
+            supertype: 'Pokémon',
+            subtypes: [cc.stage || 'Basic', 'Custom'],
+            hp: cc.hp,
+            types: [cc.type],
+            attacks: [
+              ...(cc.attack1 ? [{
+                name: cc.attack1.name,
+                cost: cc.attack1.cost,
+                convertedEnergyCost: cc.attack1.cost.length,
+                damage: cc.attack1.damage,
+                text: cc.attack1.effect,
+              }] : []),
+              ...(cc.attack2 ? [{
+                name: cc.attack2.name,
+                cost: cc.attack2.cost,
+                convertedEnergyCost: cc.attack2.cost.length,
+                damage: cc.attack2.damage,
+                text: cc.attack2.effect,
+              }] : []),
+            ],
+            weaknesses: cc.weakness ? [{ type: cc.weakness, value: '×2' }] : undefined,
+            set: { id: 'custom', name: 'Carta Custom', series: 'Custom', printedTotal: 0, total: 0 },
+            number: cc.id.replace('custom-', ''),
+            rarity: 'Custom',
+            images: { small: cc.imageUrl, large: cc.imageUrl },
+          };
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return undefined;
+}
+
 export async function getCardById(
   id: string,
   opts: RequestOptions = {},
 ): Promise<PokemonCard> {
   const cached = cardCache.get(id);
   if (cached) return cached;
+
+  // Interceptar si es una carta local (catálogo offline o custom)
+  const localCard = getLocalCardById(id);
+  if (localCard) {
+    cardCache.set(id, localCard);
+    return localCard;
+  }
 
   // Try retrieving from IndexedDB cache first
   const dbCard = await getCardFromDb(id);
@@ -694,7 +766,7 @@ export async function getCardsByIds(
   if (ids.length === 0) return [];
   const unique = Array.from(new Set(ids));
 
-  // 1. Separate cached from uncached IDs to avoid redundant fetch calls
+  // 1. Separate cached and local from uncached IDs to avoid redundant fetch calls
   const results: PokemonCard[] = [];
   const uncachedIds: string[] = [];
 
@@ -703,12 +775,18 @@ export async function getCardsByIds(
     if (cached) {
       results.push(cached);
     } else {
-      uncachedIds.push(id);
+      const localCard = getLocalCardById(id);
+      if (localCard) {
+        cardCache.set(id, localCard);
+        results.push(localCard);
+      } else {
+        uncachedIds.push(id);
+      }
     }
   }
 
   if (uncachedIds.length === 0) {
-    // Everything was cached; return them in the original requested unique order
+    // Everything was cached or local; return them in the original requested unique order
     return unique.map((id) => cardCache.get(id)!).filter(Boolean);
   }
 
