@@ -2,6 +2,8 @@ import { type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import BottomNavigation from './BottomNavigation';
 import { useSyncStatus } from '../lib/hooks';
+import { triggerCustomCardsSync } from '../lib/collectionStorage';
+import { triggerHaptic } from '../lib/haptic';
 
 export interface AppShellProps {
   children: ReactNode;
@@ -23,11 +25,24 @@ export default function AppShell({ children }: AppShellProps) {
     pathname.startsWith('/deck/') ||
     pathname.startsWith('/u/');
 
+  const handleSyncClick = () => {
+    if (syncStatus === 'error' || syncStatus === 'offline-pending') {
+      triggerHaptic('medium');
+      triggerCustomCardsSync();
+    }
+  };
+
   return (
     <div className="shell-wrap">
       <div className="shell-frame">
         {syncStatus !== 'idle' && (
-          <div className={`sync-pill sync-status-${syncStatus}`}>
+          <div
+            className={`sync-pill sync-status-${syncStatus}`}
+            onClick={handleSyncClick}
+            style={{
+              cursor: (syncStatus === 'error' || syncStatus === 'offline-pending') ? 'pointer' : 'default',
+            }}
+          >
             <div className="sync-icon">
               {syncStatus === 'syncing' && (
                 <svg className="spinner" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
@@ -101,7 +116,12 @@ export default function AppShell({ children }: AppShellProps) {
           -webkit-backdrop-filter: blur(16px);
           box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08);
           animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          pointer-events: none;
+          pointer-events: auto;
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
+        }
+        .sync-pill:active {
+          transform: translateX(-50%) scale(0.96);
+          background: rgba(28, 32, 45, 0.95);
         }
         .sync-text {
           font-size: 11.5px;

@@ -1,6 +1,7 @@
 import { useState, useEffect, type CSSProperties } from 'react';
 import type { PokemonCard } from '@/types/pokemon';
 import { getOptimizedImageUrl } from '@/lib/imageOptimization';
+import { getImageFromCache, saveImageToCache } from '../lib/imageCacheDb';
 
 export interface TcgCardImageProps {
   card: PokemonCard;
@@ -56,10 +57,31 @@ export default function TcgCardImage({
   const [errored, setErrored] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const rawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
-    setSrc(getOptimizedImageUrl(rawSrc, width));
-    setErrored(false);
-    setHasTriedFallback(false);
+    const optimized = getOptimizedImageUrl(rawSrc, width);
+    
+    if (!optimized) {
+      setSrc(undefined);
+      setErrored(false);
+      setHasTriedFallback(false);
+      return;
+    }
+
+    getImageFromCache(optimized).then((cached) => {
+      if (!active) return;
+      if (cached) {
+        setSrc(cached);
+      } else {
+        setSrc(optimized);
+      }
+      setErrored(false);
+      setHasTriedFallback(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [card.images?.large, card.images?.small, useLarge, width]);
 
   // 3D holographic rotation states
@@ -234,12 +256,33 @@ export default function TcgCardImage({
           height={height}
           loading="lazy"
           decoding="async"
+          crossOrigin="anonymous"
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
             display: 'block',
             backfaceVisibility: 'hidden',
+          }}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (src && !src.startsWith('data:') && img.naturalWidth) {
+              setTimeout(() => {
+                try {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = img.naturalWidth;
+                  canvas.height = img.naturalHeight;
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.82);
+                    saveImageToCache(src, base64);
+                  }
+                } catch (err) {
+                  // Silently ignore CORS or tainted canvas errors
+                }
+              }, 50);
+            }
           }}
           onError={() => {
             const currentRawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
@@ -249,17 +292,38 @@ export default function TcgCardImage({
               const fallbackRaw =
                 initialRawSrc === card.images?.large ? card.images?.small : card.images?.large;
               if (fallbackRaw && fallbackRaw !== initialRawSrc) {
-                setSrc(getOptimizedImageUrl(fallbackRaw, width));
+                const fallbackOptimized = getOptimizedImageUrl(fallbackRaw, width);
+                getImageFromCache(fallbackOptimized).then((cached) => {
+                  if (cached) {
+                    setSrc(cached);
+                  } else {
+                    setSrc(fallbackOptimized);
+                  }
+                });
               } else if (currentRawSrc && !currentRawSrc.startsWith('/')) {
                 // If there's no other size, try the secure backend image proxy
-                setSrc(`/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`);
+                const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`;
+                getImageFromCache(proxyUrl).then((cached) => {
+                  if (cached) {
+                    setSrc(cached);
+                  } else {
+                    setSrc(proxyUrl);
+                  }
+                });
               } else {
                 setErrored(true);
               }
             } else {
               // If we already tried switching sizes via weserv, try our secure backend image proxy as ultimate fallback
-              if (currentRawSrc && !currentRawSrc.startsWith('/') && !src.startsWith('/api/image-proxy')) {
-                setSrc(`/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`);
+              if (currentRawSrc && !currentRawSrc.startsWith('/') && src && !src.startsWith('/api/image-proxy')) {
+                const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`;
+                getImageFromCache(proxyUrl).then((cached) => {
+                  if (cached) {
+                    setSrc(cached);
+                  } else {
+                    setSrc(proxyUrl);
+                  }
+                });
               } else {
                 setErrored(true);
               }

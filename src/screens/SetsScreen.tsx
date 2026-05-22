@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { VirtuosoGrid } from 'react-virtuoso';
 import Surface from '@/components/Surface';
 import EmptyState from '@/components/EmptyState';
 import LoadingState from '@/components/LoadingState';
@@ -257,183 +258,201 @@ function SetChecklist({
   }
 
   return (
-    <div
+    <VirtuosoGrid
       style={{
-        maxHeight: 360,
-        overflowY: 'auto',
+        height: 360,
         marginTop: 12,
-        padding: '8px 4px',
-        scrollbarWidth: 'thin',
       }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
-          gap: '20px 12px',
-          justifyItems: 'center',
-        }}
-      >
-        {cards.map((card) => {
-          const cardMeta = collection.cards[card.id];
-          const isOwned = Boolean(cardMeta?.owned);
-          const qty = cardMeta?.quantity ?? 0;
+      data={cards}
+      components={{
+        List: forwardRef<HTMLDivElement, any>(({ style, children, ...props }, ref) => (
+          <div
+            ref={ref}
+            {...props}
+            style={{
+              ...style,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+              gap: '20px 12px',
+              justifyItems: 'center',
+              padding: '8px 4px',
+            }}
+          >
+            {children}
+          </div>
+        )),
+        Item: ({ children, ...props }) => (
+          <div
+            {...props}
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {children}
+          </div>
+        ),
+      }}
+      itemContent={(index, card) => {
+        const cardMeta = collection.cards[card.id];
+        const isOwned = Boolean(cardMeta?.owned);
+        const qty = cardMeta?.quantity ?? 0;
 
-          return (
-            <div
-              key={card.id}
+        return (
+          <div
+            style={{
+              position: 'relative',
+              width: 78,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            {/* Card Thumbnail */}
+            <TcgCardImage
+              card={card}
+              width={78}
+              onClick={() => navigate(`/card/${encodeURIComponent(card.id)}`)}
               style={{
-                position: 'relative',
-                width: 78,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                cursor: 'pointer',
+                filter: isOwned ? 'none' : 'grayscale(1) opacity(0.38)',
+                transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                transform: isOwned ? 'none' : 'scale(0.96)',
               }}
-            >
-              {/* Card Thumbnail */}
-              <TcgCardImage
-                card={card}
-                width={78}
-                onClick={() => navigate(`/card/${encodeURIComponent(card.id)}`)}
-                style={{
-                  filter: isOwned ? 'none' : 'grayscale(1) opacity(0.38)',
-                  transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                  transform: isOwned ? 'none' : 'scale(0.96)',
-                }}
-              />
+            />
 
-              {/* Floating add button if not owned */}
-              {!isOwned && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggle(card, false);
-                  }}
+            {/* Floating add button if not owned */}
+            {!isOwned && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggle(card, false);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  border: '1.5px solid var(--surface)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  zIndex: 10,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.15)';
+                  e.currentTarget.style.background = 'var(--accent-hover, var(--accent))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.background = 'var(--accent)';
+                }}
+              >
+                +
+              </button>
+            )}
+
+            {/* Owned indicators */}
+            {isOwned && (
+              <>
+                {/* Quantity badge top-left */}
+                <div
                   style={{
                     position: 'absolute',
                     top: -6,
-                    right: -6,
-                    width: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    background: 'var(--accent)',
+                    left: -6,
+                    background: 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
                     color: '#fff',
-                    border: '1.5px solid var(--surface)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 13,
+                    fontSize: 9,
                     fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    padding: '2px 6px',
+                    borderRadius: 8,
+                    border: '1.5px solid var(--surface)',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
                     zIndex: 10,
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.15)';
-                    e.currentTarget.style.background = 'var(--accent-hover, var(--accent))';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.background = 'var(--accent)';
+                    pointerEvents: 'none',
                   }}
                 >
-                  +
-                </button>
-              )}
+                  ×{qty}
+                </div>
 
-              {/* Owned indicators */}
-              {isOwned && (
-                <>
-                  {/* Quantity badge top-left */}
-                  <div
+                {/* Compact +/- footer buttons */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: -8,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-soft)',
+                    borderRadius: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 4px',
+                    boxShadow: '0 3px 8px rgba(0,0,0,0.25)',
+                    zIndex: 10,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => handleDecrement(card, qty)}
                     style={{
-                      position: 'absolute',
-                      top: -6,
-                      left: -6,
-                      background: 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
-                      color: '#fff',
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: '2px 6px',
-                      borderRadius: 8,
-                      border: '1.5px solid var(--surface)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                      zIndex: 10,
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    ×{qty}
-                  </div>
-
-                  {/* Compact +/- footer buttons */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: -8,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border-soft)',
-                      borderRadius: 14,
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: 'var(--bg-soft, rgba(0,0,0,0.06))',
+                      border: 'none',
+                      color: 'var(--ink)',
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 4,
-                      padding: '2px 4px',
-                      boxShadow: '0 3px 8px rgba(0,0,0,0.25)',
-                      zIndex: 10,
+                      justifyContent: 'center',
+                      transition: 'all 0.1s ease',
                     }}
-                    onClick={(e) => e.stopPropagation()}
                   >
-                    <button
-                      onClick={() => handleDecrement(card, qty)}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        background: 'var(--bg-soft, rgba(0,0,0,0.06))',
-                        border: 'none',
-                        color: 'var(--ink)',
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.1s ease',
-                      }}
-                    >
-                      -
-                    </button>
-                    <button
-                      onClick={() => handleIncrement(card, qty)}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        background: 'var(--bg-soft, rgba(0,0,0,0.06))',
-                        border: 'none',
-                        color: 'var(--ink)',
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.1s ease',
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+                    -
+                  </button>
+                  <button
+                    onClick={() => handleIncrement(card, qty)}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: 'var(--bg-soft, rgba(0,0,0,0.06))',
+                      border: 'none',
+                      color: 'var(--ink)',
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.1s ease',
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      }}
+    />
   );
 }
 
@@ -458,7 +477,11 @@ function SetRow({
 
   return (
     <Surface
-      style={{ padding: 16 }}
+      style={{
+        padding: 16,
+        contentVisibility: 'auto',
+        containIntrinsicSize: isExpanded ? '0 450px' : '0 88px',
+      }}
     >
       <div onClick={onToggleExpand} style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}>
         <SetLogoTile set={set} fallbackBg={fallbackBg} />
