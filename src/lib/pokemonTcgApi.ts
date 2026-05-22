@@ -73,7 +73,7 @@ function loadPersistedCardCache(cacheMap: Map<string, PokemonCard>): void {
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, CacheEntry>;
       Object.entries(parsed).forEach(([id, entry]) => {
-        if (entry && entry.card) {
+        if (entry && entry.card && entry.card.id && entry.card.name) {
           // Set in superclass directly to avoid trigger loop/persisting on load
           Map.prototype.set.call(cacheMap, id, entry.card);
         }
@@ -97,10 +97,13 @@ function persistCardCache(cacheMap: Map<string, PokemonCard>): void {
     }
 
     cacheMap.forEach((card, id) => {
-      entries[id] = {
-        card,
-        timestamp: entries[id]?.timestamp ?? Date.now(),
-      };
+      // Defensive check — only persist complete card objects
+      if (card && card.id && card.name) {
+        entries[id] = {
+          card,
+          timestamp: entries[id]?.timestamp ?? Date.now(),
+        };
+      }
     });
 
     const keys = Object.keys(entries);
@@ -144,7 +147,7 @@ async function initPersistedCardCache(cacheMap: Map<string, PokemonCard>): Promi
   try {
     const dbEntries = await getAllCardsFromDb();
     dbEntries.forEach((entry) => {
-      if (entry && entry.card) {
+      if (entry && entry.card && entry.card.id && entry.card.name) {
         Map.prototype.set.call(cacheMap, entry.id, entry.card);
       }
     });
@@ -550,28 +553,33 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
   if (trimmedQuery.length < 2) return [];
 
   // Extract meaningful words from query (strip API Lucene syntax like name:*x*)
-  const rawQuery = nameQuery
+  const cleanSearchQuery = nameQuery
     .replace(/name:\*?([^*\s]+)\*?/gi, '$1') // strip name:*word* -> word
     .replace(/["*]/g, '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 
-  const words = rawQuery.split(/\s+/).filter((w) => w.length >= 2);
+  const words = cleanSearchQuery.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
 
   const matched: PokemonCard[] = [];
   const seenIds = new Set<string>();
 
-  // 1. Search offline catalog — a card matches if ANY search word appears in its name
+  // 1. Search offline catalog — a card matches if ALL search words appear in its normalized name
   for (const card of OFFLINE_CARD_CATALOG) {
     const cardName = (card.name || '')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-    const anyWordMatches = words.some((w) => cardName.includes(w));
-    if (anyWordMatches && !seenIds.has(card.id)) {
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const allWordsMatch = words.every((w) => cardName.includes(w));
+    if (allWordsMatch && !seenIds.has(card.id)) {
       seenIds.add(card.id);
       matched.push(card);
     }
@@ -582,9 +590,12 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
     const cardName = (card.name || '')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-    const anyWordMatches = words.some((w) => cardName.includes(w));
-    if (anyWordMatches && !seenIds.has(card.id)) {
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const allWordsMatch = words.every((w) => cardName.includes(w));
+    if (allWordsMatch && !seenIds.has(card.id)) {
       seenIds.add(card.id);
       matched.push(card);
     }
@@ -729,15 +740,15 @@ export async function getCardById(
   id: string,
   opts: RequestOptions = {},
 ): Promise<PokemonCard> {
-  const cached = cardCache.get(id);
-  if (cached) return cached;
-
-  // Interceptar si es una carta local (catálogo offline o custom)
+  // Interceptar si es una carta local (catálogo offline o custom) - SIEMPRE PRIMERO para evitar caches corruptos
   const localCard = getLocalCardById(id);
   if (localCard) {
     cardCache.set(id, localCard);
     return localCard;
   }
+
+  const cached = cardCache.get(id);
+  if (cached) return cached;
 
   // Try retrieving from IndexedDB cache first
   const dbCard = await getCardFromDb(id);
@@ -771,14 +782,15 @@ export async function getCardsByIds(
   const uncachedIds: string[] = [];
 
   for (const id of unique) {
-    const cached = cardCache.get(id);
-    if (cached) {
-      results.push(cached);
+    // Interceptar localmente primero para ignorar caches corruptos/obsoletos
+    const localCard = getLocalCardById(id);
+    if (localCard) {
+      cardCache.set(id, localCard);
+      results.push(localCard);
     } else {
-      const localCard = getLocalCardById(id);
-      if (localCard) {
-        cardCache.set(id, localCard);
-        results.push(localCard);
+      const cached = cardCache.get(id);
+      if (cached) {
+        results.push(cached);
       } else {
         uncachedIds.push(id);
       }

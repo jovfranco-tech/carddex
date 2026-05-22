@@ -88,10 +88,25 @@ export function parseAdvancedQuery(query: string): AdvancedFilters {
 
 export function matchesAdvancedFilters(c: PokemonCard, f: AdvancedFilters): boolean {
   if (f.name) {
-    const nameMatch = c.name.toLowerCase().includes(f.name);
+    const cleanCardName = c.name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const cleanSearchQuery = f.name
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const queryWords = cleanSearchQuery.split(' ').filter(Boolean);
+    const wordMatch = queryWords.length > 0 && queryWords.every(word => cleanCardName.includes(word));
+
     const numMatch = c.number?.toLowerCase().includes(f.name);
     const setMatch = c.set?.name?.toLowerCase().includes(f.name) || c.set?.id?.toLowerCase().includes(f.name);
-    if (!nameMatch && !numMatch && !setMatch) return false;
+    
+    if (!wordMatch && !numMatch && !setMatch) return false;
   }
 
   if (f.types.length > 0) {
