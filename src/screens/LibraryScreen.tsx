@@ -411,7 +411,7 @@ export default function LibraryScreen() {
     );
   }
 
-  const showEmpty = collectionIds.length === 0;
+  const showEmpty = collectionIds.length === 0 && onlyMine && !setFilter && !searchQuery.trim();
 
   /* --------------------------------------------------------------------- */
 

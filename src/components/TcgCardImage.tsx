@@ -242,21 +242,27 @@ export default function TcgCardImage({
             backfaceVisibility: 'hidden',
           }}
           onError={() => {
+            const currentRawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
+            
             if (!hasTriedFallback) {
               setHasTriedFallback(true);
               const fallbackRaw =
                 initialRawSrc === card.images?.large ? card.images?.small : card.images?.large;
               if (fallbackRaw && fallbackRaw !== initialRawSrc) {
-                const bypassUrl = fallbackRaw + (fallbackRaw.includes('?') ? '&' : '?') + 'retry=1';
-                setSrc(getOptimizedImageUrl(bypassUrl, width));
-              } else if (initialRawSrc) {
-                const bypassUrl = initialRawSrc + (initialRawSrc.includes('?') ? '&' : '?') + 'retry=2';
-                setSrc(getOptimizedImageUrl(bypassUrl, width));
+                setSrc(getOptimizedImageUrl(fallbackRaw, width));
+              } else if (currentRawSrc && !currentRawSrc.startsWith('/')) {
+                // If there's no other size, try the secure backend image proxy
+                setSrc(`/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`);
               } else {
                 setErrored(true);
               }
             } else {
-              setErrored(true);
+              // If we already tried switching sizes via weserv, try our secure backend image proxy as ultimate fallback
+              if (currentRawSrc && !currentRawSrc.startsWith('/') && !src.startsWith('/api/image-proxy')) {
+                setSrc(`/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`);
+              } else {
+                setErrored(true);
+              }
             }
           }}
         />
