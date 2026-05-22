@@ -761,7 +761,34 @@ export async function recognizeCardFromImage(
       res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
     }
 
-    if (res.data.length === 0) return buildEmptyResult('no_match');
+    if (res.data.length === 0) {
+      // Fallback: search locally in the catalog or custom cards since custom cards are not in the official Pokemon TCG API
+      const cleanSeedLower = seed.toLowerCase().trim();
+      const localMatch = OFFLINE_CARD_CATALOG.find((card) => {
+        const nameMatch = card.name.toLowerCase().includes(cleanSeedLower) || cleanSeedLower.includes(card.name.toLowerCase());
+        if (!nameMatch) return false;
+        
+        if (ocrNumber) {
+          const cleanOcrNum = ocrNumber.split('/')[0].replace(/^[0]+/, '').trim();
+          const cleanCardNum = card.number.replace(/^[0]+/, '').trim();
+          return cleanOcrNum === cleanCardNum;
+        }
+        return true;
+      });
+
+      if (localMatch) {
+        console.log('[OCR Fallback] Found local match in catalog:', localMatch.name);
+        seedCache.set(cacheKey, localMatch);
+        return buildRecognitionResultFromApiCard(localMatch, {
+          confidence: 0.95,
+          source: 'api_lookup',
+          simulated: false,
+          detectedLanguage,
+        });
+      }
+
+      return buildEmptyResult('no_match');
+    }
 
     // Prefer a card that has a market price + a usable image
     const detected =

@@ -527,7 +527,7 @@ export function cleanLuceneQueryForLocalSearch(query: string): string {
  * Searches the offline catalog and user custom cards for cards matching the name query.
  * Returns matching PokemonCard objects (normalized from CustomCard format).
  */
-function searchLocalCards(nameQuery: string): PokemonCard[] {
+function searchLocalCards(nameQuery: string, setId?: string): PokemonCard[] {
   const trimmedQuery = (nameQuery || '').trim();
 
   // Load custom cards first since we will need them in both empty and non-empty queries
@@ -585,9 +585,17 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
     }
   }
 
-  // If query is empty, return all local catalog + all custom cards
+  // Combine both sources as candidates
+  let candidates = [...OFFLINE_CARD_CATALOG, ...customCards];
+
+  // If setId filter is active, filter candidates first
+  if (setId) {
+    candidates = candidates.filter((c) => c.set?.id === setId);
+  }
+
+  // If query is empty, return whatever candidates match the active set filter
   if (trimmedQuery === '') {
-    return [...OFFLINE_CARD_CATALOG, ...customCards];
+    return candidates;
   }
 
   // Clean and prepare the query
@@ -607,24 +615,7 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
   const matched: PokemonCard[] = [];
   const seenIds = new Set<string>();
 
-  // 1. Search offline catalog — a card matches if ALL search words appear in its normalized name
-  for (const card of OFFLINE_CARD_CATALOG) {
-    const cardName = (card.name || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const allWordsMatch = words.every((w) => cardName.includes(w));
-    if (allWordsMatch && !seenIds.has(card.id)) {
-      seenIds.add(card.id);
-      matched.push(card);
-    }
-  }
-
-  // 2. Search custom cards
-  for (const card of customCards) {
+  for (const card of candidates) {
     const cardName = (card.name || '')
       .toLowerCase()
       .normalize('NFD')
@@ -668,6 +659,26 @@ export async function searchCards(
       pageSize: localMatches.length,
       count: localMatches.length,
       totalCount: localMatches.length,
+    };
+  }
+
+  // When custom set or custom cards are queried, skip the API entirely and return only local results.
+  if (params.setId && (params.setId.startsWith('mep') || params.setId === 'custom')) {
+    const localMatches = searchLocalCards(localNameQuery, params.setId);
+    
+    // Sort local matches by number if number is numeric
+    const sortedMatches = localMatches.sort((a, b) => {
+      const numA = parseInt(a.number, 10) || 0;
+      const numB = parseInt(b.number, 10) || 0;
+      return numA - numB;
+    });
+
+    return {
+      data: sortedMatches,
+      page: 1,
+      pageSize: sortedMatches.length,
+      count: sortedMatches.length,
+      totalCount: sortedMatches.length,
     };
   }
 
@@ -881,24 +892,72 @@ export async function getCardsByIds(
   return unique.map((id) => cardCache.get(id)!).filter(Boolean);
 }
 
+export const CUSTOM_SETS: CardSet[] = [
+  {
+    id: 'mep-la',
+    name: 'MEP Latino América',
+    series: 'Custom / Fan Set',
+    printedTotal: 100,
+    total: 100,
+    releaseDate: '2026/05/01',
+    images: {
+      symbol: '/logo.svg',
+      logo: '/logo.svg'
+    }
+  },
+  {
+    id: 'mep-en',
+    name: 'MEP English Edition',
+    series: 'Custom / Fan Set',
+    printedTotal: 120,
+    total: 120,
+    releaseDate: '2026/04/01',
+    images: {
+      symbol: '/logo.svg',
+      logo: '/logo.svg'
+    }
+  },
+  {
+    id: 'mep',
+    name: 'MEP Promo',
+    series: 'Custom / Fan Set',
+    printedTotal: 50,
+    total: 50,
+    releaseDate: '2026/03/01',
+    images: {
+      symbol: '/logo.svg',
+      logo: '/logo.svg'
+    }
+  }
+];
+
 export async function getSets(opts: RequestOptions = {}): Promise<CardSet[]> {
   // Cache for 5 minutes — sets rarely change.
   if (setsCache.value && Date.now() < setsCache.expiresAt) {
     return setsCache.value;
   }
-  const { data } = await request<ApiListResponse<CardSet>>(
-    `/sets${buildQueryString({ orderBy: '-releaseDate', pageSize: 250 })}`,
-    opts,
-  );
-  setsCache.value = data;
-  setsCache.expiresAt = Date.now() + 5 * 60 * 1000;
-  return data;
+  try {
+    const { data } = await request<ApiListResponse<CardSet>>(
+      `/sets${buildQueryString({ orderBy: '-releaseDate', pageSize: 250 })}`,
+      opts,
+    );
+    const merged = [...CUSTOM_SETS, ...data];
+    setsCache.value = merged;
+    setsCache.expiresAt = Date.now() + 5 * 60 * 1000;
+    return merged;
+  } catch (err) {
+    // If offline or API error, return at least custom sets
+    return CUSTOM_SETS;
+  }
 }
 
 export async function getSetById(
   id: string,
   opts: RequestOptions = {},
 ): Promise<CardSet> {
+  const customSet = CUSTOM_SETS.find((s) => s.id === id);
+  if (customSet) return customSet;
+
   const cached = setsCache.value?.find((s) => s.id === id);
   if (cached) return cached;
   const { data } = await request<ApiSingleResponse<CardSet>>(
