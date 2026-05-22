@@ -258,32 +258,110 @@ export default function TcgCardImage({
 
 function Placeholder({ card, width }: { card: PokemonCard; width: number }) {
   const hue = hashHue(card.id || card.name);
+  const height = width * 1.4;
+  const isCustom = card.set?.id === 'custom' || card.subtypes?.includes('Custom');
+
   return (
     <div
       style={{
         width: '100%',
         height: '100%',
-        background: `linear-gradient(155deg, hsl(${hue} 60% 78%), hsl(${(hue + 40) % 360} 50% 38%))`,
+        background: isCustom
+          ? `linear-gradient(155deg, hsl(${hue} 60% 25%), hsl(${(hue + 40) % 360} 50% 15%))`
+          : 'linear-gradient(155deg, #1a2040 0%, #0d1329 60%, #1a2a50 100%)',
         color: '#fff',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: width * 0.08,
-        textAlign: 'center',
-        fontFamily: 'var(--font-display)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ fontSize: width * 0.4, fontWeight: 800, lineHeight: 1 }}>
-        {(card.name || '?')[0]?.toUpperCase()}
-      </div>
+      {/* Card back decorative ring */}
+      <div style={{
+        position: 'absolute',
+        width: width * 0.75,
+        height: width * 0.75,
+        borderRadius: '50%',
+        border: `${Math.max(2, width * 0.03)}px solid rgba(255,255,255,0.08)`,
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }} />
+      <div style={{
+        position: 'absolute',
+        width: width * 0.55,
+        height: width * 0.55,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.06) 0%, transparent 70%)',
+        border: `${Math.max(1, width * 0.02)}px solid rgba(255,255,255,0.12)`,
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }} />
+
+      {/* Pokéball upper half */}
+      <div style={{
+        position: 'absolute',
+        width: width * 0.38,
+        height: width * 0.19,
+        borderRadius: `${width * 0.19}px ${width * 0.19}px 0 0`,
+        background: 'rgba(220, 50, 50, 0.7)',
+        top: `calc(50% - ${width * 0.19}px)`,
+        left: '50%',
+        transform: 'translateX(-50%)',
+      }} />
+      {/* Pokéball lower half */}
+      <div style={{
+        position: 'absolute',
+        width: width * 0.38,
+        height: width * 0.19,
+        borderRadius: `0 0 ${width * 0.19}px ${width * 0.19}px`,
+        background: 'rgba(240,240,240,0.15)',
+        top: '50%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+      }} />
+      {/* Pokéball divider */}
+      <div style={{
+        position: 'absolute',
+        width: width * 0.38,
+        height: Math.max(2, width * 0.025),
+        background: 'rgba(255,255,255,0.3)',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }} />
+      {/* Pokéball center button */}
+      <div style={{
+        position: 'absolute',
+        width: width * 0.1,
+        height: width * 0.1,
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.9)',
+        border: `${Math.max(2, width * 0.02)}px solid rgba(255,255,255,0.5)`,
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        boxShadow: '0 0 8px rgba(255,255,255,0.4)',
+      }} />
+
+      {/* Card name at bottom */}
       <div
         style={{
-          fontSize: Math.max(9, width * 0.08),
-          marginTop: 8,
-          fontWeight: 600,
+          position: 'absolute',
+          bottom: height * 0.06,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontSize: Math.max(8, width * 0.075),
+          fontWeight: 700,
           letterSpacing: 0.2,
-          opacity: 0.9,
+          color: 'rgba(255,255,255,0.75)',
+          padding: `0 ${width * 0.06}px`,
+          lineHeight: 1.2,
+          textShadow: '0 1px 4px rgba(0,0,0,0.5)',
         }}
       >
         {card.name}

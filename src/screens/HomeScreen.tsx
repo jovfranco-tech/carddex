@@ -254,7 +254,12 @@ export default function HomeScreen() {
         <img
           src="/logo.svg"
           alt="Pokémon Trading Card Game"
-          style={{ height: 68 }}
+          style={{
+            height: 68,
+            maxWidth: '80%',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.18))',
+          }}
         />
       </div>
 

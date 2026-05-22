@@ -1213,5 +1213,119 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
       }
     },
     dhash: '0000111111110000101010100110011001100110111100001010101000001111'
+  }  ,
+  {
+    id: 'mep-la-030',
+    name: 'Mega-Charizard Y ex',
+    supertype: 'Pokémon',
+    subtypes: ['Mega', 'ex', 'Stage 2'],
+    hp: '360',
+    types: ['Fire'],
+    evolvesFrom: 'Charizard ex',
+    rules: [
+      'Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.',
+      'Mega Evolution rule: When 1 of your Pokémon becomes a Mega Evolution Pokémon, your turn ends.'
+    ],
+    attacks: [
+      {
+        name: 'Explosión Y',
+        cost: ['Fire', 'Fire', 'Fire'],
+        convertedEnergyCost: 3,
+        damage: '300',
+        text: 'This attack cannot be reduced or prevented by effects.',
+      }
+    ],
+    set: {
+      id: 'mep-la',
+      name: 'MEP Latino América',
+      series: 'Custom / Fan Set',
+      printedTotal: 100,
+      total: 100,
+    },
+    number: '030',
+    rarity: 'Ultra Rare',
+    images: {
+      small: 'https://images.pokemontcg.io/xy6/101.png',
+      large: 'https://images.pokemontcg.io/xy6/101_hires.png'
+    },
+    dhash: '1111000011110000111111001100110010101010101010100011110000111100'
+  },
+  {
+    id: 'mep-en-070',
+    name: 'Tyrunt',
+    supertype: 'Pokémon',
+    subtypes: ['Basic'],
+    hp: '100',
+    types: ['Fighting'],
+    attacks: [
+      {
+        name: 'Gnaw',
+        cost: ['Colorless'],
+        convertedEnergyCost: 1,
+        damage: '20',
+        text: 'Flip a coin. If heads, the Defending Pokémon is now Paralyzed.',
+      },
+      {
+        name: 'Get Angry',
+        cost: ['Fighting', 'Colorless'],
+        convertedEnergyCost: 2,
+        damage: '50',
+        text: 'If this Pokémon was damaged by an attack last turn, this attack does 50 more damage.',
+      }
+    ],
+    weaknesses: [{ type: 'Grass', value: 'x2' }],
+    set: {
+      id: 'mep-en',
+      name: 'MEP English Edition',
+      series: 'Custom / Fan Set',
+      printedTotal: 120,
+      total: 120,
+    },
+    number: '070',
+    rarity: 'Common',
+    images: {
+      small: 'https://images.pokemontcg.io/xy6/56.png',
+      large: 'https://images.pokemontcg.io/xy6/56_hires.png'
+    },
+    dhash: '1010101010101010010101010101010111001100110011001111000011110000'
+  },
+  {
+    id: 'mep-shaymin-001',
+    name: 'Shaymin',
+    supertype: 'Pokémon',
+    subtypes: ['Basic'],
+    hp: '70',
+    types: ['Grass'],
+    attacks: [
+      {
+        name: 'Enviar Flores',
+        cost: ['Grass'],
+        convertedEnergyCost: 1,
+        damage: '20',
+        text: 'Heal 10 damage from each of your Benched Pokémon.',
+      },
+      {
+        name: 'Seed Flare',
+        cost: ['Grass', 'Colorless'],
+        convertedEnergyCost: 2,
+        damage: '40',
+        text: 'The Defending Pokémon Weakness is now Grass until end of your next turn.',
+      }
+    ],
+    weaknesses: [{ type: 'Fire', value: 'x2' }],
+    set: {
+      id: 'mep',
+      name: 'MEP Promo',
+      series: 'Custom / Fan Set',
+      printedTotal: 50,
+      total: 50,
+    },
+    number: 'PR-001',
+    rarity: 'Promo',
+    images: {
+      small: 'https://images.pokemontcg.io/dp4/11.png',
+      large: 'https://images.pokemontcg.io/dp4/11_hires.png'
+    },
+    dhash: '0101010101010101100110011001100111001100110011000011001100110011'
   }
 ];

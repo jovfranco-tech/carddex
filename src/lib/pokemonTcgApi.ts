@@ -12,6 +12,7 @@ import {
   pruneCardsDb,
   clearCardsDb,
 } from './indexedDb';
+import { OFFLINE_CARD_CATALOG } from './offlineCardCatalog';
 
 
 const BASE_URL = (
@@ -479,6 +480,101 @@ function composeQuery(opts: SearchCardsParams): string | undefined {
 /* Public API                                                                 */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * Searches the offline catalog and user custom cards for cards matching the name query.
+ * Returns matching PokemonCard objects (normalized from CustomCard format).
+ */
+function searchLocalCards(nameQuery: string): PokemonCard[] {
+  if (!nameQuery || nameQuery.trim().length < 2) return [];
+  const normalized = nameQuery
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const matched: PokemonCard[] = [];
+  const seenIds = new Set<string>();
+
+  // 1. Search offline catalog
+  for (const card of OFFLINE_CARD_CATALOG) {
+    const cardName = (card.name || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (cardName.includes(normalized)) {
+      if (!seenIds.has(card.id)) {
+        seenIds.add(card.id);
+        matched.push(card);
+      }
+    }
+  }
+
+  // 2. Search user custom cards from localStorage
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('carddex.customCards');
+      if (raw) {
+        const customCards = JSON.parse(raw) as Array<{
+          id: string;
+          name: string;
+          type: string;
+          hp: string;
+          stage: string;
+          imageUrl: string;
+          attack1?: { name: string; cost: string[]; damage: string; effect: string };
+          attack2?: { name: string; cost: string[]; damage: string; effect: string };
+          weakness?: string;
+          createdAt?: string;
+        }>;
+        for (const cc of customCards) {
+          const ccName = (cc.name || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+          if (ccName.includes(normalized) && !seenIds.has(cc.id)) {
+            seenIds.add(cc.id);
+            // Normalize CustomCard to PokemonCard shape
+            const asCard: PokemonCard = {
+              id: cc.id,
+              name: cc.name,
+              supertype: 'Pokémon',
+              subtypes: [cc.stage || 'Basic', 'Custom'],
+              hp: cc.hp,
+              types: [cc.type],
+              attacks: [
+                ...(cc.attack1 ? [{
+                  name: cc.attack1.name,
+                  cost: cc.attack1.cost,
+                  convertedEnergyCost: cc.attack1.cost.length,
+                  damage: cc.attack1.damage,
+                  text: cc.attack1.effect,
+                }] : []),
+                ...(cc.attack2 ? [{
+                  name: cc.attack2.name,
+                  cost: cc.attack2.cost,
+                  convertedEnergyCost: cc.attack2.cost.length,
+                  damage: cc.attack2.damage,
+                  text: cc.attack2.effect,
+                }] : []),
+              ],
+              weaknesses: cc.weakness ? [{ type: cc.weakness, value: '×2' }] : undefined,
+              set: { id: 'custom', name: 'Carta Custom', series: 'Custom', printedTotal: 0, total: 0 },
+              number: cc.id.replace('custom-', ''),
+              rarity: 'Custom',
+              images: { small: cc.imageUrl, large: cc.imageUrl },
+            };
+            matched.push(asCard);
+          }
+        }
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+  }
+
+  return matched;
+}
+
 export async function searchCards(
   params: SearchCardsParams = {},
   opts: RequestOptions = {},
@@ -497,12 +593,41 @@ export async function searchCards(
     return cached.value;
   }
 
-  const response = await request<ApiListResponse<PokemonCard>>(`/cards${qs}`, opts);
-  // Warm the per-card cache so subsequent getCardById calls are free.
-  response.data.forEach((c) => cardCache.set(c.id, c));
-  
-  searchCache.set(cacheKey, { value: response, expiresAt: Date.now() + 5 * 60 * 1000 });
-  return response;
+  // Determine the name being searched to query local cards
+  const localNameQuery = params.name ?? '';
+
+  let apiResponse: ApiListResponse<PokemonCard>;
+  try {
+    apiResponse = await request<ApiListResponse<PokemonCard>>(`/cards${qs}`, opts);
+    // Warm the per-card cache so subsequent getCardById calls are free.
+    apiResponse.data.forEach((c) => cardCache.set(c.id, c));
+    searchCache.set(cacheKey, { value: apiResponse, expiresAt: Date.now() + 5 * 60 * 1000 });
+  } catch (err) {
+    // If offline or API error, return only local results
+    const localMatches = searchLocalCards(localNameQuery);
+    if (localMatches.length > 0) {
+      return { data: localMatches, page: 1, pageSize: localMatches.length, count: localMatches.length, totalCount: localMatches.length };
+    }
+    throw err;
+  }
+
+  // Merge local matches that aren't already in the API results
+  if (localNameQuery) {
+    const localMatches = searchLocalCards(localNameQuery);
+    const apiIds = new Set(apiResponse.data.map((c) => c.id));
+    const uniqueLocal = localMatches.filter((c) => !apiIds.has(c.id));
+    if (uniqueLocal.length > 0) {
+      const merged: ApiListResponse<PokemonCard> = {
+        ...apiResponse,
+        data: [...uniqueLocal, ...apiResponse.data],
+        count: apiResponse.count + uniqueLocal.length,
+        totalCount: apiResponse.totalCount + uniqueLocal.length,
+      };
+      return merged;
+    }
+  }
+
+  return apiResponse;
 }
 
 export async function getCardById(

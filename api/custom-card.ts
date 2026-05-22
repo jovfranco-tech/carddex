@@ -149,7 +149,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (dallResponse.ok) {
         const dallData = await dallResponse.json();
-        imageUrl = dallData.data[0]?.url || '';
+        const tempUrl: string = dallData.data[0]?.url || '';
+        if (tempUrl) {
+          // Convert to permanent base64 data URL so it never expires
+          try {
+            const imgRes = await fetch(tempUrl);
+            if (imgRes.ok) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64 = Buffer.from(buffer).toString('base64');
+              const mime = imgRes.headers.get('content-type') || 'image/png';
+              imageUrl = `data:${mime};base64,${base64}`;
+            } else {
+              imageUrl = tempUrl; // fallback to temp url if download fails
+            }
+          } catch (convErr) {
+            console.warn('Failed to convert DALL-E image to base64, using temp URL:', convErr);
+            imageUrl = tempUrl;
+          }
+        }
       } else {
         console.warn('DALL-E image generation failed, falling back to themed image.');
       }
