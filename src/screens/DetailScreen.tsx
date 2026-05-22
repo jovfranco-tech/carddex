@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import TcgCardImage from '@/components/TcgCardImage';
@@ -25,7 +25,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import { useAsync, useCardMeta, useDecks } from '@/lib/hooks';
-import { getCardById, getSimilarCardsByName } from '@/lib/pokemonTcgApi';
+import { getCardById, getSimilarCardsByName, clearApiCache } from '@/lib/pokemonTcgApi';
 import {
   addRecentlyViewed,
   saveCardMeta,
@@ -104,7 +104,7 @@ export default function DetailScreen() {
 /* ------------------------------------------------------------------------- */
 
 function Detail({
-  card,
+  card: initialCard,
   meta,
 }: {
   card: PokemonCard;
@@ -125,6 +125,46 @@ function Detail({
   const decksState = useDecks();
   const decks = Object.values(decksState.decks);
 
+  const [localCard, setLocalCard] = useState<PokemonCard>(initialCard);
+
+  useEffect(() => {
+    setLocalCard(initialCard);
+  }, [initialCard]);
+
+  const card = localCard;
+
+  const isCustom = localCard.id.startsWith('custom-') || localCard.set?.id === 'custom' || localCard.subtypes?.includes('Custom');
+
+  const handleCustomImageUploaded = (newImageUrl: string) => {
+    try {
+      const raw = localStorage.getItem('carddex.customCards');
+      if (raw) {
+        const customCards = JSON.parse(raw) as any[];
+        const updated = customCards.map((c) => {
+          if (c.id === localCard.id) {
+            return { ...c, imageUrl: newImageUrl };
+          }
+          return c;
+        });
+        localStorage.setItem('carddex.customCards', JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.error('Error saving custom card image:', e);
+    }
+
+    setLocalCard((prev) => ({
+      ...prev,
+      images: {
+        small: newImageUrl,
+        large: newImageUrl,
+      },
+    }));
+
+    clearApiCache();
+    setToastMessage('Imagen de carta personalizada actualizada');
+    triggerHaptic('success');
+  };
+
   // Resync local state if meta arrives after the first render.
   useEffect(() => {
     if (meta) {
@@ -138,7 +178,7 @@ function Detail({
     }
   }, [meta?.cardId, meta?.owned]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const price = useMemo(() => getEstimatedPrice(card), [card]);
+  const price = useMemo(() => getEstimatedPrice(localCard), [localCard]);
 
   const handleSave = () => {
     const safeQty = Math.max(1, qty);
@@ -304,11 +344,14 @@ function Detail({
         style={{
           padding: '8px 24px 22px',
           display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           justifyContent: 'center',
           background: `radial-gradient(60% 50% at 50% 35%, ${heroBgTint} 0%, transparent 70%)`,
         }}
       >
         <TcgCardImage card={card} width={250} hero large />
+        {isCustom && <CustomImageUploader onImageUploaded={handleCustomImageUploaded} />}
       </div>
 
       {/* Name + type + rarity */}
@@ -1074,6 +1117,81 @@ function CollectionStateRow({
           {b.label}
         </span>
       ))}
+    </div>
+  );
+}
+
+interface CustomImageUploaderProps {
+  onImageUploaded: (base64: string) => void;
+}
+
+function CustomImageUploader({ onImageUploaded }: CustomImageUploaderProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        onImageUploaded(base64);
+      }
+      setUploading(false);
+    };
+    reader.onerror = () => {
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        style={{ display: 'none' }}
+      />
+      <button
+        onClick={handleButtonClick}
+        disabled={uploading}
+        style={{
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          color: '#fff',
+          padding: '8px 16px',
+          borderRadius: 20,
+          fontSize: 13,
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)';
+          e.currentTarget.style.transform = 'translateY(-1px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+          e.currentTarget.style.transform = 'none';
+        }}
+      >
+        <span style={{ fontSize: 14 }}>📷</span>
+        {uploading ? 'Cargando...' : 'Editar Arte de la Carta'}
+      </button>
     </div>
   );
 }

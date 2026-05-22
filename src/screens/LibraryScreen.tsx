@@ -210,7 +210,7 @@ export default function LibraryScreen() {
     // Promo filter: show ONLY local offline-catalog + custom cards (no API mix-in)
     if (rarityFilter === 'promo' && !setFilter) {
       const { data } = await searchCards(
-        { name: translatedQuery.trim() || ' ', pageSize: 250, localOnly: true },
+        { name: translatedQuery.trim() || '', pageSize: 250, localOnly: true },
         { signal },
       );
       return data;

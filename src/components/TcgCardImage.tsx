@@ -55,6 +55,13 @@ export default function TcgCardImage({
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const [errored, setErrored] = useState(false);
 
+  useEffect(() => {
+    const rawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
+    setSrc(getOptimizedImageUrl(rawSrc, width));
+    setErrored(false);
+    setHasTriedFallback(false);
+  }, [card.images?.large, card.images?.small, useLarge, width]);
+
   // 3D holographic rotation states
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
   const [holoPos, setHoloPos] = useState({ x: 50, y: 50 });
@@ -256,10 +263,40 @@ export default function TcgCardImage({
   );
 }
 
+const typeEmojis: Record<string, string> = {
+  Fire: '🔥',
+  Water: '💧',
+  Grass: '🌿',
+  Lightning: '⚡',
+  Psychic: '🔮',
+  Fighting: '👊',
+  Darkness: '🌙',
+  Metal: '⚙️',
+  Dragon: '🐲',
+  Colorless: '⭐',
+  Fairy: '🌸',
+};
+
+const typeColors: Record<string, { start: string; end: string }> = {
+  Fire: { start: 'hsl(0, 75%, 28%)', end: 'hsl(15, 80%, 12%)' },
+  Water: { start: 'hsl(205, 80%, 25%)', end: 'hsl(220, 85%, 10%)' },
+  Grass: { start: 'hsl(110, 70%, 20%)', end: 'hsl(130, 80%, 8%)' },
+  Lightning: { start: 'hsl(48, 85%, 25%)', end: 'hsl(40, 90%, 12%)' },
+  Psychic: { start: 'hsl(280, 65%, 25%)', end: 'hsl(295, 75%, 12%)' },
+  Fighting: { start: 'hsl(25, 70%, 25%)', end: 'hsl(20, 80%, 12%)' },
+  Darkness: { start: 'hsl(240, 40%, 12%)', end: 'hsl(255, 60%, 6%)' },
+  Metal: { start: 'hsl(200, 15%, 35%)', end: 'hsl(210, 20%, 15%)' },
+  Dragon: { start: 'hsl(35, 60%, 25%)', end: 'hsl(280, 50%, 12%)' },
+  Fairy: { start: 'hsl(330, 75%, 30%)', end: 'hsl(345, 80%, 15%)' },
+  Colorless: { start: 'hsl(210, 25%, 30%)', end: 'hsl(220, 30%, 12%)' },
+};
+
 function Placeholder({ card, width }: { card: PokemonCard; width: number }) {
-  const hue = hashHue(card.id || card.name);
   const height = width * 1.4;
   const isCustom = card.set?.id === 'custom' || card.subtypes?.includes('Custom');
+  const firstType = card.types?.[0] || 'Colorless';
+  const emoji = typeEmojis[firstType] || '⭐';
+  const colors = typeColors[firstType] || typeColors.Colorless;
 
   return (
     <div
@@ -267,7 +304,7 @@ function Placeholder({ card, width }: { card: PokemonCard; width: number }) {
         width: '100%',
         height: '100%',
         background: isCustom
-          ? `linear-gradient(155deg, hsl(${hue} 60% 25%), hsl(${(hue + 40) % 360} 50% 15%))`
+          ? `linear-gradient(155deg, ${colors.start} 0%, ${colors.end} 100%)`
           : 'linear-gradient(155deg, #1a2040 0%, #0d1329 60%, #1a2a50 100%)',
         color: '#fff',
         display: 'flex',
@@ -301,51 +338,75 @@ function Placeholder({ card, width }: { card: PokemonCard; width: number }) {
         transform: 'translate(-50%, -50%)',
       }} />
 
-      {/* Pokéball upper half */}
-      <div style={{
-        position: 'absolute',
-        width: width * 0.38,
-        height: width * 0.19,
-        borderRadius: `${width * 0.19}px ${width * 0.19}px 0 0`,
-        background: 'rgba(220, 50, 50, 0.7)',
-        top: `calc(50% - ${width * 0.19}px)`,
-        left: '50%',
-        transform: 'translateX(-50%)',
-      }} />
-      {/* Pokéball lower half */}
-      <div style={{
-        position: 'absolute',
-        width: width * 0.38,
-        height: width * 0.19,
-        borderRadius: `0 0 ${width * 0.19}px ${width * 0.19}px`,
-        background: 'rgba(240,240,240,0.15)',
-        top: '50%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-      }} />
-      {/* Pokéball divider */}
-      <div style={{
-        position: 'absolute',
-        width: width * 0.38,
-        height: Math.max(2, width * 0.025),
-        background: 'rgba(255,255,255,0.3)',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      }} />
-      {/* Pokéball center button */}
-      <div style={{
-        position: 'absolute',
-        width: width * 0.1,
-        height: width * 0.1,
-        borderRadius: '50%',
-        background: 'rgba(255,255,255,0.9)',
-        border: `${Math.max(2, width * 0.02)}px solid rgba(255,255,255,0.5)`,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        boxShadow: '0 0 8px rgba(255,255,255,0.4)',
-      }} />
+      {isCustom ? (
+        <div style={{
+          position: 'absolute',
+          width: width * 0.42,
+          height: width * 0.42,
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: width * 0.2,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+        }}>
+          {emoji}
+        </div>
+      ) : (
+        <>
+          {/* Pokéball upper half */}
+          <div style={{
+            position: 'absolute',
+            width: width * 0.38,
+            height: width * 0.19,
+            borderRadius: `${width * 0.19}px ${width * 0.19}px 0 0`,
+            background: 'rgba(220, 50, 50, 0.7)',
+            top: `calc(50% - ${width * 0.19}px)`,
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }} />
+          {/* Pokéball lower half */}
+          <div style={{
+            position: 'absolute',
+            width: width * 0.38,
+            height: width * 0.19,
+            borderRadius: `0 0 ${width * 0.19}px ${width * 0.19}px`,
+            background: 'rgba(240,240,240,0.15)',
+            top: '50%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }} />
+          {/* Pokéball divider */}
+          <div style={{
+            position: 'absolute',
+            width: width * 0.38,
+            height: Math.max(2, width * 0.025),
+            background: 'rgba(255,255,255,0.3)',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }} />
+          {/* Pokéball center button */}
+          <div style={{
+            position: 'absolute',
+            width: width * 0.1,
+            height: width * 0.1,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.9)',
+            border: `${Math.max(2, width * 0.02)}px solid rgba(255,255,255,0.5)`,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            boxShadow: '0 0 8px rgba(255,255,255,0.4)',
+          }} />
+        </>
+      )}
 
       {/* Card name at bottom */}
       <div

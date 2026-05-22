@@ -485,7 +485,69 @@ function composeQuery(opts: SearchCardsParams): string | undefined {
  * Returns matching PokemonCard objects (normalized from CustomCard format).
  */
 function searchLocalCards(nameQuery: string): PokemonCard[] {
-  if (!nameQuery || nameQuery.trim().length < 2) return [];
+  const trimmedQuery = (nameQuery || '').trim();
+
+  // Load custom cards first since we will need them in both empty and non-empty queries
+  const customCards: PokemonCard[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('carddex.customCards');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<{
+          id: string;
+          name: string;
+          type: string;
+          hp: string;
+          stage: string;
+          imageUrl: string;
+          attack1?: { name: string; cost: string[]; damage: string; effect: string };
+          attack2?: { name: string; cost: string[]; damage: string; effect: string };
+          weakness?: string;
+          createdAt?: string;
+        }>;
+        for (const cc of parsed) {
+          customCards.push({
+            id: cc.id,
+            name: cc.name,
+            supertype: 'Pokémon',
+            subtypes: [cc.stage || 'Basic', 'Custom'],
+            hp: cc.hp,
+            types: [cc.type],
+            attacks: [
+              ...(cc.attack1 ? [{
+                name: cc.attack1.name,
+                cost: cc.attack1.cost,
+                convertedEnergyCost: cc.attack1.cost.length,
+                damage: cc.attack1.damage,
+                text: cc.attack1.effect,
+              }] : []),
+              ...(cc.attack2 ? [{
+                name: cc.attack2.name,
+                cost: cc.attack2.cost,
+                convertedEnergyCost: cc.attack2.cost.length,
+                damage: cc.attack2.damage,
+                text: cc.attack2.effect,
+              }] : []),
+            ],
+            weaknesses: cc.weakness ? [{ type: cc.weakness, value: '×2' }] : undefined,
+            set: { id: 'custom', name: 'Carta Custom', series: 'Custom', printedTotal: 0, total: 0 },
+            number: cc.id.replace('custom-', ''),
+            rarity: 'Custom',
+            images: { small: cc.imageUrl, large: cc.imageUrl },
+          });
+        }
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+  }
+
+  // If query is empty, return all local catalog + all custom cards
+  if (trimmedQuery === '') {
+    return [...OFFLINE_CARD_CATALOG, ...customCards];
+  }
+
+  if (trimmedQuery.length < 2) return [];
 
   // Extract meaningful words from query (strip API Lucene syntax like name:*x*)
   const rawQuery = nameQuery
@@ -515,66 +577,16 @@ function searchLocalCards(nameQuery: string): PokemonCard[] {
     }
   }
 
-  // 2. Search user custom cards from localStorage
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem('carddex.customCards');
-      if (raw) {
-        const customCards = JSON.parse(raw) as Array<{
-          id: string;
-          name: string;
-          type: string;
-          hp: string;
-          stage: string;
-          imageUrl: string;
-          attack1?: { name: string; cost: string[]; damage: string; effect: string };
-          attack2?: { name: string; cost: string[]; damage: string; effect: string };
-          weakness?: string;
-          createdAt?: string;
-        }>;
-        for (const cc of customCards) {
-          const ccName = (cc.name || '')
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '');
-          if (words.some((w) => ccName.includes(w)) && !seenIds.has(cc.id)) {
-            seenIds.add(cc.id);
-            // Normalize CustomCard to PokemonCard shape
-            const asCard: PokemonCard = {
-              id: cc.id,
-              name: cc.name,
-              supertype: 'Pokémon',
-              subtypes: [cc.stage || 'Basic', 'Custom'],
-              hp: cc.hp,
-              types: [cc.type],
-              attacks: [
-                ...(cc.attack1 ? [{
-                  name: cc.attack1.name,
-                  cost: cc.attack1.cost,
-                  convertedEnergyCost: cc.attack1.cost.length,
-                  damage: cc.attack1.damage,
-                  text: cc.attack1.effect,
-                }] : []),
-                ...(cc.attack2 ? [{
-                  name: cc.attack2.name,
-                  cost: cc.attack2.cost,
-                  convertedEnergyCost: cc.attack2.cost.length,
-                  damage: cc.attack2.damage,
-                  text: cc.attack2.effect,
-                }] : []),
-              ],
-              weaknesses: cc.weakness ? [{ type: cc.weakness, value: '×2' }] : undefined,
-              set: { id: 'custom', name: 'Carta Custom', series: 'Custom', printedTotal: 0, total: 0 },
-              number: cc.id.replace('custom-', ''),
-              rarity: 'Custom',
-              images: { small: cc.imageUrl, large: cc.imageUrl },
-            };
-            matched.push(asCard);
-          }
-        }
-      }
-    } catch {
-      // ignore localStorage errors
+  // 2. Search custom cards
+  for (const card of customCards) {
+    const cardName = (card.name || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const anyWordMatches = words.some((w) => cardName.includes(w));
+    if (anyWordMatches && !seenIds.has(card.id)) {
+      seenIds.add(card.id);
+      matched.push(card);
     }
   }
 

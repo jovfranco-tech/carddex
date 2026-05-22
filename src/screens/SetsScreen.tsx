@@ -11,7 +11,7 @@ import { formatDateShort, stringHue } from '@/lib/formatters';
 import type { CardSet, PokemonCard } from '@/types/pokemon';
 import { saveCardMeta, removeCard } from '@/lib/collectionStorage';
 import { triggerHaptic } from '@/lib/haptic';
-import { Virtuoso } from 'react-virtuoso';
+import TcgCardImage from '@/components/TcgCardImage';
 
 interface SetWithCounts {
   set: CardSet;
@@ -151,137 +151,6 @@ export default function SetsScreen() {
   );
 }
 
-function CardChecklistItem({
-  card,
-  isOwned,
-  onToggle,
-}: {
-  card: PokemonCard;
-  isOwned: boolean;
-  onToggle: () => void;
-}) {
-  const navigate = useNavigate();
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 12,
-        background: 'rgba(255, 255, 255, 0.02)',
-        border: '0.5px solid var(--border-soft)',
-        transition: 'background 0.2s',
-      }}
-    >
-      {/* Custom checkbox */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 7,
-          border: isOwned ? 'none' : '1.5px solid var(--muted-3)',
-          background: isOwned
-            ? 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)'
-            : 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          padding: 0,
-          color: '#fff',
-          fontSize: 12,
-          fontWeight: 'bold',
-          transition: 'all 0.2s',
-        }}
-      >
-        {isOwned && '✓'}
-      </button>
-
-      {/* Card Info and Link */}
-      <div
-        onClick={() => navigate(`/card/${encodeURIComponent(card.id)}`)}
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          cursor: 'pointer',
-          minWidth: 0,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            color: 'var(--muted)',
-            fontFamily: 'monospace',
-            minWidth: 28,
-          }}
-        >
-          #{card.number}
-        </span>
-        
-        {/* Tiny thumbnail */}
-        {card.images?.small && (
-          <img
-            src={card.images.small}
-            alt=""
-            style={{
-              width: 24,
-              height: 33,
-              objectFit: 'contain',
-              borderRadius: 3,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            }}
-            loading="lazy"
-          />
-        )}
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: isOwned ? 'var(--ink)' : 'var(--ink-2)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {card.name}
-          </div>
-          {card.rarity && (
-            <div
-              style={{
-                fontSize: 10.5,
-                color: 'var(--muted)',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {card.rarity}
-            </div>
-          )}
-        </div>
-
-        {card.cardmarket?.prices?.trendPrice ? (
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
-            ${card.cardmarket.prices.trendPrice.toFixed(2)}
-          </div>
-        ) : null}
-        
-        <span style={{ color: 'var(--muted-3)', fontSize: 11 }}>↗</span>
-      </div>
-    </div>
-  );
-}
-
 function SetChecklist({
   setId,
   collection,
@@ -289,6 +158,7 @@ function SetChecklist({
   setId: string;
   collection: any;
 }) {
+  const navigate = useNavigate();
   const { data: cards, loading, error } = useAsync(async (signal) => {
     const res = await getCardsBySet(setId, 1, 250, { signal });
     return res.data;
@@ -309,10 +179,36 @@ function SetChecklist({
     }
   };
 
+  const handleIncrement = (card: PokemonCard, currentQty: number) => {
+    triggerHaptic('light');
+    saveCardMeta(card.id, {
+      owned: true,
+      quantity: currentQty + 1,
+      foil: collection.cards[card.id]?.foil ?? false,
+      condition: collection.cards[card.id]?.condition ?? 'Near Mint',
+      variant: collection.cards[card.id]?.variant ?? 'Normal',
+    });
+  };
+
+  const handleDecrement = (card: PokemonCard, currentQty: number) => {
+    triggerHaptic('light');
+    if (currentQty <= 1) {
+      removeCard(card.id);
+    } else {
+      saveCardMeta(card.id, {
+        owned: true,
+        quantity: currentQty - 1,
+        foil: collection.cards[card.id]?.foil ?? false,
+        condition: collection.cards[card.id]?.condition ?? 'Near Mint',
+        variant: collection.cards[card.id]?.variant ?? 'Normal',
+      });
+    }
+  };
+
   if (loading) {
     return (
-      <div style={{ padding: '12px 0' }}>
-        <LoadingState variant="inline" message="Cargando checklist..." />
+      <div style={{ padding: '24px 0' }}>
+        <LoadingState variant="inline" message="Cargando Álbum..." />
       </div>
     );
   }
@@ -328,28 +224,189 @@ function SetChecklist({
   if (!cards || cards.length === 0) {
     return (
       <div style={{ color: 'var(--muted)', fontSize: 12, padding: '12px 0', textAlign: 'center' }}>
-        No se encontraron cartas en este set.
+        No se encontraron cartas en esta expansión.
       </div>
     );
   }
 
   return (
-    <Virtuoso
-      style={{ height: 280, marginTop: 12 }}
-      data={cards}
-      itemContent={(index, card) => {
-        const isOwned = Boolean(collection.cards[card.id]?.owned);
-        return (
-          <div style={{ paddingBottom: 6, paddingRight: 4 }}>
-            <CardChecklistItem
-              card={card}
-              isOwned={isOwned}
-              onToggle={() => handleToggle(card, isOwned)}
-            />
-          </div>
-        );
+    <div
+      style={{
+        maxHeight: 360,
+        overflowY: 'auto',
+        marginTop: 12,
+        padding: '8px 4px',
+        scrollbarWidth: 'thin',
       }}
-    />
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+          gap: '20px 12px',
+          justifyItems: 'center',
+        }}
+      >
+        {cards.map((card) => {
+          const cardMeta = collection.cards[card.id];
+          const isOwned = Boolean(cardMeta?.owned);
+          const qty = cardMeta?.quantity ?? 0;
+
+          return (
+            <div
+              key={card.id}
+              style={{
+                position: 'relative',
+                width: 78,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              {/* Card Thumbnail */}
+              <TcgCardImage
+                card={card}
+                width={78}
+                onClick={() => navigate(`/card/${encodeURIComponent(card.id)}`)}
+                style={{
+                  filter: isOwned ? 'none' : 'grayscale(1) opacity(0.38)',
+                  transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                  transform: isOwned ? 'none' : 'scale(0.96)',
+                }}
+              />
+
+              {/* Floating add button if not owned */}
+              {!isOwned && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggle(card, false);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    border: '1.5px solid var(--surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    zIndex: 10,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.15)';
+                    e.currentTarget.style.background = 'var(--accent-hover, var(--accent))';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.background = 'var(--accent)';
+                  }}
+                >
+                  +
+                </button>
+              )}
+
+              {/* Owned indicators */}
+              {isOwned && (
+                <>
+                  {/* Quantity badge top-left */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      left: -6,
+                      background: 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
+                      color: '#fff',
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: '2px 6px',
+                      borderRadius: 8,
+                      border: '1.5px solid var(--surface)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      zIndex: 10,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    ×{qty}
+                  </div>
+
+                  {/* Compact +/- footer buttons */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: -8,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-soft)',
+                      borderRadius: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '2px 4px',
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.25)',
+                      zIndex: 10,
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => handleDecrement(card, qty)}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: 'var(--bg-soft, rgba(0,0,0,0.06))',
+                        border: 'none',
+                        color: 'var(--ink)',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.1s ease',
+                      }}
+                    >
+                      -
+                    </button>
+                    <button
+                      onClick={() => handleIncrement(card, qty)}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: 'var(--bg-soft, rgba(0,0,0,0.06))',
+                        border: 'none',
+                        color: 'var(--ink)',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.1s ease',
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
