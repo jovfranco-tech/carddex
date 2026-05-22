@@ -17,8 +17,9 @@ export default function DetectedPanel({
   onWrong,
 }: DetectedPanelProps) {
   const card = result.card!;
+  const isVectorMatch = result.source === 'vector_match';
   const isOffline = result.source === 'offline_fallback';
-  const matchColor = isOffline ? '#FF9500' : 'var(--success)';
+  const matchColor = isVectorMatch ? '#00E5FF' : isOffline ? '#FF9500' : 'var(--success)';
   const price = getEstimatedPrice(card);
   const categoryColor =
     result.cardCategory === 'Pokémon'
@@ -35,12 +36,14 @@ export default function DetectedPanel({
         background: 'rgba(20,22,30,0.7)',
         backdropFilter: 'blur(20px) saturate(160%)',
         WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-        border: '0.5px solid rgba(255,255,255,0.12)',
+        border: isVectorMatch ? '1px solid rgba(0, 229, 255, 0.4)' : '0.5px solid rgba(255,255,255,0.12)',
         borderRadius: 22,
         padding: 14,
         display: 'flex',
         gap: 14,
         alignItems: 'flex-start',
+        boxShadow: isVectorMatch ? '0 0 16px rgba(0, 229, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)' : undefined,
+        animation: isVectorMatch ? 'vectorMatchPulse 2s infinite ease-in-out' : undefined,
       }}
     >
       <TcgCardImage card={card} width={78} />
@@ -74,12 +77,12 @@ export default function DetectedPanel({
               style={{
                 fontSize: 10.5,
                 color: matchColor,
-                fontWeight: 700,
+                fontWeight: 800,
                 letterSpacing: 0.3,
                 textTransform: 'uppercase',
               }}
             >
-              {isOffline ? 'Modo Offline' : `Coincidencia ${confidence}%`}
+              {isVectorMatch ? `✦ RECONOCIMIENTO IA: ${(confidence * 100).toFixed(1)}%` : isOffline ? 'Modo Offline' : `Coincidencia ${confidence}%`}
             </span>
           </span>
           <span
@@ -276,7 +279,44 @@ export default function DetectedPanel({
             Modo Offline · Coincidencia local aproximada
           </div>
         )}
+        {isVectorMatch && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              borderRadius: 8,
+              background: 'rgba(0, 229, 255, 0.08)',
+              border: '0.5px solid rgba(0, 229, 255, 0.25)',
+              fontSize: 10.5,
+              fontWeight: 600,
+              color: '#00E5FF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              letterSpacing: 0.1,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#00E5FF',
+                boxShadow: '0 0 6px #00E5FF',
+                display: 'inline-block',
+              }}
+            />
+            Búsqueda Vectorial Multimodal (Embedding 1536d)
+          </div>
+        )}
       </div>
+      <style>{`
+        @keyframes vectorMatchPulse {
+          0% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.3); }
+          50% { box-shadow: 0 0 20px rgba(0, 229, 255, 0.35); border-color: rgba(0, 229, 255, 0.6); }
+          100% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.3); }
+        }
+      `}</style>
     </div>
   );
 }

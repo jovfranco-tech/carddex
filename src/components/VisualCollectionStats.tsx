@@ -4,6 +4,15 @@ import { getEstimatedPrice, formatCollectionValue, prefersMXN, formatPrice } fro
 import type { PokemonCard } from '@/types/pokemon';
 import type { CollectionState } from '@/types/collection';
 import { formatInt } from '@/lib/formatters';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts';
 
 interface VisualCollectionStatsProps {
   ownedCards: PokemonCard[];
@@ -356,6 +365,26 @@ export default function VisualCollectionStats({
 
   const valueFormatted = formatCollectionValue(pricingTotals);
 
+  const formattedChartData = useMemo(() => {
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return historyData.rawPoints.map((p) => {
+      try {
+        const parts = p.date.split('-');
+        const day = parseInt(parts[2], 10);
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        return {
+          ...p,
+          formattedDate: `${day} ${monthNames[monthIdx] || ''}`,
+        };
+      } catch {
+        return {
+          ...p,
+          formattedDate: p.date,
+        };
+      }
+    });
+  }, [historyData.rawPoints]);
+
   return (
     <div style={{ padding: '0 14px 14px' }}>
       <div
@@ -660,93 +689,82 @@ export default function VisualCollectionStats({
               </div>
             </div>
 
-            {/* Line Chart SVG */}
+            {/* Recharts Area Chart */}
             <div
               style={{
                 position: 'relative',
                 background: 'rgba(0, 0, 0, 0.15)',
-                borderRadius: 16,
+                borderRadius: 20,
                 padding: '16px 12px 12px',
                 border: '0.5px solid rgba(255, 255, 255, 0.05)',
+                height: 180,
                 display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
+                overflow: 'hidden',
               }}
             >
-              <svg width="240" height="80" style={{ overflow: 'visible' }}>
-                <defs>
-                  {/* Line stroke gradient */}
-                  <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#34C759" />
-                    <stop offset="100%" stopColor="#2F6FE0" />
-                  </linearGradient>
-                  {/* Area fill gradient */}
-                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#34C759" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#2F6FE0" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Grid horizontal lines */}
-                <line x1="15" y1="12" x2="225" y2="12" stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
-                <line x1="15" y1="40" x2="225" y2="40" stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
-                <line x1="15" y1="68" x2="225" y2="68" stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
-
-                {/* Gradient area */}
-                <path d={historyData.areaD} fill="url(#areaGrad)" />
-
-                {/* Curved line */}
-                <path
-                  d={historyData.pathD}
-                  fill="none"
-                  stroke="url(#lineGrad)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-
-                {/* Dynamic dots for points */}
-                {historyData.coords.map((c, idx) => (
-                  <g key={idx}>
-                    <circle
-                      cx={c.x}
-                      cy={c.y}
-                      r="4"
-                      fill="#FFF"
-                      stroke={idx === 5 ? '#2F6FE0' : '#34C759'}
-                      strokeWidth="2"
-                      style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
-                    />
-                    {/* Tooltip on endpoints */}
-                    {(idx === 0 || idx === 5) && (
-                      <text
-                        x={c.x}
-                        y={c.y - 8}
-                        textAnchor="middle"
-                        fill="rgba(255, 255, 255, 0.6)"
-                        fontSize="8"
-                        fontWeight="800"
-                      >
-                        {historyData.currencySym}{c.value.toFixed(0)}
-                      </text>
-                    )}
-                  </g>
-                ))}
-              </svg>
-            </div>
-
-            {/* X-Axis labels */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 8px', marginTop: -4 }}>
-              {historyData.labels.map((l, idx) => (
-                <span
-                  key={idx}
-                  style={{
-                    fontSize: 8,
-                    color: idx === 5 ? 'var(--accent)' : 'rgba(255, 255, 255, 0.35)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {l}
-                </span>
-              ))}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={formattedChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="historyColorGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.04)" />
+                  <XAxis
+                    dataKey="formattedDate"
+                    stroke="rgba(255, 255, 255, 0.3)"
+                    fontSize={9}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="rgba(255, 255, 255, 0.3)"
+                    fontSize={9}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${historyData.currencySym}${v.toFixed(0)}`}
+                  />
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div style={{
+                            background: 'rgba(12, 14, 26, 0.9)',
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            padding: '8px 12px',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                          }}>
+                            <p style={{ margin: 0, fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600 }}>
+                              {payload[0].payload.formattedDate || payload[0].payload.date}
+                            </p>
+                            <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#FFF', fontWeight: 800 }}>
+                              {historyData.currencySym}{payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'}
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#historyColorGrad)"
+                    style={{
+                      filter: `drop-shadow(0 2px 8px ${(monthlyPerf ?? 0) >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'})`
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}

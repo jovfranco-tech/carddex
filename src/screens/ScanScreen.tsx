@@ -971,21 +971,80 @@ export default function ScanScreen() {
         {!isMulticardMode && state === 'idle' && (
           <div
             style={{
-              width: 210,
-              height: 294,
-              border: '2px dashed rgba(255,255,255,0.25)',
-              borderRadius: 14,
+              width: 220,
+              height: 308,
+              border: '2px dashed rgba(255, 255, 255, 0.25)',
+              borderRadius: 16,
               position: 'relative',
               zIndex: 1,
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'rgba(255,255,255,0.4)',
-              fontSize: 13,
-              letterSpacing: -0.1,
+              color: '#fff',
+              background: 'rgba(255, 255, 255, 0.01)',
+              animation: 'pulseViewfinder 2s ease-in-out infinite',
+              padding: 20,
+              textAlign: 'center',
             }}
           >
-            Coloca la carta aquí
+            {/* Brackets in the four corners */}
+            <div style={{
+              position: 'absolute',
+              top: -2,
+              left: -2,
+              width: 20,
+              height: 20,
+              borderTop: '3px solid var(--accent)',
+              borderLeft: '3px solid var(--accent)',
+              borderTopLeftRadius: 16,
+              boxShadow: '0 0 8px var(--accent)',
+            }} />
+            <div style={{
+              position: 'absolute',
+              top: -2,
+              right: -2,
+              width: 20,
+              height: 20,
+              borderTop: '3px solid var(--accent)',
+              borderRight: '3px solid var(--accent)',
+              borderTopRightRadius: 16,
+              boxShadow: '0 0 8px var(--accent)',
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: -2,
+              left: -2,
+              width: 20,
+              height: 20,
+              borderBottom: '3px solid var(--accent)',
+              borderLeft: '3px solid var(--accent)',
+              borderBottomLeftRadius: 16,
+              boxShadow: '0 0 8px var(--accent)',
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
+              width: 20,
+              height: 20,
+              borderBottom: '3px solid var(--accent)',
+              borderRight: '3px solid var(--accent)',
+              borderBottomRightRadius: 16,
+              boxShadow: '0 0 8px var(--accent)',
+            }} />
+            
+            <div style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'rgba(255, 255, 255, 0.85)',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              letterSpacing: -0.2,
+              maxWidth: 180,
+              lineHeight: 1.4,
+            }}>
+              Alinea la carta física en este recuadro
+            </div>
           </div>
         )}
 
@@ -1333,6 +1392,11 @@ export default function ScanScreen() {
         />
       )}
       <style>{`
+        @keyframes pulseViewfinder {
+          0% { opacity: 0.4; }
+          50% { opacity: 0.9; }
+          100% { opacity: 0.4; }
+        }
         @keyframes scanLine {
           0% { transform: translateY(-140px); opacity: 0; }
           10% { opacity: 1; }

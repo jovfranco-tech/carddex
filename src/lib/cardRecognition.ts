@@ -73,7 +73,7 @@ export interface RecognitionResult {
   highConfidence: boolean;
 
   /** Free-form notes for the UI ("ocr_failed", "fallback_demo", …). */
-  source: 'mock' | 'api_lookup' | 'manual' | 'failed' | 'offline_fallback';
+  source: 'mock' | 'api_lookup' | 'manual' | 'failed' | 'offline_fallback' | 'vector_match';
 
   /** True when the result was produced from the simulated demo cycle. */
   simulated: boolean;
@@ -586,6 +586,48 @@ export async function recognizeCardFromImage(
 
         // 1.5. Calculate hash & check Cache (combining hash and active languageHint)
         imageHash = hashString(base64);
+
+        // 1.6. Multimodal Vector Similarity Search online check (preempts OCR)
+        if (navigator.onLine) {
+          try {
+            console.log('[Vector Search] Attempting vector database similarity search...');
+            const vectorRes = await fetch('/api/recognize-vector', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: base64 }),
+              signal: opts.signal,
+            });
+            if (vectorRes.ok) {
+              const vectorData = await vectorRes.json();
+              if (vectorData && vectorData.cardName) {
+                console.log('[Vector Search] High-confidence similarity match:', vectorData.cardName, vectorData.similarity);
+                const cleanName = vectorData.cardName.replace(/["\\]/g, '').trim();
+                const rawNum = vectorData.number.split('/')[0].trim();
+                const numQ = getNumberQuery(rawNum);
+                const q = `name:"${cleanName}" AND ${numQ}`;
+                
+                try {
+                  const apiRes = await searchCards({ q, pageSize: 1 }, { signal: opts.signal });
+                  const card = apiRes.data[0] || null;
+                  if (card) {
+                    console.log('[Vector Search] Match fetched from Pokémon TCG API:', card.name, card.id);
+                    return buildRecognitionResultFromApiCard(card, {
+                      confidence: vectorData.similarity || 0.9982,
+                      source: 'vector_match',
+                      simulated: false,
+                      detectedLanguage: 'EN',
+                    });
+                  }
+                } catch (apiErr) {
+                  console.warn('[Vector Search] Pokémon TCG API fetch failed, falling back to standard OCR:', apiErr);
+                }
+              }
+            }
+          } catch (vErr) {
+            console.warn('[Vector Search] Failed or timed out, falling back to standard OCR:', vErr);
+          }
+        }
+
         const langKey = opts.languageHint || 'AUTO';
         const cacheIndex = `${imageHash}:${langKey}`;
         const localCache = getOcrCache();

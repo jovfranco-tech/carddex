@@ -585,6 +585,17 @@ export default function ProfileScreen() {
               </button>
             </div>
           </div>
+          <style>{`
+            @keyframes scaleInPasskey {
+              from { transform: scale(0.9); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
+            @keyframes pulseFingerprint {
+              0% { box-shadow: 0 0 0 0 rgba(123, 90, 217, 0.4); }
+              70% { box-shadow: 0 0 0 15px rgba(123, 90, 217, 0); }
+              100% { box-shadow: 0 0 0 0 rgba(123, 90, 217, 0); }
+            }
+          `}</style>
         </div>
       )}
 
