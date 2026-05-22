@@ -507,7 +507,7 @@ export function cleanLuceneQueryForLocalSearch(query: string): string {
   if (!query) return '';
 
   // 1. Remove non-name fields (types:fire, rarity:"Rare Holo", hp:[200 TO *])
-  let clean = query.replace(/\b(types|hp|supertype|subtypes|rarity|rules|set\.id|set\.name)\s*:\s*(?:"[^"]*"|\[[^\]]*\]|[^\s)]+)/gi, '');
+  let clean = query.replace(/\b(id|set\.id|types|hp|supertype|subtypes|rarity|rules|set\.name)\s*:\s*(?:"[^"]*"|\[[^\]]*\]|[^\s)]+)/gi, '');
 
   // 2. Extract values from 'name:' fields
   clean = clean.replace(/\bname\s*:\s*"([^"]*)"/gi, ' $1 ');
@@ -649,7 +649,7 @@ export async function searchCards(
   // If params.name contains Lucene syntax or fields (AND, OR, types:, hp:, etc.),
   // rewrite it to params.q so that composeQuery processes it correctly without breaking.
   if (params.name && (
-    /\b(types|hp|supertype|subtypes|rarity|rules|id|set\.id|set\.name)\s*:/i.test(params.name) ||
+    /\b(name|id|types|hp|supertype|subtypes|rarity|rules|set\.id|set\.name)\s*:/i.test(params.name) ||
     /\b(AND|OR|NOT)\b/.test(params.name)
   )) {
     params.q = params.name;

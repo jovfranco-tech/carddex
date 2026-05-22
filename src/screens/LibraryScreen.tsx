@@ -147,12 +147,21 @@ export default function LibraryScreen() {
         if (res.ok) {
           const data = await res.json();
           if (active) {
-            setTranslatedQuery(data.luceneQuery);
+            setTranslatedQuery(data.luceneQuery || debouncedSearchQuery);
             setAiExplanation(data.explanation);
+          }
+        } else {
+          if (active) {
+            setTranslatedQuery(debouncedSearchQuery);
+            setAiExplanation(null);
           }
         }
       } catch (e) {
         console.error(e);
+        if (active) {
+          setTranslatedQuery(debouncedSearchQuery);
+          setAiExplanation(null);
+        }
       } finally {
         if (active) setAiLoading(false);
       }

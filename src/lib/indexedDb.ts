@@ -57,13 +57,27 @@ export async function getCardFromDb(id: string): Promise<PokemonCard | null> {
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(id);
 
       request.onsuccess = () => {
         const result = request.result;
-        resolve(result ? result.card : null);
+        if (result && result.card) {
+          const card = result.card;
+          const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || card.id.startsWith('mep-') || card.id.startsWith('custom-');
+          const hasImages = card.images && (card.images.small || card.images.large);
+          
+          if (!isLocal && !hasImages) {
+            // Delete corrupt card entry asynchronously
+            store.delete(id);
+            resolve(null);
+            return;
+          }
+          resolve(card);
+        } else {
+          resolve(null);
+        }
       };
       request.onerror = () => reject(request.error);
     });

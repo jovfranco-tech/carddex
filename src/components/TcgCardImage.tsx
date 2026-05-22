@@ -247,7 +247,11 @@ export default function TcgCardImage({
               const fallbackRaw =
                 initialRawSrc === card.images?.large ? card.images?.small : card.images?.large;
               if (fallbackRaw && fallbackRaw !== initialRawSrc) {
-                setSrc(getOptimizedImageUrl(fallbackRaw, width));
+                const bypassUrl = fallbackRaw + (fallbackRaw.includes('?') ? '&' : '?') + 'retry=1';
+                setSrc(getOptimizedImageUrl(bypassUrl, width));
+              } else if (initialRawSrc) {
+                const bypassUrl = initialRawSrc + (initialRawSrc.includes('?') ? '&' : '?') + 'retry=2';
+                setSrc(getOptimizedImageUrl(bypassUrl, width));
               } else {
                 setErrored(true);
               }
