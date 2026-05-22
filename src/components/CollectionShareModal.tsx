@@ -439,18 +439,10 @@ export default function CollectionShareModal({
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, letterSpacing: -0.4 }}>Compartir Showcase Poster</h3>
           <button
             onClick={onClose}
+            className="modal-close-btn"
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: 'none',
-              borderRadius: 8,
               width: 28,
               height: 28,
-              color: '#9098A6',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontWeight: 'bold',
             }}
           >
             ✕
@@ -501,17 +493,12 @@ export default function CollectionShareModal({
           <button
             onClick={handleDownload}
             disabled={!previewUrl}
+            className="modal-secondary-btn"
             style={{
               flex: 1,
               padding: '12px 14px',
               borderRadius: 12,
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#ffffff',
-              fontWeight: 700,
               fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 200ms',
             }}
           >
             Descargar PNG
@@ -519,18 +506,14 @@ export default function CollectionShareModal({
           <button
             onClick={handleShare}
             disabled={!previewUrl}
+            className="modal-primary-btn"
             style={{
               flex: 1,
               padding: '12px 14px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #00BCD4, #008B9B)',
-              border: 'none',
-              color: '#ffffff',
-              fontWeight: 700,
+              background: 'linear-gradient(135deg, #00BCD4, #008B9B) !important',
+              boxShadow: '0 4px 12px rgba(0, 188, 212, 0.3) !important',
               fontSize: 14,
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 188, 212, 0.3)',
-              transition: 'all 200ms',
             }}
           >
             Enviar Póster

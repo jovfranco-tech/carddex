@@ -504,17 +504,10 @@ export default function PremiumShareModal({
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>Compartir Tarjeta Mazo</h3>
           <button
             onClick={onClose}
+            className="modal-close-btn"
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: 'none',
-              borderRadius: 8,
               width: 28,
               height: 28,
-              color: '#9098A6',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
             }}
           >
             ✕
@@ -565,16 +558,12 @@ export default function PremiumShareModal({
           <button
             onClick={handleDownload}
             disabled={!previewUrl}
+            className="modal-secondary-btn"
             style={{
               flex: 1,
               padding: '12px 14px',
               borderRadius: 12,
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#ffffff',
-              fontWeight: 700,
               fontSize: 14,
-              transition: 'all 200ms',
             }}
           >
             Descargar PNG
@@ -582,17 +571,14 @@ export default function PremiumShareModal({
           <button
             onClick={handleShare}
             disabled={!previewUrl}
+            className="modal-primary-btn"
             style={{
               flex: 1,
               padding: '12px 14px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #2F6FE0, #1E4DA1)',
-              border: 'none',
-              color: '#ffffff',
-              fontWeight: 700,
+              background: 'linear-gradient(135deg, #2F6FE0, #1E4DA1) !important',
+              boxShadow: '0 4px 12px rgba(47, 111, 224, 0.3) !important',
               fontSize: 14,
-              boxShadow: '0 4px 12px rgba(47, 111, 224, 0.3)',
-              transition: 'all 200ms',
             }}
           >
             Enviar Tarjeta

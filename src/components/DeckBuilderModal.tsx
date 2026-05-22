@@ -277,13 +277,9 @@ export default function DeckBuilderModal({
           <button
             onClick={handleClose}
             disabled={loading}
+            className="modal-close-btn"
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--muted)',
-              fontSize: 20,
-              cursor: 'pointer',
-              padding: 4,
+              fontSize: 14,
               opacity: loading ? 0.4 : 1,
             }}
           >
@@ -494,11 +490,9 @@ export default function DeckBuilderModal({
               <button
                 type="submit"
                 disabled={chatLoading || !chatInput.trim()}
+                className="modal-send-btn"
                 style={{
                   padding: '10px 16px',
-                  background: 'linear-gradient(135deg, #7B5AD9, #2F6FE0)',
-                  color: '#fff',
-                  border: 'none',
                   borderRadius: 12,
                   fontWeight: 700,
                   cursor: chatLoading ? 'wait' : 'pointer',
@@ -539,21 +533,11 @@ export default function DeckBuilderModal({
             />
             <button
               type="submit"
+              className="modal-primary-btn"
               style={{
                 width: '100%',
-                background: 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
-                color: '#fff',
-                border: 'none',
                 padding: 14,
                 borderRadius: 14,
-                fontWeight: 800,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                boxShadow: '0 4px 16px rgba(123, 90, 217, 0.3)',
                 fontSize: 15,
                 letterSpacing: -0.2,
               }}

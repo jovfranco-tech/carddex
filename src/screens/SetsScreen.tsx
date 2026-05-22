@@ -235,8 +235,55 @@ function SetChecklist({
 
   if (loading) {
     return (
-      <div style={{ padding: '24px 0' }}>
-        <LoadingState variant="inline" message="Cargando Álbum..." />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+          gap: '20px 12px',
+          justifyItems: 'center',
+          padding: '16px 4px 8px',
+          marginTop: 12,
+        }}
+      >
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: 78,
+              height: 78 * 1.4,
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, rgba(15, 20, 40, 0.05) 0%, rgba(15, 20, 40, 0.02) 100%)',
+              border: '1.5px solid var(--border-soft)',
+              boxShadow: 'inset 0 0 12px rgba(255, 255, 255, 0.02)',
+              position: 'relative',
+              overflow: 'hidden',
+              animation: 'pulseSkeleton 1.5s infinite ease-in-out',
+            }}
+          >
+            {/* Shimmer effect */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                transform: 'translateX(-100%)',
+                animation: 'shimmerSkeleton 1.8s infinite',
+              }}
+            />
+          </div>
+        ))}
+        <style>{`
+          @keyframes pulseSkeleton {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 0.85; }
+          }
+          @keyframes shimmerSkeleton {
+            100% { transform: translateX(100%); }
+          }
+        `}</style>
       </div>
     );
   }

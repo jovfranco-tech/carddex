@@ -133,17 +133,10 @@ export default function DeckPlaytestModal({
         </div>
         <button
           onClick={onClose}
+          className="modal-close-btn"
           style={{
             width: 36,
             height: 36,
-            borderRadius: 18,
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: 'none',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
           }}
         >
           <CloseIcon size={18} />
@@ -187,18 +180,14 @@ export default function DeckPlaytestModal({
             <button
               onClick={handleDrawCard}
               disabled={deckPile.length === 0}
+              className="modal-primary-btn"
               style={{
                 marginTop: 12,
                 padding: '8px 16px',
                 borderRadius: 10,
-                background: 'var(--accent)',
-                border: 'none',
-                color: '#fff',
-                fontWeight: 700,
                 fontSize: 12,
                 cursor: deckPile.length === 0 ? 'default' : 'pointer',
                 opacity: deckPile.length === 0 ? 0.4 : 1,
-                boxShadow: '0 4px 12px rgba(47, 111, 224, 0.3)',
               }}
             >
               Robar Carta
@@ -228,16 +217,12 @@ export default function DeckPlaytestModal({
             </div>
             <button
               onClick={() => setShowPrizes(!showPrizes)}
+              className="modal-secondary-btn"
               style={{
                 marginTop: 12,
                 padding: '8px 16px',
                 borderRadius: 10,
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                color: '#fff',
-                fontWeight: 700,
                 fontSize: 12,
-                cursor: 'pointer',
               }}
             >
               {showPrizes ? 'Ocultar Premios' : 'Ver Premios'}
@@ -464,30 +449,22 @@ export default function DeckPlaytestModal({
       >
         <button
           onClick={handleStartPlaytest}
+          className="modal-secondary-btn"
           style={{
             flex: 1,
             padding: 14,
             borderRadius: 12,
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: 'none',
-            color: '#fff',
-            fontWeight: 700,
-            cursor: 'pointer',
           }}
         >
           Reiniciar
         </button>
         <button
           onClick={onClose}
+          className="modal-primary-btn"
           style={{
             flex: 1,
             padding: 14,
             borderRadius: 12,
-            background: 'var(--accent)',
-            border: 'none',
-            color: '#fff',
-            fontWeight: 700,
-            cursor: 'pointer',
           }}
         >
           Terminar Test

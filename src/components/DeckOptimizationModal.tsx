@@ -222,19 +222,7 @@ export default function DeckOptimizationModal({
           </div>
           <button
             onClick={onClose}
-            style={{
-              background: 'rgba(0, 0, 0, 0.05)',
-              border: 'none',
-              borderRadius: '50%',
-              width: 32,
-              height: 32,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontWeight: 800,
-              color: 'var(--ink-2)',
-            }}
+            className="modal-close-btn"
           >
             ✕
           </button>
@@ -361,22 +349,14 @@ export default function DeckOptimizationModal({
               {/* Optimization Trigger CTA */}
               <button
                 onClick={runOptimization}
+                className="modal-primary-btn"
                 style={{
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  border: 'none',
+                  width: '100%',
                   borderRadius: 16,
                   padding: '14px',
                   fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
                   marginTop: 10,
-                  boxShadow: '0 8px 24px rgba(123, 90, 217, 0.25)',
-                  transition: 'transform 0.15s ease',
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
-                onMouseOut={(e) => (e.currentTarget.style.transform = 'none')}
               >
                 Generar Diagnóstico Completo con IA
               </button>
@@ -472,17 +452,14 @@ export default function DeckOptimizationModal({
                     <button
                       type="submit"
                       disabled={loading || !inputValue.trim()}
+                      className="modal-send-btn"
                       style={{
-                        background: 'var(--accent)',
-                        color: '#fff',
-                        border: 'none',
                         borderRadius: 14,
                         width: 38,
                         height: 38,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: 'pointer',
                         opacity: loading || !inputValue.trim() ? 0.5 : 1,
                       }}
                     >
