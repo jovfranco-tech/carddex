@@ -589,17 +589,21 @@ export default function LibraryScreen() {
                   gap: 12,
                   overflowX: 'auto',
                   padding: '4px 18px 12px',
+                  scrollSnapType: 'x mandatory',
+                  scrollBehavior: 'smooth',
+                  WebkitOverflowScrolling: 'touch',
                 }}
                 className="no-scrollbar"
               >
                 {rarest.map((c) => (
-                  <CardTile
-                    key={c.id}
-                    card={c}
-                    meta={collection.cards[c.id]}
-                    width={112}
-                    onClick={() => navigate(`/card/${c.id}`)}
-                  />
+                  <div key={c.id} style={{ scrollSnapAlign: 'start', flexShrink: 0 }}>
+                    <CardTile
+                      card={c}
+                      meta={collection.cards[c.id]}
+                      width={112}
+                      onClick={() => navigate(`/card/${c.id}`)}
+                    />
+                  </div>
                 ))}
               </div>
             </Section>
