@@ -1,7 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Surface from '@/components/Surface';
-import { useDecks } from '@/lib/hooks';
+import { useDecks, useViewTransitionNavigate } from '@/lib/hooks';
 import { createDeck, deleteDeck } from '@/lib/deckStorage';
 import { PlusIcon, TrashIcon } from '@/components/icons';
 import { ROUTES } from '@/app/routes';
@@ -12,7 +11,7 @@ const DeckBuilderModal = lazy(() => import('@/components/DeckBuilderModal'));
 
 export default function DecksScreen() {
   const decksState = useDecks();
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const [newDeckName, setNewDeckName] = useState('');
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);

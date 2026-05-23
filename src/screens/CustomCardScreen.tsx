@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import { ArrowLeftIcon, SparklesIcon, TrashIcon } from '@/components/icons';
 import { triggerHaptic } from '@/lib/haptic';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
 import { triggerCustomCardsSync } from '@/lib/collectionStorage';
+import { useViewTransitionNavigate } from '@/lib/hooks';
 
 interface CustomCard {
   id: string;
@@ -61,7 +61,7 @@ const ELEMENT_EMOJIS: Record<string, string> = {
 };
 
 export default function CustomCardScreen() {
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
 
   // Form states
   const [name, setName] = useState('Gemini Dragon');

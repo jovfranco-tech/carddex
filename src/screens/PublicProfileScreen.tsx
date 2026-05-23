@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import Surface from '@/components/Surface';
 import CardTile from '@/components/CardTile';
@@ -8,10 +8,11 @@ import ErrorState from '@/components/ErrorState';
 import { getCardsByIds } from '@/lib/pokemonTcgApi';
 import type { CollectionState } from '@/types/collection';
 import { BackIcon, BookmarkIcon } from '@/components/icons';
+import { useViewTransitionNavigate } from '@/lib/hooks';
 
 export default function PublicProfileScreen() {
   const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
+  const navigate = useViewTransitionNavigate();
   const [collection, setCollection] = useState<CollectionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
