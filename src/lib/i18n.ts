@@ -1,5 +1,5 @@
 /**
- * Carddex i18n — Lightweight internationalization system.
+ * CardDex i18n — Lightweight internationalization system.
  *
  * Zero external dependencies. Detects the browser locale and provides
  * a `t(key)` function for string lookup with optional interpolation.

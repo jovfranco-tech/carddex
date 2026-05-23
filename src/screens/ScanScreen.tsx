@@ -14,6 +14,7 @@ import { searchCards, isAbortError } from '@/lib/pokemonTcgApi';
 import { useDebounced } from '@/lib/hooks';
 import { getEstimatedPrice, formatPriceShort } from '@/lib/pricing';
 import {
+  isServerOcrEnabled,
   recognizeCardFromImage,
   resetRecognitionDemo,
   type RecognitionInput,
@@ -23,7 +24,6 @@ import type { PokemonCard } from '@/types/pokemon';
 import { saveCardMeta } from '@/lib/collectionStorage';
 import { triggerHaptic } from '@/lib/haptic';
 import EdgeDetectorCanvas from '@/components/EdgeDetectorCanvas';
-import { loadOpenCv } from '@/lib/openCvLoader';
 import { compressForAI } from '@/lib/imageOptimization';
 import { processAchievementEvent } from '@/lib/achievements';
 import { dispatchAchievement } from '@/app/App';
@@ -75,7 +75,7 @@ async function checkImageBlur(file: File): Promise<{ isBlurry: boolean; score: n
       const canvas = document.createElement('canvas');
       canvas.width = 150;
       canvas.height = 150;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) {
         resolve({ isBlurry: false, score: 99 });
         return;
@@ -129,6 +129,7 @@ function fileToBase64(file: File): Promise<string> {
 
 export default function ScanScreen() {
   const navigate = useNavigate();
+  const serverOcrEnabled = isServerOcrEnabled();
   const [state, setState] = useState<ScanState>('idle');
   const [flash, setFlash] = useState(false);
   const [confidence, setConfidence] = useState(0);
@@ -323,14 +324,16 @@ export default function ScanScreen() {
 
   // Refs for media-capture plumbing.
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingInputRef = useRef<RecognitionInput>({ type: 'none' });
 
-  // Load OpenCV early on mount to reduce latency
-  useEffect(() => {
-    loadOpenCv().catch((err) => {
-      console.warn('[ScanScreen] OpenCV load error:', err);
-    });
+  const stopCameraStream = useCallback(() => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   }, []);
 
   // Live camera stream lifecycle.
@@ -345,7 +348,6 @@ export default function ScanScreen() {
       return;
     }
     let stopped = false;
-    let stream: MediaStream | null = null;
     setCameraStatus('starting');
     navigator.mediaDevices
       .getUserMedia({
@@ -357,7 +359,7 @@ export default function ScanScreen() {
           s.getTracks().forEach((t) => t.stop());
           return;
         }
-        stream = s;
+        cameraStreamRef.current = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
         }
@@ -378,9 +380,9 @@ export default function ScanScreen() {
       });
     return () => {
       stopped = true;
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      stopCameraStream();
     };
-  }, []);
+  }, [stopCameraStream]);
 
   const cameraLive = cameraStatus === 'live';
 
@@ -440,9 +442,8 @@ export default function ScanScreen() {
         warpCanvas.height = destHeight;
         cv.imshow(warpCanvas, dst);
         targetCanvas = warpCanvas;
-        console.info('[OpenCV Perspective Warp] Successfully rectified card bounds.');
-      } catch (err) {
-        console.error('[OpenCV Perspective Warp] Error warping frame, using full capture:', err);
+      } catch {
+        // If perspective correction fails, keep the original frame.
       } finally {
         if (src) src.delete();
         if (dst) dst.delete();
@@ -484,12 +485,8 @@ export default function ScanScreen() {
         let payloadGrading;
         if (input.type === 'file') {
           const rawBase64 = await fileToBase64(input.file);
-          const originalKB = Math.round((rawBase64.length * 0.75) / 1024);
           // Compress client-side before upload: typically 4MB → 300-500KB
           const base64 = await compressForAI(rawBase64, 500);
-          const compressedKB = Math.round((base64.length * 0.75) / 1024);
-          // eslint-disable-next-line no-console
-          console.info(`[AI Grading] Image compressed: ${originalKB}KB → ${compressedKB}KB`);
           const res = await fetch('/api/grade-card', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -522,8 +519,8 @@ export default function ScanScreen() {
           if (data && data.length > 0) {
             cardObj = data[0];
           }
-        } catch (e) {
-          console.error('Error fetching card detail for grading overlay:', e);
+        } catch {
+          // The grading overlay can still show the simulated result.
         }
 
         const elapsed = Date.now() - start;
@@ -706,6 +703,7 @@ export default function ScanScreen() {
   };
 
   const handleClose = () => {
+    stopCameraStream();
     resetRecognitionDemo();
     navigate('/');
   };
@@ -757,12 +755,12 @@ export default function ScanScreen() {
       </div>
 
       {/* Instructions */}
-      <div style={{ textAlign: 'center', padding: '20px 24px 12px', minHeight: 56 }}>
+      <div style={{ textAlign: 'center', padding: '20px 24px 12px', minHeight: 74 }}>
         <div
           style={{
             fontSize: 19,
             fontWeight: 700,
-            letterSpacing: -0.3,
+            letterSpacing: 0,
             transition: 'opacity 200ms',
           }}
         >
@@ -776,7 +774,7 @@ export default function ScanScreen() {
             fontSize: 13,
             color: 'rgba(255,255,255,0.55)',
             marginTop: 4,
-            letterSpacing: -0.1,
+            letterSpacing: 0,
           }}
         >
           {state === 'idle' && (isBatchMode ? `Acumuladas: ${scannedBatch.length} cartas en bandeja` : isMulticardMode ? 'Coloca múltiples cartas en el visor' : 'Alinea la carta dentro del marco')}
@@ -784,6 +782,24 @@ export default function ScanScreen() {
           {state === 'detected' && (isMulticardMode ? 'Revisa y guarda todo tu lote de cartas' : 'Revisa los detalles antes de guardar')}
           {state === 'lowConf' &&
             (error ?? 'Inténtalo de nuevo o introduce los datos manualmente')}
+        </div>
+        <div
+          style={{
+            display: 'inline-flex',
+            marginTop: 8,
+            padding: '4px 9px',
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.08)',
+            border: '0.5px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.58)',
+            fontSize: 10.5,
+            fontWeight: 700,
+            letterSpacing: 0.1,
+          }}
+        >
+          {serverOcrEnabled
+            ? 'OCR servidor activo · captura enviada sólo al confirmar escaneo'
+            : 'Assisted scan prototype · cámara local, confirma sugerencias'}
         </div>
       </div>
 
@@ -920,7 +936,7 @@ export default function ScanScreen() {
                   fontSize: 15,
                   fontWeight: 900,
                   color: '#00ff7f',
-                  letterSpacing: -0.5,
+                  letterSpacing: 0,
                   textShadow: '0 0 8px rgba(0, 255, 127, 0.65)',
                 }}>
                   {Math.min(100, Math.round(autoScanCountdown))}%
@@ -1110,7 +1126,7 @@ export default function ScanScreen() {
               fontWeight: 600,
               color: 'rgba(255, 255, 255, 0.85)',
               textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-              letterSpacing: -0.2,
+              letterSpacing: 0,
               maxWidth: 180,
               lineHeight: 1.4,
             }}>
@@ -1316,7 +1332,10 @@ export default function ScanScreen() {
             {(['AUTO', 'EN', 'ES', 'JP'] as const).map((lang) => (
               <button
                 key={lang}
+                type="button"
                 onClick={() => handleSetScanLanguage(lang)}
+                aria-pressed={scanLanguage === lang}
+                aria-label={`Idioma OCR ${lang}`}
                 style={{
                   padding: '3px 8px',
                   borderRadius: 999,
@@ -1347,6 +1366,7 @@ export default function ScanScreen() {
         }}
       >
         <button
+          type="button"
           style={controlBtn(false)}
           onClick={openFilePicker}
           aria-label="Subir imagen desde galería o cámara"
@@ -1356,6 +1376,7 @@ export default function ScanScreen() {
         </button>
 
         <button
+          type="button"
           onClick={triggerScan}
           aria-label={
             state === 'detected'
@@ -1398,7 +1419,13 @@ export default function ScanScreen() {
           {state === 'detected' && <CheckIcon size={28} color="#fff" />}
         </button>
 
-        <button onClick={() => setFlash((f) => !f)} style={controlBtn(flash)}>
+        <button
+          type="button"
+          onClick={() => setFlash((f) => !f)}
+          aria-label={flash ? 'Apagar luz' : 'Encender luz'}
+          aria-pressed={flash}
+          style={controlBtn(flash)}
+        >
           <FlashIcon size={20} />
           <span
             style={{

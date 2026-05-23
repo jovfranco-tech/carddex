@@ -50,7 +50,30 @@ function safeWrite(key: string, value: unknown): void {
 }
 
 export function getDecksState(): DecksState {
-  return safeRead<DecksState>(DECKS_KEY, DEFAULT_DECKS);
+  const raw = safeRead<unknown>(DECKS_KEY, DEFAULT_DECKS);
+  if (!raw || typeof raw !== 'object') return DEFAULT_DECKS;
+
+  const decks = (raw as Partial<DecksState>).decks;
+  if (!decks || typeof decks !== 'object') return DEFAULT_DECKS;
+
+  const cleanDecks: Record<string, Deck> = {};
+  for (const [id, deck] of Object.entries(decks)) {
+    if (!deck || typeof deck !== 'object') continue;
+    const candidate = deck as Partial<Deck>;
+    if (typeof candidate.id !== 'string' || candidate.id !== id) continue;
+    cleanDecks[id] = {
+      id,
+      name: typeof candidate.name === 'string' ? candidate.name.slice(0, 80) : 'Mazo sin nombre',
+      cards: Array.isArray(candidate.cards)
+        ? candidate.cards.filter((cardId) => typeof cardId === 'string').slice(0, 60)
+        : [],
+      updatedAt: typeof candidate.updatedAt === 'string'
+        ? candidate.updatedAt
+        : new Date().toISOString(),
+    };
+  }
+
+  return { version: 1, decks: cleanDecks };
 }
 
 function writeDecksState(state: DecksState): void {

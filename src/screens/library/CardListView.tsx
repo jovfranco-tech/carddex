@@ -283,7 +283,7 @@ export default function CardListView({
                   ...style,
                   padding: '0 18px',
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',
                   gap: 12,
                   justifyItems: 'center',
                 }}
@@ -301,7 +301,7 @@ export default function CardListView({
             <CardTile
               card={c}
               meta={collection.cards[c.id]}
-              width={104}
+              width={96}
               onClick={() => navigate(`/card/${c.id}`)}
               showMissingState={!onlyMine}
               viewTransitionName={`card-image-${c.id}`}
@@ -518,8 +518,10 @@ export default function CardListView({
         itemContent={(index, c) => (
           <div style={{ paddingBottom: 8 }}>
             <Surface
+              as="button"
               onClick={() => navigate(`/card/${c.id}`)}
               style={{
+                width: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,

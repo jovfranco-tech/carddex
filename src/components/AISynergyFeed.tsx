@@ -3,6 +3,8 @@ import Surface from './Surface';
 import { triggerHaptic } from '@/lib/haptic';
 
 const MIN_CARDS_FOR_SYNERGIES = 5;
+const SERVER_SYNERGY_ENABLED =
+  import.meta.env.VITE_SYNERGY_FEED_MODE === 'server' || import.meta.env.MODE === 'test';
 
 interface SynergyItem {
   title: string;
@@ -23,8 +25,26 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
 
   const hasEnoughCards = ownedCardNames.length >= MIN_CARDS_FOR_SYNERGIES;
 
+  const buildLocalSynergies = (): SynergyItem[] => [
+    {
+      title: 'Vista rápida de colección',
+      cardsInvolved: ownedCardNames.slice(0, 4).join(', '),
+      tag: 'Demo local',
+      explanation:
+        'CardDex detecta suficientes cartas para mostrar recomendaciones, pero el feed LLM de servidor no está activado.',
+      recommendation:
+        'Usa estas sugerencias como checklist ligero y configura VITE_SYNERGY_FEED_MODE=server si quieres análisis LLM real vía backend.',
+    },
+  ];
+
   const fetchSynergies = async (force = false) => {
     if (!hasEnoughCards) return;
+    if (!SERVER_SYNERGY_ENABLED) {
+      setSynergies(buildLocalSynergies());
+      setError(null);
+      if (force) triggerHaptic('light');
+      return;
+    }
     setLoading(true);
     setError(null);
     if (force) {
@@ -60,8 +80,7 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
       } else {
         throw new Error('Formato inválido de sinergias');
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       setError('No se pudieron obtener sinergias con IA.');
     } finally {
       setLoading(false);
@@ -70,6 +89,11 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
 
   useEffect(() => {
     if (!hasEnoughCards) return;
+
+    if (!SERVER_SYNERGY_ENABLED) {
+      setSynergies(buildLocalSynergies());
+      return;
+    }
 
     // Check cache
     try {
@@ -104,7 +128,7 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
     return (
       <div style={{ padding: '0 18px 24px' }}>
         <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
-          Sinergias Recomendadas por IA ✦
+          Sinergias sugeridas
         </h3>
         <Surface style={{ padding: 20, border: '0.5px dashed var(--border)', textAlign: 'center' }}>
           <div style={{ fontSize: 28, marginBottom: 10 }}>🔮</div>
@@ -116,7 +140,7 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
             <strong style={{ color: 'var(--accent)' }}>
               {needed} carta{needed !== 1 ? 's' : ''} más
             </strong>{' '}
-            a tu colección para que la IA detecte sinergias personalizadas y estrategias de mazo.
+            a tu colección para desbloquear sugerencias de sinergia y estrategia de mazo.
           </p>
           <div
             style={{
@@ -149,7 +173,7 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
     <div style={{ padding: '0 18px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
-          Sinergias Recomendadas por IA ✦
+          Sinergias sugeridas
         </h3>
         <button
           onClick={() => fetchSynergies(true)}

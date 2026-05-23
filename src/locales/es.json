@@ -58,7 +58,7 @@
   "profile.achievements": "Logros",
   "profile.share": "Compartir colección",
   "achievements.title": "Logros",
-  "achievements.description": "Desbloquea logros usando las funciones AI-native de Carddex.",
+  "achievements.description": "Desbloquea logros usando las funciones AI-native de CardDex.",
   "achievements.progress": "{{unlocked}} / {{total}} logros desbloqueados · {{percent}}%",
   "achievements.unlockedAt": "Desbloqueado el {{date}}",
   "achievements.category.ai": "✦ AI-Native",

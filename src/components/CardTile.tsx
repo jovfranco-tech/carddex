@@ -31,13 +31,22 @@ export default function CardTile({
   const treatMissing = showMissingState && !owned;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
+      aria-label={onClick ? `Ver detalle de ${card.name}` : card.name}
+      tabIndex={onClick ? 0 : -1}
       style={{
         position: 'relative',
+        display: 'block',
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+        textAlign: 'left',
         cursor: onClick ? 'pointer' : undefined,
         transition: 'transform 200ms',
         width,
+        fontFamily: 'inherit',
       }}
     >
       <div
@@ -146,6 +155,6 @@ export default function CardTile({
           <BookmarkIcon size={12} />
         </div>
       )}
-    </div>
+    </button>
   );
 }

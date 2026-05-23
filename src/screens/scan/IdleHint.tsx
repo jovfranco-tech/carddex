@@ -10,9 +10,9 @@ export default function IdleHint({ cameraStatus, isMulticardMode }: IdleHintProp
     if (cameraStatus === 'live') {
       return {
         icon: '🎯',
-        text: isMulticardMode 
-          ? 'Coloca múltiples cartas en el visor y presiona capturar.' 
-          : 'Alinea la carta dentro del marco y toca capturar.',
+        text: isMulticardMode
+          ? 'Coloca múltiples cartas en el visor. Este modo es prototipo asistido.'
+          : 'Alinea la carta y toca capturar. La cámara no guarda video.',
       };
     }
     if (cameraStatus === 'starting') {
@@ -24,13 +24,13 @@ export default function IdleHint({ cameraStatus, isMulticardMode }: IdleHintProp
     if (cameraStatus === 'denied') {
       return {
         icon: '🔒',
-        text: 'Sin permiso de cámara. Usa Galería para subir una foto.',
+        text: 'Permiso de cámara denegado. Puedes usar Galería o búsqueda manual.',
       };
     }
     if (cameraStatus === 'unsupported') {
       return {
         icon: '📁',
-        text: 'Cámara no disponible. Usa Galería para subir una foto.',
+        text: 'Cámara no disponible en este dispositivo. Usa Galería o búsqueda manual.',
       };
     }
     if (cameraStatus === 'error') {
@@ -59,7 +59,7 @@ export default function IdleHint({ cameraStatus, isMulticardMode }: IdleHintProp
         gap: 12,
         fontSize: 13,
         color: 'rgba(255,255,255,0.7)',
-        letterSpacing: -0.1,
+        letterSpacing: 0,
       }}
     >
       <span style={{ fontSize: 18 }}>{icon}</span>

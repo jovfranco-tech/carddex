@@ -26,7 +26,6 @@ export async function getPushSubscription(): Promise<PushSubscription | null> {
     const registration = await navigator.serviceWorker.ready;
     return await registration.pushManager.getSubscription();
   } catch (err) {
-    console.warn('[Web Push] Failed to fetch current subscription:', err);
     return null;
   }
 }
@@ -59,8 +58,11 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription> 
   });
 
   // Store subscription in localStorage for demo backup, and optionally send to backend
-  localStorage.setItem('carddex_push_subscription', JSON.stringify(subscription));
-  console.info('[Web Push] Successfully subscribed client to push gateway:', subscription.endpoint);
+  try {
+    localStorage.setItem('carddex_push_subscription', JSON.stringify(subscription));
+  } catch {
+    // Storage may be disabled; the PushManager subscription remains active.
+  }
   return subscription;
 }
 
@@ -70,8 +72,9 @@ export async function unsubscribeFromPushNotifications(): Promise<boolean> {
   
   const success = await subscription.unsubscribe();
   if (success) {
-    localStorage.removeItem('carddex_push_subscription');
-    console.info('[Web Push] Unsubscribed client from push gateway.');
+    try {
+      localStorage.removeItem('carddex_push_subscription');
+    } catch {}
   }
   return success;
 }

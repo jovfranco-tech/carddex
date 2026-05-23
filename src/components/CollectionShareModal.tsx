@@ -131,11 +131,11 @@ export default function CollectionShareModal({
       // --- User Details / Info ---
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.fillText(username || 'Coleccionista Carddex', 60, 190);
+      ctx.fillText(username || 'Coleccionista CardDex', 60, 190);
 
       ctx.fillStyle = '#8E92A0';
       ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.fillText(`Portafolio oficial registrado en Carddex Vercel.`, 60, 222);
+      ctx.fillText(`Portafolio oficial registrado en CardDex Vercel.`, 60, 222);
 
       // --- Glassmorphic Box 1: Summary Stats ---
       ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
@@ -384,8 +384,8 @@ export default function CollectionShareModal({
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Portafolio Carddex: ${username}`,
-          text: `¡Mira mi portafolio de cartas Pokémon en Carddex!`,
+          title: `Portafolio CardDex: ${username}`,
+          text: `¡Mira mi portafolio de cartas Pokémon en CardDex!`,
         });
         onShowToast('¡Colección compartida!');
       } else {

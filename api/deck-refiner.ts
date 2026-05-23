@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 15, windowMs: 60_000 });
 
@@ -25,9 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'currentDeck y userMessage son requeridos' });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getServerOpenAiKey();
   if (!apiKey) {
-    return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+    return res.status(503).json(serverAiUnavailable('El servicio LLM'));
   }
 
   const safeMessage = String(userMessage).slice(0, 400);
@@ -87,8 +88,8 @@ Si NO hay cambios que aplicar en esta respuesta, no incluyas el bloque JSON.`;
     });
 
     if (!openAIRes.ok || !openAIRes.body) {
-      const errText = await openAIRes.text();
-      console.error('OpenAI Deck Refiner Error:', errText);
+      await openAIRes.text().catch(() => '');
+      console.warn('[Deck Refiner] OpenAI request failed.');
       res.write(`event: error\ndata: ${JSON.stringify({ error: 'Error al contactar la IA' })}\n\n`);
       return res.end();
     }
@@ -136,7 +137,7 @@ Si NO hay cambios que aplicar en esta respuesta, no incluyas el bloque JSON.`;
     res.write(`event: done\ndata: ${JSON.stringify({ fullText: accumulated, changes })}\n\n`);
     res.end();
   } catch (error) {
-    console.error('Deck Refiner SSE Error:', error);
+    console.warn('[Deck Refiner] SSE request failed.');
     try {
       res.write(`event: error\ndata: ${JSON.stringify({ error: 'Error interno en el servidor' })}\n\n`);
       res.end();

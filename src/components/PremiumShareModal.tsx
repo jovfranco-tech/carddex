@@ -204,7 +204,7 @@ export default function PremiumShareModal({
     ctx.shadowOffsetY = 0;
     ctx.fillStyle = '#9098A6';
     ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(`Contiene ${cardIds.length} cartas seleccionadas. Creado en Carddex Vercel.`, 60, 235);
+    ctx.fillText(`Contiene ${cardIds.length} cartas seleccionadas. Creado en CardDex Vercel.`, 60, 235);
 
     // --- Glassmorphic Box 1: Conteo de Categorías ---
     ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
@@ -375,7 +375,7 @@ export default function PremiumShareModal({
     ctx.fillStyle = '#9098A6';
     ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('Abre la cámara de tu móvil para escanear este mazo.', 240, 853);
-    ctx.fillText('Impórtalo instantáneamente en tu biblioteca de Carddex.', 240, 875);
+    ctx.fillText('Impórtalo instantáneamente en tu biblioteca de CardDex.', 240, 875);
 
     ctx.fillStyle = 'rgba(47, 111, 224, 0.8)';
     ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -446,8 +446,8 @@ export default function PremiumShareModal({
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Mazo Carddex: ${deckName}`,
-          text: `¡Mira mi mazo "${deckName}" en Carddex!`,
+          title: `Mazo CardDex: ${deckName}`,
+          text: `¡Mira mi mazo "${deckName}" en CardDex!`,
         });
         onShowToast('¡Mazo compartido!');
       } else {

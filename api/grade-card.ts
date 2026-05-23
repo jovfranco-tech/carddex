@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 
@@ -24,18 +25,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { image } = req.body;
-    if (!image) {
+    if (!image || typeof image !== 'string') {
       return res.status(400).json({ error: 'No image provided' });
     }
 
     // Validate image size to avoid runaway token costs
-    if (typeof image === 'string' && image.length > MAX_IMAGE_CHARS) {
+    if (image.length > MAX_IMAGE_CHARS) {
       return res.status(413).json({ error: 'La imagen es demasiado grande (máximo 5 MB).' });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    if (!image.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'La evaluación sólo acepta imágenes locales en formato data URL.' });
+    }
+
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+      return res.status(503).json(serverAiUnavailable('El servicio LLM'));
     }
 
     const systemInstruction = `Eres un evaluador profesional certificado de cartas de Pokémon TCG (como PSA, Beckett, o CGC).
@@ -81,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       "metaRating": {
         "metaScore": 8.5,
         "metaViability": "Alta",
-        "metaAnalysis": "Charizard ex domina el formato Estándar con el arquetipo Charizard/Pidgeot. Excelente carta de inversión."
+        "metaAnalysis": "Charizard ex puede encajar en arquetipos de alto impacto, pero esta evaluación es una demo basada en la imagen enviada y no es consejo financiero."
       }
     }
 
@@ -117,8 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Grade Card API Error:', errorText);
+      await response.text().catch(() => '');
+      console.warn('[Grade Card] OpenAI request failed.');
       return res.status(response.status).json({ error: 'Error del motor de evaluación' });
     }
 
@@ -134,7 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(parsed);
   } catch (error) {
-    console.error('Grade Card handler error:', error);
+    console.warn('[Grade Card] Request failed.');
     return res.status(500).json({ error: 'Error interno en el servidor de evaluación' });
   }
 }

@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 
@@ -27,9 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const safePrompt = String(prompt).slice(0, 500);
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getServerOpenAiKey();
   if (!apiKey) {
-    return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+    return res.status(503).json(serverAiUnavailable('El servicio LLM'));
   }
 
   const systemPrompt = `Eres un experto constructor de mazos de Pokémon TCG. Tu tarea es generar una lista de mazo de exactamente 60 cartas en formato JSON en base al prompt del usuario.
@@ -78,8 +79,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!openAIRes.ok || !openAIRes.body) {
-      const errText = await openAIRes.text();
-      console.error('OpenAI Deck Builder Error:', errText);
+      await openAIRes.text().catch(() => '');
+      console.warn('[Deck Builder] OpenAI request failed.');
       res.write(`event: error\ndata: ${JSON.stringify({ error: 'Error al contactar la IA' })}\n\n`);
       return res.end();
     }
@@ -121,12 +122,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const deckSpec = JSON.parse(cleaned);
       res.write(`event: done\ndata: ${JSON.stringify(deckSpec)}\n\n`);
     } catch {
-      res.write(`event: error\ndata: ${JSON.stringify({ error: 'No se pudo parsear la respuesta de la IA', raw: accumulated })}\n\n`);
+      res.write(`event: error\ndata: ${JSON.stringify({ error: 'No se pudo parsear la respuesta de la IA' })}\n\n`);
     }
 
     res.end();
   } catch (error) {
-    console.error('Deck Builder SSE Error:', error);
+    console.warn('[Deck Builder] SSE request failed.');
     try {
       res.write(`event: error\ndata: ${JSON.stringify({ error: 'Error interno en el servidor' })}\n\n`);
       res.end();

@@ -30,13 +30,14 @@ interface ChatItem {
 }
 
 const INITIAL_GREETING_ID = 'greeting';
+const SERVER_ASSISTANT_ENABLED = import.meta.env.VITE_CARD_ASSISTANT_MODE === 'server';
 
 /**
  * CardAssistantSheet — a bottom sheet chat scoped to the current card.
  *
- * The assistant only answers using data already in `context`. No network
- * requests, no LLM. See `lib/cardAssistant.ts` for the routing logic and the
- * v2 LLM integration plan.
+ * The default assistant is deterministic and only answers from `context`.
+ * A real LLM can be enabled only through the serverless backend with
+ * VITE_CARD_ASSISTANT_MODE=server; no model key is ever used in the browser.
  */
 export default function CardAssistantSheet({
   open,
@@ -56,8 +57,8 @@ export default function CardAssistantSheet({
       {
         id: INITIAL_GREETING_ID,
         role: 'assistant',
-        text: `Soy tu asistente para **${context.card.name}**. Te puedo contar sobre rareza, valor estimado, expansión, ataques, variantes y si la tienes en tu colección.`,
-        sources: ['CardDex · Asistente local'],
+        text: `Soy tu asistente demo para **${context.card.name}**. Respondo con los datos disponibles de la carta, precios públicos y tu colección local.`,
+        sources: [SERVER_ASSISTANT_ENABLED ? 'CardDex · Backend opcional' : 'CardDex · Asistente local'],
       },
     ]);
     setInput('');
@@ -84,20 +85,34 @@ export default function CardAssistantSheet({
       setThinking(true);
 
       try {
-        const apiMessages = newMessages.map(m => ({ role: m.role, content: m.text }));
-        
-        // Intentar llamada al asistente en el servidor (con gpt-4o-mini)
+        if (!SERVER_ASSISTANT_ENABLED) {
+          const localAnswer = answerCardQuestion(trimmed, context);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `a${Date.now()}`,
+              role: 'assistant',
+              text: localAnswer.text,
+              sources: [...(localAnswer.sources ?? []), 'Asistente demo local'],
+              unknown: localAnswer.unknown,
+              intent: localAnswer.intent,
+            },
+          ]);
+          return;
+        }
+
+        const apiMessages = newMessages.map((m) => ({ role: m.role, content: m.text }));
+
         const res = await fetch('/api/card-assistant', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: apiMessages,
             cardContext: context,
-          })
+          }),
         });
-
         if (!res.ok) {
-          throw new Error('API server returned error');
+          throw new Error('El asistente de servidor no está disponible.');
         }
 
         const data = await res.json();
@@ -108,14 +123,11 @@ export default function CardAssistantSheet({
             id: `a${Date.now()}`,
             role: 'assistant',
             text: data.reply || 'Lo siento, no pude procesar eso.',
-            sources: ['OpenAI gpt-4o-mini'],
+            sources: ['Servidor CardDex · LLM contextual'],
             unknown: false,
           },
         ]);
       } catch (err) {
-        console.warn('Fallo de conexión o error en API. Usando fallback local determinista:', err);
-        
-        // Fallback local offline determinista
         const localAnswer = answerCardQuestion(trimmed, context);
         setMessages((prev) => [
           ...prev,
@@ -123,8 +135,9 @@ export default function CardAssistantSheet({
             id: `a${Date.now()}`,
             role: 'assistant',
             text: localAnswer.text,
-            sources: [...(localAnswer.sources ?? []), 'Asistente Local (Offline Fallback)'],
+            sources: [...(localAnswer.sources ?? []), 'Asistente demo local'],
             unknown: localAnswer.unknown,
+            intent: localAnswer.intent,
           },
         ]);
       } finally {
@@ -137,6 +150,22 @@ export default function CardAssistantSheet({
   const askPrompt = useCallback(
     (prompt: SuggestedPrompt) => {
       if (!context) return;
+      if (!SERVER_ASSISTANT_ENABLED) {
+        const localAnswer: AssistantAnswer = answerSuggestedPrompt(prompt, context);
+        setMessages((prev) => [
+          ...prev,
+          { id: `u${Date.now()}`, role: 'user', text: prompt.label },
+          {
+            id: `a${Date.now() + 1}`,
+            role: 'assistant',
+            text: localAnswer.text,
+            sources: [...(localAnswer.sources ?? []), 'Asistente demo local'],
+            unknown: localAnswer.unknown,
+            intent: localAnswer.intent,
+          },
+        ]);
+        return;
+      }
       ask(prompt.label);
     },
     [ask, context],
@@ -341,7 +370,7 @@ export default function CardAssistantSheet({
         >
           <InfoIcon size={12} />
           <span>
-            Asistente IA (OpenAI). Las respuestas sobre mercado son estimaciones.
+            Asistente demo basado en datos disponibles. Precios: referencia, no consejo financiero.
           </span>
         </div>
 

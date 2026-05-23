@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 
@@ -25,9 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? cards.slice(0, 15).map((c: unknown) => String(c).slice(0, 80)).join(', ')
       : 'ninguna (colección vacía)';
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada' });
+      return res.status(503).json(serverAiUnavailable('El servicio LLM'));
     }
 
     const systemPrompt = `Eres un estratega profesional de Pokémon TCG (Juego de Cartas Coleccionables).
@@ -76,8 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = JSON.parse(gptText);
 
     return res.status(200).json(result);
-  } catch (error) {
-    console.error('Synergy Feed API error:', error);
+  } catch {
+    console.warn('[Synergy Feed] Request failed.');
     return res.status(500).json({ error: 'Error interno en el feed de sinergias' });
   }
 }

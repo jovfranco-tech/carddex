@@ -20,6 +20,7 @@ export default function FoilToggle({ value, onChange, label = 'Foil' }: FoilTogg
         type="button"
         role="switch"
         aria-checked={value}
+        aria-label={`${label}: ${value ? 'activado' : 'desactivado'}`}
         onClick={() => onChange(!value)}
         style={{
           width: 46,

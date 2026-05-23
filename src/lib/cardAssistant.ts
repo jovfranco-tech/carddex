@@ -1,14 +1,15 @@
 /**
  * Card Assistant — a grounded, rule-based answering layer for Pokémon TCG cards.
  *
- * MVP IS DETERMINISTIC. We never call a real LLM, never invent prices, rarity,
- * or set membership. Every claim the assistant makes must trace back to a
+ * Default mode is deterministic. This module never calls a real LLM, never
+ * invents prices, rarity, or set membership. Every claim must trace back to a
  * concrete field on `CardAssistantContext`. Missing data → say so explicitly.
  *
  * TODO (v2):
- *   - Future: create /api/card-assistant serverless endpoint
- *   - Future: send only grounded CardAssistantContext and user question
- *   - Future: never expose LLM API keys in frontend
+ *   - Optional: /api/card-assistant can be enabled from the UI with
+ *     VITE_CARD_ASSISTANT_MODE=server.
+ *   - Send only grounded CardAssistantContext and user question.
+ *   - Never expose LLM API keys in frontend.
  *   - Future: keep Pokémon TCG API card data as source of truth
  *   - The endpoint must rate-limit per IP / per session.
  *   - Each answer should carry citations referencing the originating field

@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 });
 
@@ -27,9 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const safeQuery = String(query).slice(0, 500);
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+      return res.status(503).json(serverAiUnavailable('El servicio LLM'));
     }
 
     const systemPrompt = `Eres un motor de traducción de lenguaje natural a consultas estructuradas de Pokémon TCG API.
@@ -77,8 +78,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Semantic Search AI Error:', errorText);
+      await response.text().catch(() => '');
+      console.warn('[Semantic Search] OpenAI request failed.');
       return res.status(response.status).json({ error: 'Error del motor de IA' });
     }
 
@@ -87,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(parsed);
   } catch (error) {
-    console.error('Semantic Search API Error:', error);
+    console.warn('[Semantic Search] Request failed.');
     return res.status(500).json({ error: 'Error interno de búsqueda semántica' });
   }
 }

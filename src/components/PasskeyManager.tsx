@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Surface from './Surface';
 import { triggerHaptic } from '@/lib/haptic';
 import { trackEvent } from '@/lib/telemetry';
@@ -9,65 +9,67 @@ interface PasskeyManagerProps {
   onToast: (msg: string) => void;
 }
 
+const PASSKEY_STORAGE_KEY = 'carddex.auth.passkey';
+const LEGACY_CREDENTIAL_STORAGE_KEY = 'carddex.auth.passkey_cred';
+const LEGACY_AES_KEY_STORAGE = 'carddex.crypto.aes_key.v2';
+
+/**
+ * Local passkey demo.
+ *
+ * This intentionally stores only a WebAuthn credential id or a local demo
+ * marker. It never stores the user's password, even encrypted, because this
+ * app does not have a server-side passkey challenge/verification flow yet.
+ */
 export default function PasskeyManager({ userEmail, userName, onToast }: PasskeyManagerProps) {
   const [hasPasskey, setHasPasskey] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [showBiometricScan, setShowBiometricScan] = useState(false);
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [tempPassword, setTempPassword] = useState('');
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('carddex.auth.passkey');
-      if (stored) setHasPasskey(true);
-    } catch {}
+      setHasPasskey(Boolean(localStorage.getItem(PASSKEY_STORAGE_KEY)));
+      localStorage.removeItem(LEGACY_CREDENTIAL_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_AES_KEY_STORAGE);
+    } catch {
+      setHasPasskey(false);
+    }
   }, []);
 
   const handleStartRegistration = () => {
     if (!userEmail) {
-      onToast('Debes iniciar sesión con un correo para activar Passkeys');
+      onToast('Debes iniciar sesión con un correo para activar Passkey local');
       return;
     }
-    setPasswordInput('');
-    setShowPasswordPrompt(true);
-    triggerHaptic('light');
+    handleRegisterPasskey();
   };
 
-  const handleConfirmPassword = () => {
-    if (!passwordInput.trim()) {
-      onToast('Por favor, ingresa tu contraseña');
-      return;
-    }
-    setShowPasswordPrompt(false);
-    handleRegisterPasskey(passwordInput);
-  };
-
-  const handleRegisterPasskey = async (password: string) => {
+  const handleRegisterPasskey = async () => {
     if (registering) return;
     setRegistering(true);
     triggerHaptic('light');
-    trackEvent('passkey_registration_started', { email: userEmail });
+    trackEvent('passkey_registration_started', { mode: 'local-demo' });
 
-    // Attempt real WebAuthn or trigger simulated premium biometric visual scanner
-    if (window.isSecureContext && navigator.credentials && navigator.credentials.create) {
+    if (window.isSecureContext && navigator.credentials?.create) {
       try {
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);
-        
+
         const userIdBytes = new Uint8Array(16);
         window.crypto.getRandomValues(userIdBytes);
 
         const credential = await navigator.credentials.create({
           publicKey: {
             challenge,
-            rp: { name: 'Carddex App' },
+            rp: { name: 'CardDex' },
             user: {
               id: userIdBytes,
-              name: userEmail || 'user@carddex.com',
-              displayName: userName || 'Usuario Carddex',
+              name: userEmail || 'user@carddex.local',
+              displayName: userName || 'Usuario CardDex',
             },
-            pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+            pubKeyCredParams: [
+              { alg: -7, type: 'public-key' },
+              { alg: -257, type: 'public-key' },
+            ],
             authenticatorSelection: {
               authenticatorAttachment: 'platform',
               userVerification: 'required',
@@ -77,62 +79,51 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
         });
 
         if (credential) {
-          localStorage.setItem('carddex.auth.passkey', credential.id);
-          const encrypted = await encryptCredsAsync(userEmail || '', password);
-          localStorage.setItem('carddex.auth.passkey_cred', encrypted);
+          localStorage.setItem(PASSKEY_STORAGE_KEY, credential.id);
+          localStorage.removeItem(LEGACY_CREDENTIAL_STORAGE_KEY);
+          localStorage.removeItem(LEGACY_AES_KEY_STORAGE);
           setHasPasskey(true);
-          onToast('¡Llave de paso (Passkey) registrada en tu dispositivo!');
+          onToast('Passkey local registrada. No se guardó tu contraseña.');
           triggerHaptic('success');
-          trackEvent('passkey_registered_real', { email: userEmail });
+          trackEvent('passkey_registered_local', { mode: 'webauthn-local' });
         }
-      } catch (err: any) {
-        console.warn('Real WebAuthn error, falling back to simulated UI:', err);
-        setTempPassword(password);
+      } catch (err) {
+        console.warn('WebAuthn local registration failed, showing demo passkey flow:', err);
         setShowBiometricScan(true);
       } finally {
         setRegistering(false);
       }
     } else {
-      // Safe fallback to simulated TouchID/FaceID overlay
-      setTempPassword(password);
       setShowBiometricScan(true);
+      setRegistering(false);
     }
   };
 
-  const handleSimulatedSuccess = async () => {
+  const handleSimulatedSuccess = () => {
     setShowBiometricScan(false);
-    setRegistering(false);
-    localStorage.setItem('carddex.auth.passkey', `mock-key-${Date.now()}`);
-    if (userEmail && tempPassword) {
-      try {
-        const encrypted = await encryptCredsAsync(userEmail, tempPassword);
-        localStorage.setItem('carddex.auth.passkey_cred', encrypted);
-      } catch (err) {
-        console.error('[Passkey] Failed to encrypt credentials:', err);
-      }
-    }
-    setTempPassword('');
+    localStorage.setItem(PASSKEY_STORAGE_KEY, `local-demo-key-${Date.now()}`);
+    localStorage.removeItem(LEGACY_CREDENTIAL_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_AES_KEY_STORAGE);
     setHasPasskey(true);
-    onToast('¡Dispositivo biométrico enlazado con éxito!');
+    onToast('Passkey local demo enlazada. Inicia sesión manualmente cuando lo necesites.');
     triggerHaptic('success');
-    trackEvent('passkey_registered_simulated', { email: userEmail });
+    trackEvent('passkey_registered_demo', { mode: 'simulated-local' });
   };
 
   const handleSimulatedCancel = () => {
     setShowBiometricScan(false);
-    setRegistering(false);
-    setTempPassword('');
-    onToast('Registro de huella cancelado');
+    onToast('Registro de passkey cancelado');
     triggerHaptic('warning');
   };
 
   const handleRemovePasskey = () => {
-    localStorage.removeItem('carddex.auth.passkey');
-    localStorage.removeItem('carddex.auth.passkey_cred');
+    localStorage.removeItem(PASSKEY_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_CREDENTIAL_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_AES_KEY_STORAGE);
     setHasPasskey(false);
-    onToast('Llave de paso removida');
+    onToast('Passkey local removida');
     triggerHaptic('medium');
-    trackEvent('passkey_removed', { email: userEmail });
+    trackEvent('passkey_removed', { mode: 'local-demo' });
   };
 
   return (
@@ -141,17 +132,18 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
-              Acceso Seguro (Biométricos)
+              Passkey local
             </h4>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>
               {hasPasskey
-                ? 'Llave de paso configurada en este dispositivo'
-                : 'Inicia sesión de forma segura usando tu Face ID, Touch ID o PIN'}
+                ? 'Configurada en este dispositivo. No guarda passwords ni inicia sesión automáticamente.'
+                : 'Demo WebAuthn local: prepara el flujo para una integración futura con servidor.'}
             </p>
           </div>
           <div>
             {hasPasskey ? (
               <button
+                type="button"
                 onClick={handleRemovePasskey}
                 style={{
                   background: 'rgba(239, 68, 68, 0.1)',
@@ -169,6 +161,7 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleStartRegistration}
                 disabled={registering}
                 style={{
@@ -179,122 +172,23 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
                   borderRadius: 10,
                   fontSize: 11.5,
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: registering ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
                   boxShadow: '0 4px 12px rgba(123, 90, 217, 0.2)',
                 }}
               >
-                {registering ? 'Configurando…' : 'Activar'}
+                {registering ? 'Configurando...' : 'Activar'}
               </button>
             )}
           </div>
         </div>
       </Surface>
 
-      {/* Password verification prompt overlay */}
-      {showPasswordPrompt && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              width: 300,
-              background: 'rgba(30, 32, 45, 0.95)',
-              border: '0.5px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: 24,
-              padding: 24,
-              boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
-              animation: 'scaleInPasskey 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.4, textAlign: 'center' }}>
-              Confirmar Contraseña
-            </h3>
-            <p style={{ margin: '8px 0 20px', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, textAlign: 'center' }}>
-              Para enlazar tu cuenta con datos biométricos, por favor ingresa tu contraseña de Supabase.
-            </p>
-            
-            <input
-              type="password"
-              placeholder="Contraseña"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: 12,
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#fff',
-                fontSize: 14,
-                marginBottom: 20,
-                outline: 'none',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit',
-              }}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleConfirmPassword();
-              }}
-            />
-            
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => {
-                  setShowPasswordPrompt(false);
-                  setPasswordInput('');
-                  triggerHaptic('light');
-                }}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmPassword}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                Verificar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Simulated Biometric prompt overlay */}
       {showBiometricScan && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Configurar passkey local demo"
           style={{
             position: 'fixed',
             inset: 0,
@@ -334,17 +228,18 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
                   animation: 'pulseFingerprint 1.5s infinite',
                 }}
               >
-                🫵
+                ID
               </div>
             </div>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
-              Configurar Llave de Acceso
+              Passkey local demo
             </h3>
             <p style={{ margin: '8px 0 24px', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-              Coloca tu huella digital o usa el reconocimiento facial para enlazar Carddex con tus biométricos seguros.
+              Este prototipo sólo guarda un marcador local del dispositivo. El login real por passkey requiere verificación segura en backend.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
+                type="button"
                 onClick={handleSimulatedCancel}
                 style={{
                   flex: 1,
@@ -362,6 +257,7 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleSimulatedSuccess}
                 style={{
                   flex: 1,
@@ -376,7 +272,7 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
                   fontFamily: 'inherit',
                 }}
               >
-                Escanear
+                Guardar demo
               </button>
             </div>
           </div>
@@ -396,115 +292,3 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
     </div>
   );
 }
-
-/* ========================================================================== */
-/* Secure Credential Encryption — AES-GCM 256-bit + PBKDF2                   */
-/* Replaces the previous insecure XOR+Base64 approach.                        */
-/* ========================================================================== */
-
-const CRYPTO_AES_KEY_STORAGE = 'carddex.crypto.aes_key.v2';
-
-/**
- * Returns (or lazily generates) a device-unique AES-GCM 256-bit key.
- * The key is stored as a JWK in localStorage — it is device-unique and
- * cannot be recreated from the source code alone (unlike the old XOR approach).
- */
-async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
-  if (typeof crypto === 'undefined' || !crypto.subtle) {
-    throw new Error('Web Crypto API not available');
-  }
-  const stored = localStorage.getItem(CRYPTO_AES_KEY_STORAGE);
-  if (stored) {
-    try {
-      const jwk = JSON.parse(stored);
-      return await crypto.subtle.importKey(
-        'jwk',
-        jwk,
-        { name: 'AES-GCM' },
-        true,
-        ['encrypt', 'decrypt'],
-      );
-    } catch {
-      // Corrupted key — generate a fresh one below
-      localStorage.removeItem(CRYPTO_AES_KEY_STORAGE);
-    }
-  }
-
-  const key = await crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    true,
-    ['encrypt', 'decrypt'],
-  );
-  const exported = await crypto.subtle.exportKey('jwk', key);
-  localStorage.setItem(CRYPTO_AES_KEY_STORAGE, JSON.stringify(exported));
-  return key;
-}
-
-/**
- * Encrypt email + password with AES-GCM 256-bit.
- * Format: base64(iv[12] || ciphertext)
- */
-export async function encryptCredsAsync(email: string, pass: string): Promise<string> {
-  const key = await getOrCreateEncryptionKey();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const payload = new TextEncoder().encode(JSON.stringify({ email, pass }));
-
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, payload);
-
-  // Combine iv + ciphertext into a single buffer
-  const combined = new Uint8Array(iv.byteLength + ciphertext.byteLength);
-  combined.set(iv, 0);
-  combined.set(new Uint8Array(ciphertext), iv.byteLength);
-
-  // Return as Base64 string (prefixed so we can detect format on decrypt)
-  return 'v2:' + btoa(String.fromCharCode(...combined));
-}
-
-/**
- * Decrypt a credential string produced by `encryptCredsAsync`.
- * Automatically falls back to the old XOR decoder for backward-compat
- * with any credentials stored before this migration.
- */
-export async function decryptCredsAsync(
-  encrypted: string,
-): Promise<{ email: string; pass: string } | null> {
-  if (!encrypted) return null;
-
-  // --- New AES-GCM path ---
-  if (encrypted.startsWith('v2:')) {
-    try {
-      const key = await getOrCreateEncryptionKey();
-      const combined = Uint8Array.from(atob(encrypted.slice(3)), (c) => c.charCodeAt(0));
-      const iv = combined.slice(0, 12);
-      const ciphertext = combined.slice(12);
-      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-      return JSON.parse(new TextDecoder().decode(decrypted));
-    } catch (e) {
-      console.error('[Passkey] AES-GCM decrypt failed:', e);
-      return null;
-    }
-  }
-
-  // --- Legacy XOR fallback (for credentials stored before this upgrade) ---
-  try {
-    const XOR_KEY = 'carddex-biometric-secret-key-2026';
-    const raw = decodeURIComponent(escape(atob(encrypted)));
-    let decrypted = '';
-    for (let i = 0; i < raw.length; i++) {
-      decrypted += String.fromCharCode(
-        raw.charCodeAt(i) ^ XOR_KEY.charCodeAt(i % XOR_KEY.length),
-      );
-    }
-    const creds = JSON.parse(decrypted) as { email: string; pass: string };
-    // Silently re-encrypt with AES-GCM so next login uses the secure path
-    const newEncrypted = await encryptCredsAsync(creds.email, creds.pass);
-    localStorage.setItem('carddex.auth.passkey_cred', newEncrypted);
-    console.info('[Passkey] Legacy XOR credentials migrated to AES-GCM.');
-    return creds;
-  } catch (e) {
-    console.error('[Passkey] Legacy XOR decrypt also failed:', e);
-    return null;
-  }
-}
-
-

@@ -330,7 +330,7 @@ export default function CustomCardScreen() {
       ctx.fillStyle = 'rgba(123,90,217,0.6)';
       ctx.font = 'bold 10px system-ui, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText('✦ Carddex AI', W - 20, H - 12);
+      ctx.fillText('✦ CardDex Custom', W - 20, H - 12);
       ctx.textAlign = 'left';
 
       // Trigger download

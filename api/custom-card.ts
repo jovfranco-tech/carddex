@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 // Custom card generation is expensive (GPT + DALL-E): 5 req/min
 const limiter = createRateLimiter({ maxRequests: 5, windowMs: 60_000 });
@@ -35,9 +36,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const safeCardA = String(cardA || '').slice(0, 60);
     const safeCardB = String(cardB || '').slice(0, 60);
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+      return res.status(503).json(serverAiUnavailable('El servicio LLM'));
     }
 
     // 1. Generate Card Stats using GPT
@@ -162,16 +163,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             } else {
               imageUrl = tempUrl; // fallback to temp url if download fails
             }
-          } catch (convErr) {
-            console.warn('Failed to convert DALL-E image to base64, using temp URL:', convErr);
+          } catch {
             imageUrl = tempUrl;
           }
         }
       } else {
-        console.warn('DALL-E image generation failed, falling back to themed image.');
+        // Fall back to themed image.
       }
-    } catch (e) {
-      console.error('Error generating image via DALL-E:', e);
+    } catch {
+      // Fall back to themed image.
     }
 
     // Fallback image if DALL-E failed
@@ -188,7 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       imageUrl,
     });
   } catch (error) {
-    console.error('Custom Card creation error:', error);
+    console.warn('[Custom Card] Request failed.');
     return res.status(500).json({ error: 'Error interno creando la carta custom con IA' });
   }
 }

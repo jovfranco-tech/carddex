@@ -17,6 +17,7 @@ export default function DarkPillButton({
 }: DarkPillButtonProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-label={aria}
       style={{

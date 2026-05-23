@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 });
 
@@ -25,9 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'cardName, oldPrice, newPrice y changePercent son requeridos' });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getServerOpenAiKey();
   if (!apiKey) {
-    return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+    return res.status(503).json(serverAiUnavailable('El servicio LLM'));
   }
 
   const safeCardName = String(cardName).slice(0, 80);
@@ -36,20 +37,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const safeChangePercent = Number(changePercent).toFixed(1);
   const direction = Number(changePercent) > 0 ? 'subió' : 'bajó';
 
-  const systemPrompt = `Eres un analista experto del mercado de cartas Pokémon TCG coleccionables. 
-Tu rol es explicar en 2-3 oraciones en español, de forma inteligente y conversacional, POR QUÉ podría haber cambiado el precio de una carta específica.
+  const systemPrompt = `Eres un analista demo del mercado de cartas Pokémon TCG coleccionables.
+Tu rol es explicar en 2-3 oraciones en español, de forma inteligente y conversacional, POR QUÉ podría haber cambiado el precio de una carta específica, usando sólo el nombre y los precios proporcionados.
 
-Basate en factores reales del meta-juego Pokémon TCG:
-- Resultados de torneos recientes (Regionales, Internacionales, Mundiales)
-- Cambios en el formato estándar o rotaciones
-- Popularidad de arquetipos de mazo que usen esa carta
-- Rareza, reimpresiones o carta próxima a rotar del formato
-- Demanda especulativa por nuevo set o expansión
-- Tendencias de la comunidad coleccionista (arte especial, full art, etc.)
+Puedes mencionar factores generales plausibles del TCG, como popularidad, rareza, reimpresiones, rotación, arte o demanda de coleccionistas.
 
-IMPORTANTE: Sé específico y menciona factores PLAUSIBLES para esa carta en particular. No uses frases genéricas. Habla como un experto del mercado TCG que conoce el meta actual de Scarlet & Violet.`;
+IMPORTANTE: No digas que consultaste fuentes externas, resultados recientes o datos en vivo. No inventes eventos concretos. Cierra con "No es consejo financiero."`;
 
-  const userPrompt = `La carta "${safeCardName}" ${direction} su precio de $${safeOldPrice} a $${safeNewPrice} USD (${safeChangePercent > '0' ? '+' : ''}${safeChangePercent}%).
+  const userPrompt = `La carta "${safeCardName}" ${direction} su precio de $${safeOldPrice} a $${safeNewPrice} USD (${Number(safeChangePercent) > 0 ? '+' : ''}${safeChangePercent}%).
 
 ¿Por qué crees que ocurrió este cambio de precio?`;
 
@@ -72,8 +67,8 @@ IMPORTANTE: Sé específico y menciona factores PLAUSIBLES para esa carta en par
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Price Insight API Error:', errorText);
+      await response.text().catch(() => '');
+      console.warn('[Price Insight] OpenAI request failed.');
       return res.status(response.status).json({ error: 'Error del motor de análisis de precios' });
     }
 
@@ -82,7 +77,7 @@ IMPORTANTE: Sé específico y menciona factores PLAUSIBLES para esa carta en par
 
     return res.status(200).json({ insight });
   } catch (error) {
-    console.error('Price Insight handler error:', error);
+    console.warn('[Price Insight] Request failed.');
     return res.status(500).json({ error: 'Error interno en el servidor de análisis' });
   }
 }

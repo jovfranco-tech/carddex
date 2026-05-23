@@ -11,23 +11,23 @@ interface OnboardingWizardProps {
 const STEPS = [
   {
     emoji: '🃏',
-    title: '¡Bienvenido a Carddex!',
-    description: 'Tu binder digital de Pokémon TCG, impulsado por Inteligencia Artificial.',
-    hint: 'Escanea, organiza y valora tu colección en segundos.',
+    title: '¡Bienvenido a CardDex!',
+    description: 'Tu binder digital de Pokémon TCG para buscar, escanear y organizar cartas.',
+    hint: 'El scanner es asistido/prototipo y funciona localmente en esta demo.',
     cta: 'Empezar',
   },
   {
     emoji: '📷',
     title: 'Escanea tus cartas',
-    description: 'Apunta la cámara a cualquier carta y nuestra IA la identificará al instante — incluso offline.',
-    hint: 'También puedes buscar por nombre o importar tu colección.',
+    description: 'Apunta la cámara a una carta para recibir sugerencias basadas en datos disponibles.',
+    hint: 'También puedes buscar por nombre, revisar detalles y guardar cartas.',
     cta: 'Continuar',
   },
   {
     emoji: '✦',
-    title: 'IA en cada paso',
-    description: 'Califica el estado físico de tus cartas, crea cartas custom únicas, y recibe sinergias de mazo personalizadas.',
-    hint: 'Carddex es AI-native: la inteligencia está integrada en cada función.',
+    title: 'Asistente contextual',
+    description: 'Consulta datos de la carta, colección y precios disponibles sin prometer predicciones perfectas.',
+    hint: 'CardDex está preparado para un LLM vía backend, sin keys expuestas en frontend.',
     cta: '¡Comenzar mi colección!',
   },
 ];
@@ -99,6 +99,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       {!isLast && (
         <button
           onClick={handleSkip}
+          aria-label="Omitir onboarding"
           style={{
             position: 'absolute',
             top: 54,
@@ -146,7 +147,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             fontSize: 26,
             fontWeight: 900,
             color: '#fff',
-            letterSpacing: -0.8,
+            letterSpacing: 0,
             lineHeight: 1.15,
           }}
         >
@@ -210,7 +211,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
           fontFamily: 'inherit',
           cursor: 'pointer',
           boxShadow: '0 6px 24px rgba(123, 90, 217, 0.4)',
-          letterSpacing: -0.2,
+          letterSpacing: 0,
           transition: 'transform 120ms ease, box-shadow 120ms ease',
         }}
         onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.97)'; }}

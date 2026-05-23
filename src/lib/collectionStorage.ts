@@ -21,6 +21,14 @@ const KEYS = {
 } as const;
 
 let syncDebounceTimer: any = null;
+const DEV_LOGS = import.meta.env.DEV;
+
+function logStorageWarning(message: string): void {
+  if (DEV_LOGS) {
+    // eslint-disable-next-line no-console
+    console.warn(message);
+  }
+}
 
 const SUBSCRIBERS = new Set<() => void>();
 function notify() {
@@ -78,10 +86,7 @@ function safeWrite(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
     if (key === KEYS.collection) {
-      saveCollectionBackupToDb(value).catch((err) =>
-        // eslint-disable-next-line no-console
-        console.error('[Backup Sync] Mirror write to IndexedDB failed:', err),
-      );
+      saveCollectionBackupToDb(value).catch(() => {});
     }
   } catch {
     /* localStorage may be full or disabled — silently ignore. */
@@ -238,9 +243,8 @@ export async function flushSyncQueue() {
         }
       }, 2500);
     }
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[Cloud Sync] Failed to flush sync queue:', err);
+  } catch {
+    logStorageWarning('[Cloud Sync] Failed to flush sync queue.');
     setSyncStatus('error');
   }
 }
@@ -275,9 +279,8 @@ async function syncToCloud(state: CollectionState) {
           }
         }, 2500);
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[Cloud Sync] Failed to sync collection, queueing:', err);
+    } catch {
+      logStorageWarning('[Cloud Sync] Failed to sync collection, queueing.');
       addToSyncQueue(state);
       setSyncStatus('offline-pending');
     }
@@ -331,9 +334,8 @@ export async function fetchCloudCollection(): Promise<void> {
           // If the merged state contains new local modifications not present on the remote database,
           // instantly push it up to Supabase to unify both states.
           if (JSON.stringify(mergedState) !== JSON.stringify(remoteState)) {
-            syncToCloud(mergedState).catch((err) => {
-              // eslint-disable-next-line no-console
-              console.error('[Cloud Sync] Failed to auto-unify merged state:', err);
+            syncToCloud(mergedState).catch(() => {
+              logStorageWarning('[Cloud Sync] Failed to auto-unify merged state.');
             });
           }
 
@@ -350,9 +352,8 @@ export async function fetchCloudCollection(): Promise<void> {
       } else {
         setSyncStatus('idle');
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[Cloud Sync] Failed to fetch collection:', err);
+    } catch {
+      logStorageWarning('[Cloud Sync] Failed to fetch collection.');
       setSyncStatus('error');
     }
   }
@@ -373,7 +374,9 @@ function writeCollection(state: CollectionState): void {
   }
   syncDebounceTimer = setTimeout(() => {
     syncDebounceTimer = null;
-    syncToCloud(stateWithCustom).catch(console.error);
+    syncToCloud(stateWithCustom).catch(() => {
+      logStorageWarning('[Cloud Sync] Failed to sync debounced collection state.');
+    });
   }, 4000);
 }
 
@@ -609,19 +612,19 @@ export async function initializeCollectionStorage(): Promise<void> {
       if (backup && typeof backup === 'object' && backup.cards) {
         safeWrite(KEYS.collection, backup);
         notify();
-        // eslint-disable-next-line no-console
-        console.log('[Backup Sync] Restored collection from IndexedDB backup:', Object.keys(backup.cards).length, 'cards');
+        logStorageWarning(`[Backup Sync] Restored collection from IndexedDB backup: ${Object.keys(backup.cards).length} cards.`);
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[Backup Sync] Failed to restore backup on initialization:', err);
+    } catch {
+      logStorageWarning('[Backup Sync] Failed to restore backup on initialization.');
     }
   }
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    flushSyncQueue().catch(console.error);
+    flushSyncQueue().catch(() => {
+      logStorageWarning('[Cloud Sync] Failed to flush queue after reconnect.');
+    });
   });
   window.addEventListener('offline', () => {
     if (getSyncQueue().length > 0) {
@@ -631,7 +634,9 @@ if (typeof window !== 'undefined') {
   
   // Trigger flush immediately on startup if online
   if (navigator.onLine) {
-    flushSyncQueue().catch(console.error);
+    flushSyncQueue().catch(() => {
+      logStorageWarning('[Cloud Sync] Failed to flush queue on startup.');
+    });
   } else if (getSyncQueue().length > 0) {
     setSyncStatus('offline-pending');
   }

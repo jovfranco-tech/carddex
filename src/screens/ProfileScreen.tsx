@@ -19,12 +19,13 @@ import {
   getCollection,
 } from '@/lib/collectionStorage';
 import { hasApiKey, clearApiCache, getCachedCard } from '@/lib/pokemonTcgApi';
+import { isServerOcrEnabled } from '@/lib/cardRecognition';
 import { formatInt } from '@/lib/formatters';
 import { prefersMXN, setPrefersMXN, getEstimatedPrice } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import CollectionShareModal from '@/components/CollectionShareModal';
-import PasskeyManager, { decryptCredsAsync } from '@/components/PasskeyManager';
+import PasskeyManager from '@/components/PasskeyManager';
 import {
   getPushSubscription,
   subscribeToPushNotifications,
@@ -37,7 +38,8 @@ import type { PokemonCard } from '@/types/pokemon';
 import { useI18n } from '@/lib/i18n';
 import { THEME_ACCENTS, applyThemeAccent, getAppliedThemeAccent } from '@/lib/themeAccent';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.3';
+const SERVER_ASSISTANT_ENABLED = import.meta.env.VITE_CARD_ASSISTANT_MODE === 'server';
 
 /**
  * Profile / Settings — info, export/import, clear local data, disclaimer.
@@ -139,7 +141,6 @@ export default function ProfileScreen() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [hasPasskeyStored, setHasPasskeyStored] = useState(false);
   const [biometricScanning, setBiometricScanning] = useState(false);
-  const [showBiometricLoginOverlay, setShowBiometricLoginOverlay] = useState(false);
 
   useEffect(() => {
     try {
@@ -208,76 +209,11 @@ export default function ProfileScreen() {
     if (biometricScanning) return;
     setBiometricScanning(true);
     triggerHaptic('light');
-
-    const storedPasskey = localStorage.getItem('carddex.auth.passkey');
-    const isMock = storedPasskey ? storedPasskey.startsWith('mock-key-') : true;
-    
-    const proceedWithLogin = async () => {
-      try {
-        const encrypted = localStorage.getItem('carddex.auth.passkey_cred');
-        if (!encrypted) {
-          showToast(t('profile.noBiometricCreds') || 'No se encontraron credenciales biométricas guardadas');
-          setBiometricScanning(false);
-          return;
-        }
-        // Try AES-GCM decryption; falls back to legacy XOR inside decryptCredsAsync
-        const creds = await decryptCredsAsync(encrypted);
-        if (!creds) {
-          showToast(t('profile.credDecryptError') || 'Error al descifrar credenciales');
-          setBiometricScanning(false);
-          return;
-        }
-
-        setAuthLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({
-          email: creds.email,
-          password: creds.pass,
-        });
-        setAuthLoading(false);
-        setBiometricScanning(false);
-
-        if (error) {
-          showToast(error.message);
-          triggerHaptic('warning');
-        } else {
-          showToast(t('profile.biometricLoginSuccess') || 'Sesión iniciada con biometría');
-          triggerHaptic('success');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast(t('profile.biometricError') || 'Error en la autenticación biométrica');
-        setBiometricScanning(false);
-        setAuthLoading(false);
-      }
-    };
-
-
-    if (!isMock && window.isSecureContext && navigator.credentials && navigator.credentials.get) {
-      try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-
-        const credential = await navigator.credentials.get({
-          publicKey: {
-            challenge,
-            rpId: window.location.hostname,
-            userVerification: 'required',
-            timeout: 15000,
-          },
-        });
-
-        if (credential) {
-          await proceedWithLogin();
-        } else {
-          setBiometricScanning(false);
-        }
-      } catch (err) {
-        console.warn('Real WebAuthn verification error, falling back to simulated UI:', err);
-        setShowBiometricLoginOverlay(true);
-      }
-    } else {
-      setShowBiometricLoginOverlay(true);
-    }
+    window.setTimeout(() => {
+      setBiometricScanning(false);
+      showToast('Passkey local demo: no guarda contraseña ni inicia sesión automáticamente.');
+      triggerHaptic('warning');
+    }, 350);
   };
 
   const handleUpdateName = async () => {
@@ -299,6 +235,7 @@ export default function ProfileScreen() {
   };
 
   const apiKeyConfigured = hasApiKey();
+  const serverOcrConfigured = isServerOcrEnabled();
 
   const handleShareProfile = async () => {
     if (!user) return;
@@ -484,152 +421,6 @@ export default function ProfileScreen() {
     <div style={{ paddingBottom: 110 }}>
       <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} duration={2000} />
 
-      {/* Simulated Biometric Login overlay */}
-      {showBiometricLoginOverlay && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              width: 290,
-              background: 'rgba(30, 32, 45, 0.95)',
-              border: '0.5px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: 24,
-              padding: 24,
-              textAlign: 'center',
-              boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
-              animation: 'scaleInPasskey 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <div
-                style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: '50%',
-                  background: 'rgba(123, 90, 217, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--accent)',
-                  fontSize: 36,
-                  animation: 'pulseFingerprint 1.5s infinite',
-                }}
-              >
-                🫵
-              </div>
-            </div>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
-              {t('profile.biometricVerification') || 'Verificación Biométrica'}
-            </h3>
-            <p style={{ margin: '8px 0 24px', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-              {t('profile.biometricVerificationDesc') || 'Usa Face ID o Touch ID para verificar tu identidad y acceder de forma segura.'}
-            </p>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => {
-                  setShowBiometricLoginOverlay(false);
-                  setBiometricScanning(false);
-                  showToast(t('profile.biometricCancelled') || 'Acceso biométrico cancelado');
-                  triggerHaptic('warning');
-                }}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {t('profile.cancelButton') || 'Cancelar'}
-              </button>
-              <button
-                onClick={async () => {
-                  setShowBiometricLoginOverlay(false);
-                  try {
-                    const encrypted = localStorage.getItem('carddex.auth.passkey_cred');
-                    if (!encrypted) {
-                      showToast(t('profile.noBiometricCreds') || 'No se encontraron credenciales biométricas guardadas');
-                      setBiometricScanning(false);
-                      return;
-                    }
-                    // Try AES-GCM decryption; falls back to legacy XOR inside decryptCredsAsync
-                    const creds = await decryptCredsAsync(encrypted);
-                    if (!creds) {
-                      showToast(t('profile.credDecryptError') || 'Error al descifrar credenciales');
-                      setBiometricScanning(false);
-                      return;
-                    }
-
-                    setAuthLoading(true);
-                    const { error } = await supabase.auth.signInWithPassword({
-                      email: creds.email,
-                      password: creds.pass,
-                    });
-                    setAuthLoading(false);
-                    setBiometricScanning(false);
-
-                    if (error) {
-                      showToast(error.message);
-                      triggerHaptic('warning');
-                    } else {
-                      showToast(t('profile.biometricLoginSuccess') || 'Sesión iniciada con biometría');
-                      triggerHaptic('success');
-                    }
-                  } catch (err) {
-                    console.error(err);
-                    showToast(t('profile.biometricError') || 'Error en la autenticación biométrica');
-                    setBiometricScanning(false);
-                    setAuthLoading(false);
-                  }
-                }}
-
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {t('profile.scanButton') || 'Escanear'}
-              </button>
-            </div>
-          </div>
-          <style>{`
-            @keyframes scaleInPasskey {
-              from { transform: scale(0.9); opacity: 0; }
-              to { transform: scale(1); opacity: 1; }
-            }
-            @keyframes pulseFingerprint {
-              0% { box-shadow: 0 0 0 0 rgba(123, 90, 217, 0.4); }
-              70% { box-shadow: 0 0 0 15px rgba(123, 90, 217, 0); }
-              100% { box-shadow: 0 0 0 0 rgba(123, 90, 217, 0); }
-            }
-          `}</style>
-        </div>
-      )}
-
       {/* Header */}
       <div style={{ padding: '54px 18px 18px' }}>
         <h1
@@ -650,12 +441,24 @@ export default function ProfileScreen() {
         <Surface style={{ padding: 20, textAlign: 'center' }}>
           {!isSupabaseConfigured() ? (
             <div style={{ padding: '20px 0' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>☁️</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>Sincronización en la Nube</div>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>CD</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>Perfil local demo</div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, lineHeight: 1.5 }}>
-                Esta funcionalidad (perfiles y wishlist pública) es experimental. 
-                Requiere configurar las variables de entorno de Supabase en tu servidor.
-                Actualmente tu colección solo se guarda de forma local.
+                Tu colección se guarda en este navegador. Perfiles públicos y sincronización
+                requieren Supabase configurado en servidor.
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-around',
+                  marginTop: 18,
+                  paddingTop: 16,
+                  borderTop: '0.5px solid var(--hairline)',
+                }}
+              >
+                <Stat n={formatInt(summary.uniqueCount)} l="Únicas" />
+                <Stat n={formatInt(summary.favoriteCount)} l="Favoritas" />
+                <Stat n={formatInt(summary.wishlistCount)} l="Wishlist" />
               </div>
             </div>
           ) : !user ? (
@@ -690,7 +493,7 @@ export default function ProfileScreen() {
                   }}
                 >
                   <span style={{ fontSize: 20 }}>🫵</span>
-                  {biometricScanning ? 'Verificando…' : 'Acceder con Huella / Face ID'}
+                  {biometricScanning ? 'Verificando…' : 'Passkey local configurada'}
                 </button>
               )}
 
@@ -1142,12 +945,12 @@ export default function ProfileScreen() {
                   letterSpacing: -0.2,
                 }}
               >
-                {apiKeyConfigured ? 'API configurada' : 'Usando acceso público'}
+                {apiKeyConfigured ? 'API configurada' : 'Acceso público sin key en frontend'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                 {apiKeyConfigured
                   ? 'Base URL: pokemontcg.io'
-                  : 'Base URL: pokemontcg.io'}
+                  : 'Las consultas usan el límite público de pokemontcg.io.'}
               </div>
             </div>
           </div>
@@ -1263,7 +1066,7 @@ export default function ProfileScreen() {
                   letterSpacing: -0.2,
                 }}
               >
-                Detección activa (OpenAI Vision)
+                {serverOcrConfigured ? 'OCR servidor activo' : 'Assisted scan prototype'}
               </div>
               <div
                 style={{
@@ -1273,7 +1076,9 @@ export default function ProfileScreen() {
                   lineHeight: 1.5,
                 }}
               >
-                Analizando el nombre y el número de la carta con IA
+                {serverOcrConfigured
+                  ? 'La captura se envía al endpoint serverless para extraer nombre/número. La key LLM vive sólo en servidor.'
+                  : 'La cámara se usa localmente; CardDex muestra sugerencias asistidas y permite corregir manualmente.'}
               </div>
             </div>
           </div>
@@ -1311,7 +1116,7 @@ export default function ProfileScreen() {
                   letterSpacing: -0.2,
                 }}
               >
-                Asistente local/reglas MVP
+                {SERVER_ASSISTANT_ENABLED ? 'Asistente LLM vía backend' : 'Asistente demo local'}
               </div>
               <div
                 style={{
@@ -1321,9 +1126,21 @@ export default function ProfileScreen() {
                   lineHeight: 1.5,
                 }}
               >
-                LLM real pendiente para v2 vía endpoint seguro
+                {SERVER_ASSISTANT_ENABLED
+                  ? 'Usa contexto acotado de la carta y no expone API keys en el frontend.'
+                  : 'Responde con reglas y datos disponibles de la carta. Preparado para LLM seguro vía backend.'}
               </div>
             </div>
+          </div>
+        </Surface>
+      </div>
+
+      {/* Demo boundaries & privacy */}
+      <div style={{ padding: '0 14px 14px' }}>
+        <SectionTitle>Demo Boundaries & Privacy</SectionTitle>
+        <Surface style={{ padding: 14 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
+            CardDex es una demo personal: colección y preferencias viven en este navegador salvo que configures Supabase. El scanner no guarda video; una captura sólo sale del dispositivo si activas OCR de servidor. El asistente local no inventa datos y los precios son referencia, no consejo financiero. Passkey local no guarda contraseñas.
           </div>
         </Surface>
       </div>

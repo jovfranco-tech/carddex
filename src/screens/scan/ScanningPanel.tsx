@@ -22,7 +22,7 @@ export default function ScanningPanel({ confidence }: ScanningPanelProps) {
           marginBottom: 10,
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 600 }}>Analizando…</span>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Analizando captura…</span>
         <span style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>
           {confidence}%
         </span>
@@ -55,8 +55,8 @@ export default function ScanningPanel({ confidence }: ScanningPanelProps) {
         }}
       >
         <span>◐ Buscando bordes</span>
-        <span>◆ Comparando arte</span>
-        <span>◫ Leyendo número</span>
+        <span>◆ Buscando candidatos</span>
+        <span>◫ Preparando sugerencia</span>
       </div>
     </div>
   );

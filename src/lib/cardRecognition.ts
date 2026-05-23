@@ -1,15 +1,15 @@
 /**
  * Card recognition — architecture module for the camera-based scanner.
  *
- * v1 STATUS: REAL AI VISION via GPT-4o. When the user captures a frame or
- * uploads a photo, the image is sent to the `/api/recognize` serverless
- * endpoint which calls OpenAI GPT-4o Vision with `detail: 'high'` to extract
- * the card name, number, language, and set hint. The result is then
- * cross-referenced against the Pokémon TCG API for enrichment.
+ * v1 STATUS: assisted scanner. By default, captured images are handled as a
+ * local prototype path with OCR/hash fallback and manual correction. Real
+ * server OCR can be enabled explicitly with VITE_SCANNER_OCR_MODE=server,
+ * which sends the image to `/api/recognize`; that endpoint must keep any
+ * OpenAI key server-side.
  *
  * Offline fallback:
- *   - When `/api/recognize` fails (no network), `recognizeCardFromImage` falls
- *     back to local Tesseract.js OCR + dHash matching against OFFLINE_CARD_CATALOG.
+ *   - When server OCR is disabled or fails, `recognizeCardFromImage` falls back
+ *     to local Tesseract.js OCR + dHash matching against OFFLINE_CARD_CATALOG.
  *   - When `navigator.onLine === false`, local Tesseract is tried first.
  *
  * The shape of `RecognitionResult` is the stable contract between this module
@@ -111,9 +111,19 @@ const DEMO_NAMES: ReadonlyArray<string> = [
 
 /** Confidence band used for "highConfidence" gating. */
 export const HIGH_CONFIDENCE_THRESHOLD = 0.7;
+const SERVER_OCR_ENABLED = import.meta.env.VITE_SCANNER_OCR_MODE === 'server';
+const SERVER_VECTOR_ENABLED = import.meta.env.VITE_SCANNER_VECTOR_MODE === 'server';
 
 let demoIndex = 0;
 const seedCache = new Map<string, PokemonCard>();
+
+export function isServerOcrEnabled(): boolean {
+  return SERVER_OCR_ENABLED;
+}
+
+export function isServerVectorEnabled(): boolean {
+  return SERVER_VECTOR_ENABLED;
+}
 
 /** Pick the next demo seed name in a stable rotation. */
 function nextDemoName(): string {
@@ -300,7 +310,6 @@ export async function getOfflineRecognitionResult(imageHash: string, ocrText?: s
       }
     }
     card = bestMatch;
-    console.log(`[Offline Match] Visual dHash matched to ${card.name} (${card.id}) with final score ${minScore}`);
   } else {
     let sum = 0;
     for (let i = 0; i < imageHash.length; i++) {
@@ -484,8 +493,7 @@ function getOcrCache(): Record<string, OcrCacheEntry> {
   try {
     const raw = localStorage.getItem('carddex.ocr_cache.v1');
     return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    console.error('Error reading OCR cache:', e);
+  } catch {
     return {};
   }
 }
@@ -494,8 +502,8 @@ function setOcrCache(cache: Record<string, OcrCacheEntry>): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem('carddex.ocr_cache.v1', JSON.stringify(cache));
-  } catch (e) {
-    console.error('Error writing OCR cache:', e);
+  } catch {
+    // Ignore storage failures; OCR cache is an optional local optimization.
   }
 }
 
@@ -524,13 +532,12 @@ function saveToOcrCache(hash: string, data: any): void {
 /**
  * Main entry point. Returns a believable RecognitionResult.
  *
- * MVP behaviour (no real CV):
+ * Behaviour:
  *   - For `seed` and `none` inputs, cycles through DEMO_NAMES and searches
  *     the real Pokémon TCG API for a popular card with that name.
- *   - For `file` and `frame` inputs we currently DO NOT analyze the pixel
- *     data — we just rotate the demo seed and flag the result as simulated.
- *     The TODO list at the top of this file is where the real OCR/pHash
- *     pipeline will land.
+ *   - For `file` inputs, CardDex can call server OCR only when explicitly
+ *     enabled; otherwise it uses the local assisted fallback and labels the
+ *     result as simulated/prototype.
  */
 function getNumberQuery(rawNum: string): string {
   const clean = rawNum.split('/')[0].trim();
@@ -588,9 +595,8 @@ export async function recognizeCardFromImage(
         imageHash = hashString(base64);
 
         // 1.6. Multimodal Vector Similarity Search online check (preempts OCR)
-        if (navigator.onLine) {
+        if (SERVER_VECTOR_ENABLED && navigator.onLine) {
           try {
-            console.log('[Vector Search] Attempting vector database similarity search...');
             const vectorRes = await fetch('/api/recognize-vector', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -600,7 +606,6 @@ export async function recognizeCardFromImage(
             if (vectorRes.ok) {
               const vectorData = await vectorRes.json();
               if (vectorData && vectorData.cardName) {
-                console.log('[Vector Search] High-confidence similarity match:', vectorData.cardName, vectorData.similarity);
                 const cleanName = vectorData.cardName.replace(/["\\]/g, '').trim();
                 const rawNum = vectorData.number.split('/')[0].trim();
                 const numQ = getNumberQuery(rawNum);
@@ -610,7 +615,6 @@ export async function recognizeCardFromImage(
                   const apiRes = await searchCards({ q, pageSize: 1 }, { signal: opts.signal });
                   const card = apiRes.data[0] || null;
                   if (card) {
-                    console.log('[Vector Search] Match fetched from Pokémon TCG API:', card.name, card.id);
                     return buildRecognitionResultFromApiCard(card, {
                       confidence: vectorData.similarity || 0.9982,
                       source: 'vector_match',
@@ -618,13 +622,13 @@ export async function recognizeCardFromImage(
                       detectedLanguage: 'EN',
                     });
                   }
-                } catch (apiErr) {
-                  console.warn('[Vector Search] Pokémon TCG API fetch failed, falling back to standard OCR:', apiErr);
+                } catch {
+                  // Fall back to standard OCR/local matching.
                 }
               }
             }
-          } catch (vErr) {
-            console.warn('[Vector Search] Failed or timed out, falling back to standard OCR:', vErr);
+          } catch {
+            // Fall back to standard OCR/local matching.
           }
         }
 
@@ -634,18 +638,19 @@ export async function recognizeCardFromImage(
         let ocrData: any;
 
         if (localCache[cacheIndex]) {
-          console.log('[OCR Cache] Hit for image cache index:', cacheIndex);
           ocrData = localCache[cacheIndex].data;
           
           // Refresh access timestamp (LRU update)
           localCache[cacheIndex].timestamp = Date.now();
           setOcrCache(localCache);
         } else {
-          console.log('[OCR Cache] Miss for image cache index:', cacheIndex);
           // Prefer local Tesseract when offline to avoid failed network requests
           if (!navigator.onLine) {
-            console.log('[OCR] Device offline — skipping GPT-4o, using local Tesseract');
             throw new Error('offline');
+          }
+
+          if (!SERVER_OCR_ENABLED) {
+            throw new Error('server_ocr_disabled');
           }
 
           // 2. Send to Vercel Serverless Function (GPT-4o Vision)
@@ -684,13 +689,10 @@ export async function recognizeCardFromImage(
         ) {
           throw err;
         }
-        console.warn('[OCR Fallback] Network request failed. Switching to deterministic offline hashing fallback:', err);
-        
         let ocrText: string | undefined = undefined;
         if (base64) {
           try {
             const langCode = opts.languageHint === 'ES' ? 'spa' : opts.languageHint === 'JP' ? 'jpn' : 'eng';
-            console.log(`[OCR Local] Initializing local Tesseract OCR with language: ${langCode}`);
             const { createWorker } = await import('tesseract.js');
             const worker = await createWorker(langCode, 1, {
               workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
@@ -699,10 +701,9 @@ export async function recognizeCardFromImage(
             });
             const ret = await worker.recognize(base64);
             ocrText = ret.data.text;
-            console.log('[OCR Local] Extracted text:', ocrText);
             await worker.terminate();
-          } catch (ocrErr) {
-            console.warn('[OCR Local] Local Tesseract OCR failed:', ocrErr);
+          } catch {
+            // OCR is best-effort; fall back to visual hash only.
           }
         }
 
@@ -761,7 +762,7 @@ export async function recognizeCardFromImage(
           targetSetId = matchedSet.id;
         }
       } catch (err) {
-        console.error('Error fetching sets for hint matching:', err);
+        // Set hint lookup is best-effort.
       }
     }
 
@@ -819,7 +820,6 @@ export async function recognizeCardFromImage(
       });
 
       if (localMatch) {
-        console.log('[OCR Fallback] Found local match in catalog:', localMatch.name);
         seedCache.set(cacheKey, localMatch);
         return buildRecognitionResultFromApiCard(localMatch, {
           confidence: 0.95,

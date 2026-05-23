@@ -5,13 +5,17 @@ const DB_VERSION = 2;
 const STORE_NAME = 'cards';
 const BACKUP_STORE_NAME = 'backup_collection';
 
+function canUseIndexedDb(): boolean {
+  return typeof window !== 'undefined' && typeof window.indexedDB !== 'undefined';
+}
+
 function getDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') {
-      reject(new Error('Window object is not defined.'));
+    if (!canUseIndexedDb()) {
+      reject(new Error('IndexedDB is not available.'));
       return;
     }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = window.indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -34,6 +38,7 @@ function getDb(): Promise<IDBDatabase> {
 }
 
 export async function saveCardToDb(card: PokemonCard): Promise<void> {
+  if (!canUseIndexedDb()) return;
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {
@@ -54,6 +59,7 @@ export async function saveCardToDb(card: PokemonCard): Promise<void> {
 }
 
 export async function getCardFromDb(id: string): Promise<PokemonCard | null> {
+  if (!canUseIndexedDb()) return null;
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {
@@ -88,6 +94,7 @@ export async function getCardFromDb(id: string): Promise<PokemonCard | null> {
 }
 
 export async function getAllCardsFromDb(): Promise<{ id: string; card: PokemonCard; timestamp: number }[]> {
+  if (!canUseIndexedDb()) return [];
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {
@@ -105,6 +112,7 @@ export async function getAllCardsFromDb(): Promise<{ id: string; card: PokemonCa
 }
 
 export async function pruneCardsDb(maxCount = 1000): Promise<void> {
+  if (!canUseIndexedDb()) return;
   try {
     const all = await getAllCardsFromDb();
     if (all.length <= maxCount) return;
@@ -126,6 +134,7 @@ export async function pruneCardsDb(maxCount = 1000): Promise<void> {
 }
 
 export async function clearCardsDb(): Promise<void> {
+  if (!canUseIndexedDb()) return;
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {
@@ -142,6 +151,7 @@ export async function clearCardsDb(): Promise<void> {
 }
 
 export async function saveCollectionBackupToDb(state: any): Promise<void> {
+  if (!canUseIndexedDb()) return;
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {
@@ -161,6 +171,7 @@ export async function saveCollectionBackupToDb(state: any): Promise<void> {
 }
 
 export async function getCollectionBackupFromDb(): Promise<any | null> {
+  if (!canUseIndexedDb()) return null;
   try {
     const db = await getDb();
     return new Promise((resolve, reject) => {

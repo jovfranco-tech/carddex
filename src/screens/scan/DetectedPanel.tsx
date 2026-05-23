@@ -19,6 +19,7 @@ export default function DetectedPanel({
   const card = result.card!;
   const isVectorMatch = result.source === 'vector_match';
   const isOffline = result.source === 'offline_fallback';
+  const isAssistedPrototype = result.simulated || isOffline;
   const matchColor = isVectorMatch ? '#00E5FF' : isOffline ? '#FF9500' : 'var(--success)';
   const price = getEstimatedPrice(card);
   const categoryColor =
@@ -82,7 +83,11 @@ export default function DetectedPanel({
                 textTransform: 'uppercase',
               }}
             >
-              {isVectorMatch ? `✦ RECONOCIMIENTO IA: ${(confidence * 100).toFixed(1)}%` : isOffline ? 'Modo Offline' : `Coincidencia ${confidence}%`}
+              {isVectorMatch
+                ? `Reconocimiento servidor: ${(confidence * 100).toFixed(1)}%`
+                : isAssistedPrototype
+                  ? `Sugerencia asistida ${confidence}%`
+                  : `Coincidencia ${confidence}%`}
             </span>
           </span>
           <span
@@ -246,7 +251,7 @@ export default function DetectedPanel({
               letterSpacing: 0.1,
             }}
           >
-            Resultado simulado · escáner real en próxima versión
+            Resultado asistido/prototipo · confirma antes de guardar
           </div>
         )}
         {result.source === 'offline_fallback' && (
@@ -306,7 +311,7 @@ export default function DetectedPanel({
                 display: 'inline-block',
               }}
             />
-            Búsqueda Vectorial Multimodal (Embedding 1536d)
+            Reconocimiento vectorial de servidor
           </div>
         )}
       </div>

@@ -1,21 +1,42 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
+import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+
+const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 });
+const MAX_COLLECTION_STATS_CHARS = 4_000;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const ip =
+    (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    'unknown';
+
+  if (!(await limiter.check(ip))) {
+    return res.status(429).json({
+      error: 'Demasiadas solicitudes de chat. Espera un momento.',
+      retryAfter: limiter.retryAfter(ip),
+    });
+  }
+
   try {
     const { messages, collectionStats } = req.body;
     
-    if (!messages || !Array.isArray(messages)) {
+    if (!messages || !Array.isArray(messages) || messages.length > 20) {
       return res.status(400).json({ error: 'Formato de mensajes inválido' });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+      return res.status(503).json(serverAiUnavailable('El chat LLM'));
     }
+
+    const safeCollectionStats = collectionStats
+      ? JSON.stringify(collectionStats).slice(0, MAX_COLLECTION_STATS_CHARS)
+      : 'Desconocido';
 
     // Build the system prompt using the user's actual collection stats
     const systemPrompt = `Eres el asistente oficial de "CardDex", una aplicación para gestionar colecciones y mazos de Pokémon TCG.
@@ -28,15 +49,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     - Proporciona recomendaciones concretas de cartas reales de Pokémon TCG.
     
     ESTADO ACTUAL DE LA COLECCIÓN / MAZO DEL USUARIO:
-    ${collectionStats ? JSON.stringify(collectionStats) : 'Desconocido'}
+    ${safeCollectionStats}
     
     Responde de forma amigable y en un tono entusiasta de entrenador Pokémon. No des explicaciones técnicas de programación.`;
 
     const openAiMessages = [
       { role: 'system', content: systemPrompt },
-      ...messages.map((m: any) => ({
+      ...messages.slice(-12).map((m: any) => ({
         role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content
+        content: String(m.content || '').slice(0, 700)
       }))
     ];
 
@@ -55,8 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI Chat Error:', errorText);
+      await response.text().catch(() => '');
+      console.warn('[Chat API] OpenAI request failed.');
       return res.status(response.status).json({ error: 'Error del servicio de IA' });
     }
 
@@ -65,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       reply: data.choices[0].message.content.trim()
     });
   } catch (error) {
-    console.error('Chat AI Error:', error);
+    console.warn('[Chat API] Request failed.');
     return res.status(500).json({ error: 'Error interno en el servidor de chat' });
   }
 }

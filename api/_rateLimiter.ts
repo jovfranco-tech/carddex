@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
+
 /**
  * Distributed, hybrid rate limiter for Vercel Serverless Functions.
  * Supports Vercel KV (Redis) and Supabase database-backed rate limiting,
- * falling back seamlessly to local in-memory Map.
+ * falling back to local in-memory Map for demo/dev environments.
  */
 
 interface RateLimiterOptions {
@@ -16,28 +18,58 @@ interface LimiterEntry {
   resetAt: number;
 }
 
+function safeHttpsBaseUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:') return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function buildRateLimitKey(clientId: string): string {
+  const normalizedClientId = clientId.trim() || 'unknown';
+  const salt =
+    process.env.RATE_LIMIT_SALT ||
+    process.env.KV_REST_API_TOKEN ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'carddex-rate-limit';
+  const digest = createHash('sha256')
+    .update(`${salt}:${normalizedClientId}`)
+    .digest('hex')
+    .slice(0, 40);
+
+  return `rate_limit:${digest}`;
+}
+
 export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimiterOptions) {
   const store = new Map<string, LimiterEntry>();
 
-  const isRedisAvailable = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-  const isSupabaseAvailable = Boolean(process.env.VITE_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY));
+  const redisUrl = safeHttpsBaseUrl(process.env.KV_REST_API_URL);
+  const redisToken = process.env.KV_REST_API_TOKEN;
+  const supabaseUrl = safeHttpsBaseUrl(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const isRedisAvailable = Boolean(redisUrl && redisToken);
+  const isSupabaseAvailable = Boolean(supabaseUrl && supabaseServiceKey);
 
   return {
     /**
      * Returns true if the request is allowed, false if it should be rate-limited.
      */
     async check(ip: string): Promise<boolean> {
+      const key = buildRateLimitKey(ip);
+
       // 1. Attempt Vercel KV (Redis)
       if (isRedisAvailable) {
         try {
-          const url = process.env.KV_REST_API_URL;
-          const token = process.env.KV_REST_API_TOKEN;
-          const key = `rate_limit:${ip}`;
           const windowSec = Math.ceil(windowMs / 1000);
 
           // Increment count in Redis via REST API
-          const incrRes = await fetch(`${url}/incr/${key}`, {
-            headers: { Authorization: `Bearer ${token}` }
+          const incrRes = await fetch(`${redisUrl}/incr/${encodeURIComponent(key)}`, {
+            headers: { Authorization: `Bearer ${redisToken}` },
           });
           if (!incrRes.ok) throw new Error('Redis INCR failed');
           const { result } = await incrRes.json();
@@ -45,31 +77,28 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
 
           if (count === 1) {
             // Set expiration for new keys
-            await fetch(`${url}/expire/${key}/${windowSec}`, {
-              headers: { Authorization: `Bearer ${token}` }
+            await fetch(`${redisUrl}/expire/${encodeURIComponent(key)}/${windowSec}`, {
+              headers: { Authorization: `Bearer ${redisToken}` },
             });
           }
 
           return count <= maxRequests;
-        } catch (e) {
-          console.warn('Vercel KV rate limiter failed, attempting Supabase fallback...', e);
+        } catch {
+          console.warn('Vercel KV rate limiter failed, attempting Supabase fallback.');
         }
       }
 
       // 2. Attempt Supabase Distributed DB Rate Limiter
       if (isSupabaseAvailable) {
         try {
-          const url = process.env.VITE_SUPABASE_URL;
-          const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-          
           const now = Date.now();
           const resetAt = new Date(now + windowMs).toISOString();
 
-          // Fetch the current record for this IP
-          const fetchRes = await fetch(`${url}/rest/v1/rate_limits?ip=eq.${encodeURIComponent(ip)}`, {
+          // The column is named `ip` for compatibility, but stores a salted hash.
+          const fetchRes = await fetch(`${supabaseUrl}/rest/v1/rate_limits?ip=eq.${encodeURIComponent(key)}`, {
             headers: {
-              'apikey': key!,
-              'Authorization': `Bearer ${key}`
+              'apikey': supabaseServiceKey!,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
             }
           });
 
@@ -79,16 +108,16 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
 
             if (!record) {
               // Insert new IP record
-              await fetch(`${url}/rest/v1/rate_limits`, {
+              await fetch(`${supabaseUrl}/rest/v1/rate_limits`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'apikey': key!,
-                  'Authorization': `Bearer ${key}`,
+                  'apikey': supabaseServiceKey!,
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
                   'Prefer': 'return=minimal'
                 },
                 body: JSON.stringify({
-                  ip,
+                  ip: key,
                   count: 1,
                   reset_at: resetAt
                 })
@@ -100,12 +129,12 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
 
             if (now > recordResetAt) {
               // Reset window
-              await fetch(`${url}/rest/v1/rate_limits?ip=eq.${encodeURIComponent(ip)}`, {
+              await fetch(`${supabaseUrl}/rest/v1/rate_limits?ip=eq.${encodeURIComponent(key)}`, {
                 method: 'PATCH',
                 headers: {
                   'Content-Type': 'application/json',
-                  'apikey': key!,
-                  'Authorization': `Bearer ${key}`,
+                  'apikey': supabaseServiceKey!,
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
                   'Prefer': 'return=minimal'
                 },
                 body: JSON.stringify({
@@ -118,17 +147,17 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
 
             if (record.count >= maxRequests) {
               // Maintain local sync for sync retryAfter
-              store.set(ip, { count: record.count, resetAt: recordResetAt });
+              store.set(key, { count: record.count, resetAt: recordResetAt });
               return false;
             }
 
             // Increment count
-            await fetch(`${url}/rest/v1/rate_limits?ip=eq.${encodeURIComponent(ip)}`, {
+            await fetch(`${supabaseUrl}/rest/v1/rate_limits?ip=eq.${encodeURIComponent(key)}`, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
-                'apikey': key!,
-                'Authorization': `Bearer ${key}`,
+                'apikey': supabaseServiceKey!,
+                'Authorization': `Bearer ${supabaseServiceKey}`,
                 'Prefer': 'return=minimal'
               },
               body: JSON.stringify({
@@ -136,20 +165,20 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
               })
             });
 
-            store.set(ip, { count: record.count + 1, resetAt: recordResetAt });
+            store.set(key, { count: record.count + 1, resetAt: recordResetAt });
             return true;
           }
-        } catch (e) {
-          console.warn('Supabase rate limiter failed, falling back to local memory:', e);
+        } catch {
+          console.warn('Supabase rate limiter failed, falling back to local memory.');
         }
       }
 
       // 3. Fallback to Local In-Memory
       const now = Date.now();
-      const entry = store.get(ip);
+      const entry = store.get(key);
 
       if (!entry || now > entry.resetAt) {
-        store.set(ip, { count: 1, resetAt: now + windowMs });
+        store.set(key, { count: 1, resetAt: now + windowMs });
         return true;
       }
 
@@ -163,7 +192,7 @@ export function createRateLimiter({ maxRequests, windowMs = 60_000 }: RateLimite
 
     /** Returns seconds until the window resets for this IP */
     retryAfter(ip: string): number {
-      const entry = store.get(ip);
+      const entry = store.get(buildRateLimitKey(ip));
       if (!entry) return 0;
       return Math.max(0, Math.ceil((entry.resetAt - Date.now()) / 1000));
     },

@@ -6,6 +6,14 @@ import { getOptimizedImageUrl } from '@/lib/imageOptimization';
 
 // In-memory set of already preloaded image URLs to avoid duplicate fetches in this session
 const preloadedUrls = new Set<string>();
+const DEV_LOGS = import.meta.env.DEV;
+
+function logPreloaderWarning(message: string): void {
+  if (DEV_LOGS) {
+    // eslint-disable-next-line no-console
+    console.warn(message);
+  }
+}
 
 /**
  * Preloads a single image URL using the standard browser Image constructor.
@@ -54,8 +62,8 @@ class BackgroundImageQueue {
     setTimeout(async () => {
       try {
         await preloadImageUrl(url);
-      } catch (err) {
-        console.error('[Preloader] Failed to prefetch image:', url, err);
+      } catch {
+        logPreloaderWarning('[Preloader] Failed to prefetch an image.');
       } finally {
         this.activeCount--;
         this.processNext();
@@ -133,7 +141,7 @@ export async function triggerPredictivePreload() {
     // Once fetched, the API will cache them in localStorage/memory.
     // The next execution trigger (or subsequent render) will pick them up and prefetch their images.
     if (uncachedIds.length > 0) {
-      console.log(`[Preloader] Pre-fetching metadata for ${uncachedIds.length} uncached cards...`);
+      logPreloaderWarning(`[Preloader] Pre-fetching metadata for ${uncachedIds.length} uncached cards.`);
       // We run this asynchronously in the background so it doesn't block the caller
       getCardsByIds(uncachedIds)
         .then((cards) => {
@@ -148,12 +156,12 @@ export async function triggerPredictivePreload() {
             backgroundQueue.add(freshUrls);
           }
         })
-        .catch((err) => {
-          console.error('[Preloader] Background card metadata fetch failed:', err);
+        .catch(() => {
+          logPreloaderWarning('[Preloader] Background card metadata fetch failed.');
         });
     }
-  } catch (e) {
-    console.error('[Preloader] Error triggering preloading:', e);
+  } catch {
+    logPreloaderWarning('[Preloader] Error triggering preloading.');
   }
 }
 

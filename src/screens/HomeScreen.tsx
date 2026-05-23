@@ -254,7 +254,6 @@ export default function HomeScreen() {
   /* --------------------------------------------------------------------- */
 
   const isEmpty =
-    !owned.loading &&
     collectionIds.length === 0 &&
     !trimmed;
 
@@ -385,9 +384,13 @@ export default function HomeScreen() {
       ) : (
         <>
           {/* Portfolio Dashboard */}
-          <div
-            onClick={() => navigate('/stats')}
+          <button
+            type="button"
+            aria-label="Abrir biblioteca de colección"
+            onClick={() => navigate('/library')}
             style={{
+              display: 'block',
+              width: 'calc(100% - 36px)',
               margin: '0 18px 16px',
               background: 'linear-gradient(135deg, rgba(24, 28, 48, 0.85), rgba(12, 14, 26, 0.95))',
               backdropFilter: 'blur(20px)',
@@ -399,6 +402,8 @@ export default function HomeScreen() {
               cursor: 'pointer',
               overflow: 'hidden',
               position: 'relative',
+              textAlign: 'left',
+              fontFamily: 'inherit',
             }}
           >
             {/* Header info */}
@@ -457,7 +462,7 @@ export default function HomeScreen() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </button>
 
           {/* Stats grid */}
           <div

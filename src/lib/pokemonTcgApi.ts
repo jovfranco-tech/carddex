@@ -17,10 +17,14 @@ import {
 const BASE_URL = (
   import.meta.env.VITE_POKEMON_TCG_API_BASE_URL as string | undefined
 )?.trim() || 'https://api.pokemontcg.io/v2';
+const DEV_LOGS = import.meta.env.DEV;
 
-const API_KEY = (
-  import.meta.env.VITE_POKEMON_TCG_API_KEY as string | undefined
-)?.trim();
+function logCacheWarning(message: string): void {
+  if (DEV_LOGS) {
+    // eslint-disable-next-line no-console
+    console.warn(message);
+  }
+}
 
 export class TcgApiError extends Error {
   status: number;
@@ -53,7 +57,7 @@ export function isAbortError(err: unknown): boolean {
  * The API permits unauthenticated requests but with a tight rate limit.
  */
 export function hasApiKey(): boolean {
-  return Boolean(API_KEY);
+  return false;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -82,12 +86,10 @@ function loadPersistedCardCache(cacheMap: Map<string, PokemonCard>): void {
           }
         }
       });
-      // eslint-disable-next-line no-console
-      console.log(`[API Cache] Hydrated ${cacheMap.size} cards from localStorage.`);
+      logCacheWarning(`[API Cache] Hydrated ${cacheMap.size} cards from localStorage.`);
     }
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[API Cache] Failed to load persisted card cache:', e);
+  } catch {
+    logCacheWarning('[API Cache] Failed to load persisted card cache.');
   }
 }
 
@@ -125,9 +127,8 @@ function persistCardCache(cacheMap: Map<string, PokemonCard>): void {
     } else {
       localStorage.setItem('carddex.card_cache.v1', JSON.stringify(entries));
     }
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[API Cache] Failed to persist card cache:', e);
+  } catch {
+    logCacheWarning('[API Cache] Failed to persist card cache.');
   }
 }
 
@@ -160,11 +161,9 @@ async function initPersistedCardCache(cacheMap: Map<string, PokemonCard>): Promi
         }
       }
     });
-    // eslint-disable-next-line no-console
-    console.log(`[API Cache] Hydrated ${cacheMap.size} cards from IndexedDB.`);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[API Cache] Failed to load IndexedDB card cache:', e);
+    logCacheWarning(`[API Cache] Hydrated ${cacheMap.size} cards from IndexedDB.`);
+  } catch {
+    logCacheWarning('[API Cache] Failed to load IndexedDB card cache.');
   }
 }
 
@@ -204,9 +203,8 @@ class PersistedCardCache extends Map<string, PokemonCard> {
       try {
         localStorage.removeItem('carddex.card_cache.v1');
         clearCardsDb();
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('[API Cache] Failed to clear local caches:', e);
+      } catch {
+        logCacheWarning('[API Cache] Failed to clear local caches.');
       }
     }
   }
@@ -240,15 +238,46 @@ interface RequestOptions {
   isPrefetch?: boolean;
 }
 
+function withTimeoutSignal(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+): { signal: AbortSignal; cleanup: () => void; didTimeout: () => boolean } {
+  const ctrl = new AbortController();
+  let timedOut = false;
+
+  const timeout = globalThis.setTimeout(() => {
+    timedOut = true;
+    ctrl.abort();
+  }, timeoutMs);
+
+  const abortFromParent = () => ctrl.abort();
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener('abort', abortFromParent, { once: true });
+  }
+
+  return {
+    signal: ctrl.signal,
+    cleanup: () => {
+      globalThis.clearTimeout(timeout);
+      signal?.removeEventListener('abort', abortFromParent);
+    },
+    didTimeout: () => timedOut,
+  };
+}
+
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (API_KEY) headers['X-Api-Key'] = API_KEY;
+  const timedSignal = withTimeoutSignal(opts.signal, opts.isPrefetch ? 6000 : 12000);
 
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${path}`, { headers, signal: opts.signal });
+    res = await fetch(`${BASE_URL}${path}`, { headers, signal: timedSignal.signal });
   } catch (err) {
     if (isAbortError(err)) {
+      if (timedSignal.didTimeout()) {
+        throw new TcgApiError('La API tardó demasiado en responder. Inténtalo de nuevo.', 408);
+      }
       throw new TcgApiError('Petición cancelada.', 0, true);
     }
     throw new TcgApiError(
@@ -257,6 +286,8 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
         : 'Error de red desconocido.',
       0,
     );
+  } finally {
+    timedSignal.cleanup();
   }
 
   if (res.status === 429) {
@@ -888,9 +919,8 @@ export async function getCardsByIds(
     try {
       const response = await searchCards({ q, pageSize: BATCH_SIZE }, opts);
       return response.data;
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(`[API Batching] Failed to fetch batch of cards:`, err);
+    } catch {
+      logCacheWarning('[API Batching] Failed to fetch batch of cards.');
       return [];
     }
   });

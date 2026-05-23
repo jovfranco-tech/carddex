@@ -193,10 +193,20 @@ export default function CorrectionSheet({
             }}
           >
             {results.map((c) => (
-              <div
+              <button
+                type="button"
                 key={c.id}
                 onClick={() => onPick(c)}
-                style={{ cursor: 'pointer' }}
+                aria-label={`Elegir ${c.name}`}
+                style={{
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  color: 'inherit',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
               >
                 <TcgCardImage card={c} width={92} />
                 <div
@@ -220,7 +230,7 @@ export default function CorrectionSheet({
                 >
                   {c.set?.name ?? '—'} · {c.number}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}

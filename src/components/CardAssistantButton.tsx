@@ -68,10 +68,10 @@ export default function CardAssistantButton({
               fontSize: 14,
               fontWeight: 700,
               color: 'var(--ink)',
-              letterSpacing: -0.2,
+              letterSpacing: 0,
             }}
           >
-            Preguntar a IA
+            Preguntar al asistente
           </span>
           <span
             style={{

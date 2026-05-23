@@ -58,7 +58,7 @@
   "profile.achievements": "Achievements",
   "profile.share": "Share collection",
   "achievements.title": "Achievements",
-  "achievements.description": "Unlock achievements using Carddex AI-native features.",
+  "achievements.description": "Unlock achievements using CardDex AI-native features.",
   "achievements.progress": "{{unlocked}} / {{total}} achievements unlocked · {{percent}}%",
   "achievements.unlockedAt": "Unlocked on {{date}}",
   "achievements.category.ai": "✦ AI-Native",

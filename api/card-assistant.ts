@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
 
 /** 30 requests per hour per IP — enough for normal use, stops abuse. */
 const limiter = createRateLimiter({ maxRequests: 30, windowMs: 60 * 60 * 1000 });
@@ -55,9 +56,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         content: String(m.content || m.text || '').slice(0, 500),
       }));
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+      return res.status(503).json(serverAiUnavailable('El asistente LLM'));
     }
 
     // ── Build a tightly-scoped grounded system prompt ─────────────────────
@@ -120,17 +121,18 @@ INSTRUCCIONES:
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI Card Assistant Error:', errorText);
+      await response.text().catch(() => '');
+      console.warn('[Card Assistant] OpenAI request failed.');
       return res.status(response.status).json({ error: 'Error del servicio de IA' });
     }
 
     const data = await response.json();
     return res.status(200).json({
       reply: data.choices[0].message.content.trim(),
+      mode: 'server-llm',
     });
   } catch (error) {
-    console.error('Card Assistant API Error:', error);
+    console.warn('[Card Assistant] Request failed.');
     return res.status(500).json({ error: 'Error interno en el servidor' });
   }
 }

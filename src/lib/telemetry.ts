@@ -8,10 +8,8 @@ interface ErrorPayload {
   source?: string;
   lineno?: number;
   colno?: number;
-  stack?: string;
   context?: string;
   timestamp: string;
-  userAgent: string;
   url: string;
 }
 
@@ -23,9 +21,34 @@ interface EventPayload {
 }
 
 let isInitialized = false;
+const TELEMETRY_ENABLED = import.meta.env.VITE_TELEMETRY_MODE === 'server';
+
+function safeUrl(): string {
+  try {
+    return `${window.location.origin}${window.location.pathname}`;
+  } catch {
+    return 'unknown';
+  }
+}
+
+function safeText(value: unknown, max = 240): string {
+  return String(value || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/(sk-[A-Za-z0-9_-]+)/g, '[redacted-key]')
+    .slice(0, max);
+}
+
+function safeMetadata(metadata: unknown): Record<string, string> | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(metadata as Record<string, unknown>).slice(0, 8)) {
+    out[safeText(key, 40)] = safeText(value, 120);
+  }
+  return out;
+}
 
 export function initTelemetry(): void {
-  if (isInitialized || typeof window === 'undefined') return;
+  if (isInitialized || typeof window === 'undefined' || !TELEMETRY_ENABLED) return;
 
   // Unhandled standard runtime exceptions
   window.onerror = (message, source, lineno, colno, error) => {
@@ -49,22 +72,19 @@ export function initTelemetry(): void {
   };
 
   isInitialized = true;
-  console.log('[Telemetry] Active & Observing runtime exceptions.');
 }
 
 /**
  * Tracks an exception and sends it to the serverless logging endpoint.
  */
 export function trackError(error: Error, context?: string, details?: Partial<ErrorPayload>): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !TELEMETRY_ENABLED) return;
 
   const payload: ErrorPayload = {
-    message: error.message || 'Unknown Error',
-    stack: error.stack,
-    context: context || 'application',
+    message: safeText(error.message || 'Unknown Error'),
+    context: safeText(context || 'application', 80),
     timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    url: window.location.href,
+    url: safeUrl(),
     ...details
   };
 
@@ -75,13 +95,13 @@ export function trackError(error: Error, context?: string, details?: Partial<Err
  * Tracks a custom telemetry event (e.g. scanning, deck optimization, passkey login success).
  */
 export function trackEvent(name: string, metadata?: any): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !TELEMETRY_ENABLED) return;
 
   const payload: EventPayload = {
-    name,
-    metadata,
+    name: safeText(name, 80),
+    metadata: safeMetadata(metadata),
     timestamp: new Date().toISOString(),
-    url: window.location.href
+    url: safeUrl()
   };
 
   deliver('/api/telemetry', { type: 'event', data: payload });
@@ -100,9 +120,9 @@ function deliver(url: string, body: any): void {
         headers: { 'Content-Type': 'application/json' },
         body: dataStr,
         keepalive: true
-      }).catch(err => console.warn('[Telemetry] Delivery failed:', err));
+      }).catch(() => {});
     }
   } catch (e) {
-    console.error('[Telemetry] Send error:', e);
+    // Telemetry must never affect the app or leak details to logs.
   }
 }

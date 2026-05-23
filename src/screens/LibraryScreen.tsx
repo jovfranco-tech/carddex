@@ -157,7 +157,7 @@ export default function LibraryScreen() {
           }
         }
       } catch (e) {
-        console.error(e);
+        console.info('[Search Assist] Server semantic search unavailable, using plain search.', e);
         if (active) {
           setTranslatedQuery(debouncedSearchQuery);
           setAiExplanation(null);
@@ -489,7 +489,7 @@ export default function LibraryScreen() {
             Identificando carta...
           </h3>
           <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
-            Nuestra IA está analizando los detalles visuales de tu carta usando OpenAI Vision.
+            CardDex está generando una sugerencia asistida. Confirma el resultado antes de guardar.
           </p>
 
           <style>{`
@@ -803,7 +803,7 @@ function Header({
                 transition: 'all 200ms ease',
               }}
             >
-              <span>✦ Búsqueda Semántica (IA)</span>
+              <span>✦ Búsqueda asistida</span>
               <span style={{
                 width: 6,
                 height: 6,
@@ -839,7 +839,7 @@ function Header({
               border: '0.5px solid rgba(123,90,217,0.2)',
               marginTop: -2,
             }}>
-              💡 Filtros aplicados: {aiExplanation}
+              Filtros aplicados: {aiExplanation}
             </div>
           )}
 

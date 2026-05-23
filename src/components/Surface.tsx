@@ -4,7 +4,7 @@ export interface SurfaceProps {
   children: ReactNode;
   onClick?: (event: MouseEvent<HTMLElement>) => void;
   style?: CSSProperties;
-  as?: 'div' | 'section' | 'article';
+  as?: 'div' | 'section' | 'article' | 'button';
   /** Inline padding shortcut: numbers become px, strings pass through. */
   padding?: number | string;
 }
@@ -28,8 +28,17 @@ export default function Surface({
     border: '0.5px solid var(--border-soft)',
     padding: padding != null ? padding : undefined,
     cursor: onClick ? 'pointer' : undefined,
+    fontFamily: 'inherit',
+    textAlign: 'inherit',
     ...style,
   };
+  if (as === 'button') {
+    return (
+      <button type="button" style={composed} onClick={onClick}>
+        {children}
+      </button>
+    );
+  }
   return (
     <Tag style={composed} onClick={onClick}>
       {children}

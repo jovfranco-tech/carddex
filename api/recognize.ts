@@ -1,4 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types.js';
+import { createRateLimiter } from './_rateLimiter.js';
+import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+
+const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
+const MAX_IMAGE_CHARS = 6_700_000;
 
 let setsCache: string = '';
 let cacheExpiry = 0;
@@ -11,7 +16,7 @@ async function getSetListContext(): Promise<string> {
 
   try {
     const headers: Record<string, string> = { Accept: 'application/json' };
-    const apiKey = process.env.VITE_POKEMON_TCG_API_KEY;
+    const apiKey = process.env.POKEMON_TCG_API_KEY;
     if (apiKey) {
       headers['X-Api-Key'] = apiKey;
     }
@@ -32,8 +37,8 @@ async function getSetListContext(): Promise<string> {
       cacheExpiry = now + 4 * 3600 * 1000; // Cache por 4 horas
       return setsCache;
     }
-  } catch (e) {
-    console.error('Error fetching sets for GPT context:', e);
+  } catch {
+    console.warn('[OCR] Failed to fetch set context for recognition.');
   }
 
   // Fallback si la petición falla o tarda demasiado
@@ -65,15 +70,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const ip =
+    (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    'unknown';
+
+  if (!(await limiter.check(ip))) {
+    return res.status(429).json({
+      error: 'Demasiados escaneos. Espera un momento antes de intentarlo de nuevo.',
+      retryAfter: limiter.retryAfter(ip),
+    });
+  }
+
   try {
     const { image, languageHint } = req.body;
-    if (!image) {
+    if (!image || typeof image !== 'string') {
       return res.status(400).json({ error: 'No image provided' });
     }
+    if (image.length > MAX_IMAGE_CHARS) {
+      return res.status(413).json({ error: 'La imagen es demasiado grande (máximo 5 MB).' });
+    }
+    if (!image.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'El OCR de servidor sólo acepta capturas locales en formato data URL.' });
+    }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getServerOpenAiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY no configurada en el servidor' });
+      return res.status(503).json(serverAiUnavailable('El OCR de servidor'));
     }
 
     const setListContext = await getSetListContext();
@@ -93,8 +116,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       '- "englishSetHint": El nombre del set equivalente en inglés o su ID (ej. "Journey Together", "sv9", "me3"). Si es inglés o no lo sabes, pon null.\n\n' +
       'No incluyas markdown (como ```json), solo el JSON raw puro y válido.';
 
-    if (languageHint && languageHint !== 'AUTO') {
-      systemInstruction += `\n\n[CONTEXTO DE IDIOMA]: El usuario ha indicado que la carta física está en el idioma: "${languageHint}". Usa esta información de contexto de manera activa para guiar tu OCR y corregir falsas transcripciones visuales de caracteres.`;
+    const safeLanguageHint = ['EN', 'ES', 'JP', 'AUTO'].includes(String(languageHint))
+      ? String(languageHint)
+      : 'AUTO';
+    if (safeLanguageHint !== 'AUTO') {
+      systemInstruction += `\n\n[CONTEXTO DE IDIOMA]: El usuario ha indicado que la carta física está en el idioma: "${safeLanguageHint}". Usa esta información de contexto de manera activa para guiar tu OCR y corregir falsas transcripciones visuales de caracteres.`;
     }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -129,8 +155,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI Error:', errorText);
+      await response.text().catch(() => '');
+      console.warn('[OCR] OpenAI recognition request failed.');
       return res.status(response.status).json({ error: 'Error del servicio de IA' });
     }
 
@@ -147,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(parsed);
   } catch (error) {
-    console.error('OCR Error:', error);
+    console.warn('[OCR] Server recognition failed.');
     return res.status(500).json({ error: 'Error interno en el servidor OCR' });
   }
 }

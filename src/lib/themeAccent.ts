@@ -1,6 +1,6 @@
 /**
  * System theme accent customization utility.
- * Defines 5 premium HSL accent colors for Carddex:
+ * Defines 5 premium HSL accent colors for CardDex:
  * 1. Electric Blue (Original)
  * 2. Fire Orange (Charizard-inspired)
  * 3. Grass Green (Venusaur-inspired)

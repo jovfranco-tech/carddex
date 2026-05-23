@@ -51,6 +51,8 @@ export default function LibraryFiltersBar({
         <button
           type="button"
           onClick={() => setSortOpen((s) => !s)}
+          aria-expanded={sortOpen}
+          aria-label={`Ordenar cartas por ${SORT_LABELS[sort]}`}
           style={{
             flex: 1,
             background: 'var(--surface)',
@@ -93,6 +95,7 @@ export default function LibraryFiltersBar({
             ).map(([k, icon, label]) => (
               <button
                 key={k}
+                type="button"
                 onClick={() => setView(k)}
                 aria-label={label}
                 aria-pressed={view === k}
@@ -123,6 +126,7 @@ export default function LibraryFiltersBar({
             {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
               <button
                 key={k}
+                type="button"
                 onClick={() => {
                   setSort(k);
                   setSortOpen(false);
@@ -182,7 +186,10 @@ export default function LibraryFiltersBar({
             Solo mis cartas
           </span>
           <button
+            type="button"
             onClick={() => setOnlyMine((o) => !o)}
+            aria-label={onlyMine ? 'Mostrar todas las cartas' : 'Mostrar solo mis cartas'}
+            aria-pressed={onlyMine}
             style={{
               width: 46,
               height: 28,

@@ -1,5 +1,4 @@
 import React, { useRef, useEffect } from 'react';
-import { loadOpenCv } from '@/lib/openCvLoader';
 
 interface EdgeDetectorCanvasProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -25,13 +24,6 @@ export default function EdgeDetectorCanvas({
   const lastCallbackRef = useRef<number>(0);
 
   useEffect(() => {
-    // Attempt pre-loading OpenCV early
-    if (active) {
-      loadOpenCv().catch(() => {});
-    }
-  }, [active]);
-
-  useEffect(() => {
     if (!active || !videoRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -48,7 +40,7 @@ export default function EdgeDetectorCanvas({
     const offscreen = document.createElement('canvas');
     offscreen.width = width;
     offscreen.height = height;
-    const offCtx = offscreen.getContext('2d');
+    const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
 
     let lastProcessTime = 0;
     const tick = () => {
