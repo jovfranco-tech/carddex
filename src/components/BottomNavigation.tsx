@@ -72,7 +72,7 @@ export default function BottomNavigation() {
         right: 0,
         bottom: 0,
         zIndex: 30,
-        padding: '8px 8px 26px',
+        padding: '8px 8px calc(8px + env(safe-area-inset-bottom, 18px))',
         background: 'rgba(247, 248, 251, 0.92)',
         backdropFilter: 'blur(18px) saturate(180%)',
         WebkitBackdropFilter: 'blur(18px) saturate(180%)',

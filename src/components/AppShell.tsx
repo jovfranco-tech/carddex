@@ -138,7 +138,7 @@ export default function AppShell({ children }: AppShellProps) {
         }
         .sync-pill {
           position: absolute;
-          top: 14px;
+          top: calc(14px + env(safe-area-inset-top, 0px));
           left: 50%;
           transform: translateX(-50%);
           z-index: 1000;
@@ -205,7 +205,8 @@ export default function AppShell({ children }: AppShellProps) {
           background: var(--bg);
           overflow-x: hidden;
           overflow-y: auto;
-          padding-bottom: ${hideNav ? '0' : '80px'};
+          padding-top: env(safe-area-inset-top, 0px);
+          padding-bottom: ${hideNav ? '0px' : 'calc(80px + env(safe-area-inset-bottom, 0px))'};
         }
         @media (min-width: 481px) {
           .shell-wrap {

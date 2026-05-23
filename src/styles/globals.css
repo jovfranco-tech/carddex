@@ -4,6 +4,25 @@
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent; /* Disable web gray tap highlights */
+  -webkit-touch-callout: none; /* Disable long-press Safari links/images popup menu */
+}
+
+/* Disable text selection on interactive elements to feel like native apps */
+button,
+a,
+nav,
+h1,
+.sync-pill,
+.modal-close-btn {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* snappy iOS interactions: eliminate double-tap-to-zoom and click delays */
+button,
+a {
+  touch-action: manipulation;
 }
 
 html,
