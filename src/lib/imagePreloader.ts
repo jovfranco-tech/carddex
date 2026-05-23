@@ -98,9 +98,9 @@ export async function triggerPredictivePreload() {
     // 1. Gather all unique card IDs from collection and decks
     const cardIds = new Set<string>();
 
-    // Add collection IDs (owned)
+    // Add collection IDs (owned, favorite, or wishlist)
     Object.values(collection.cards)
-      .filter((c) => c.owned)
+      .filter((c) => c.owned || c.favorite || c.wishlist)
       .forEach((c) => cardIds.add(c.cardId));
 
     // Add deck IDs

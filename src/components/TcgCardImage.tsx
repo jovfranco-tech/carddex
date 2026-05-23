@@ -281,6 +281,13 @@ export default function TcgCardImage({
         rgba(255, 255, 255, 0.25) ${holoPos.x + 15}%,
         rgba(255, 255, 255, 0.15) 100%
       ),
+      repeating-linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.04) 0px,
+        rgba(255, 255, 255, 0.04) 1px,
+        transparent 1px,
+        transparent 3px
+      ),
       ${holoColors.rainbow},
       radial-gradient(
         circle at ${holoPos.x}% ${holoPos.y}%,
