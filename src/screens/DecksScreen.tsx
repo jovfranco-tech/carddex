@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import { useDecks } from '@/lib/hooks';
 import { createDeck, deleteDeck } from '@/lib/deckStorage';
 import { PlusIcon, TrashIcon } from '@/components/icons';
 import { ROUTES } from '@/app/routes';
-import DeckBuilderModal from '@/components/DeckBuilderModal';
 import { Toast } from '@/components/Section';
 import { useI18n } from '@/lib/i18n';
+
+const DeckBuilderModal = lazy(() => import('@/components/DeckBuilderModal'));
 
 export default function DecksScreen() {
   const decksState = useDecks();
@@ -161,12 +162,14 @@ export default function DecksScreen() {
         )}
       </div>
 
-      <DeckBuilderModal
-        isOpen={isBuilderOpen}
-        onClose={() => setIsBuilderOpen(false)}
-        onSuccess={(id) => navigate(ROUTES.deckDetail(id))}
-        onShowToast={(msg) => setToastMsg(msg)}
-      />
+      <Suspense fallback={null}>
+        <DeckBuilderModal
+          isOpen={isBuilderOpen}
+          onClose={() => setIsBuilderOpen(false)}
+          onSuccess={(id) => navigate(ROUTES.deckDetail(id))}
+          onShowToast={(msg) => setToastMsg(msg)}
+        />
+      </Suspense>
 
       <Toast
         message={toastMsg ?? ''}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Surface from '@/components/Surface';
 import { useDecks, useAsync, useCollection } from '@/lib/hooks';
@@ -19,11 +19,12 @@ import {
 import { Toast } from '@/components/Section';
 import { ROUTES } from '@/app/routes';
 import type { PokemonCard } from '@/types/pokemon';
-import PremiumShareModal from '@/components/PremiumShareModal';
 import SocialShareButton from '@/components/SocialShareButton';
-import DeckPlaytestModal from '@/components/DeckPlaytestModal';
-import DeckOptimizationModal from '@/components/DeckOptimizationModal';
 import { triggerHaptic } from '@/lib/haptic';
+
+const PremiumShareModal = lazy(() => import('@/components/PremiumShareModal'));
+const DeckPlaytestModal = lazy(() => import('@/components/DeckPlaytestModal'));
+const DeckOptimizationModal = lazy(() => import('@/components/DeckOptimizationModal'));
 
 /**
  * Maps a list of cards to official Pokémon TCG Live (PTCGL) export format.
@@ -679,31 +680,33 @@ export default function DeckDetailScreen() {
         duration={2000}
       />
 
-      <PremiumShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        deckName={deck.name}
-        deckCards={deckCards.data ?? []}
-        cardIds={deck.cards}
-        onShowToast={showToast}
-      />
-
-      <DeckPlaytestModal
-        isOpen={isPlaytestOpen}
-        onClose={() => setIsPlaytestOpen(false)}
-        deckName={deck.name}
-        deckCards={deckCards.data ?? []}
-        cardIds={deck.cards}
-      />
-
-      {deck && deckCards.data && (
-        <DeckOptimizationModal
-          deck={deck}
-          deckCards={deckCards.data}
-          isOpen={isOptimizerOpen}
-          onClose={() => setIsOptimizerOpen(false)}
+      <Suspense fallback={null}>
+        <PremiumShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          deckName={deck.name}
+          deckCards={deckCards.data ?? []}
+          cardIds={deck.cards}
+          onShowToast={showToast}
         />
-      )}
+
+        <DeckPlaytestModal
+          isOpen={isPlaytestOpen}
+          onClose={() => setIsPlaytestOpen(false)}
+          deckName={deck.name}
+          deckCards={deckCards.data ?? []}
+          cardIds={deck.cards}
+        />
+
+        {deck && deckCards.data && (
+          <DeckOptimizationModal
+            deck={deck}
+            deckCards={deckCards.data}
+            isOpen={isOptimizerOpen}
+            onClose={() => setIsOptimizerOpen(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
