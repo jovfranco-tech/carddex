@@ -105,7 +105,7 @@ export default function BottomNavigation() {
               cursor: 'pointer',
               fontFamily: 'inherit',
               padding: '4px 6px',
-              transition: 'color 160ms',
+              transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 160ms',
               minWidth: 50,
               position: 'relative',
             }}
@@ -147,6 +147,12 @@ export default function BottomNavigation() {
         @keyframes pulseBadge {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.2); }
+        }
+        .bottom-nav-fixed button {
+          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 160ms !important;
+        }
+        .bottom-nav-fixed button:active {
+          transform: scale(0.90);
         }
       `}</style>
     </nav>
