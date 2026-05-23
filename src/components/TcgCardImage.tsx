@@ -65,6 +65,7 @@ export default function TcgCardImage({
 
   useEffect(() => {
     let active = true;
+    setLoaded(false);
     const rawSrc = useLarge
       ? (card.images?.large ?? card.images?.small)
       : (card.images?.small ?? card.images?.large);
@@ -97,6 +98,7 @@ export default function TcgCardImage({
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
   const [holoPos, setHoloPos] = useState({ x: 50, y: 50 });
   const [active, setActive] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const isHolo = isHolographic(card.rarity);
   const isRainbow =
@@ -236,7 +238,7 @@ export default function TcgCardImage({
     borderRadius: radius,
     overflow: 'hidden',
     flexShrink: 0,
-    background: '#EAECF1',
+    background: 'var(--border-soft)',
     boxShadow: hero
       ? '0 18px 28px rgba(15,20,40,0.18)'
       : '0 1px 2px rgba(15,20,40,0.06), 0 4px 12px rgba(15,20,40,0.08)',
@@ -322,8 +324,11 @@ export default function TcgCardImage({
             objectFit: 'cover',
             display: 'block',
             backfaceVisibility: 'hidden',
+            filter: loaded ? 'blur(0px)' : 'blur(8px)',
+            transition: 'filter 0.35s ease-out',
           }}
           onLoad={(e) => {
+            setLoaded(true);
             const img = e.currentTarget;
             if (src && !src.startsWith('data:') && img.naturalWidth) {
               setTimeout(() => {
