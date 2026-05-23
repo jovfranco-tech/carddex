@@ -60,7 +60,7 @@ export default function DeckPlaytestModal({
     triggerHaptic('medium');
     const fullDeck = initializeDeck();
     const shuffled = shuffleDeck(fullDeck);
-    
+
     const initialHand = shuffled.slice(0, 7);
     const initialPrizes = shuffled.slice(7, 13);
     const remainingDeck = shuffled.slice(13);
@@ -77,7 +77,7 @@ export default function DeckPlaytestModal({
     triggerHaptic('medium');
     const fullDeck = initializeDeck();
     const shuffled = shuffleDeck(fullDeck);
-    
+
     const initialHand = shuffled.slice(0, 7);
     const initialPrizes = shuffled.slice(7, 13);
     const remainingDeck = shuffled.slice(13);
@@ -87,7 +87,10 @@ export default function DeckPlaytestModal({
     setDeckPile(remainingDeck);
     setShowPrizes(false);
     setSelectedCard(null);
-    setHistory((prev) => [...prev, '¡Mulligan! Se rebarajó el mazo y se robó una mano de 7 cartas.']);
+    setHistory((prev) => [
+      ...prev,
+      '¡Mulligan! Se rebarajó el mazo y se robó una mano de 7 cartas.',
+    ]);
   };
 
   const handleDrawCard = () => {
@@ -128,7 +131,9 @@ export default function DeckPlaytestModal({
         }}
       >
         <div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>Simulador Playtest</div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
+            Simulador Playtest
+          </div>
           <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>{deckName}</div>
         </div>
         <button
@@ -174,7 +179,14 @@ export default function DeckPlaytestModal({
             <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--accent)' }}>
               {deckPile.length}
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 700, marginTop: 4 }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.6)',
+                fontWeight: 700,
+                marginTop: 4,
+              }}
+            >
               Cartas en mazo
             </div>
             <button
@@ -212,7 +224,14 @@ export default function DeckPlaytestModal({
             <div style={{ fontSize: 32, fontWeight: 900, color: '#F2994A' }}>
               {prizeCards.length}
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 700, marginTop: 4 }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.6)',
+                fontWeight: 700,
+                marginTop: 4,
+              }}
+            >
               Premios (Boca Abajo)
             </div>
             <button
@@ -252,7 +271,11 @@ export default function DeckPlaytestModal({
               }}
             >
               {prizeCards.map((c, i) => (
-                <div key={`${c.id}-${i}`} onClick={() => setSelectedCard(c)} style={{ cursor: 'pointer' }}>
+                <div
+                  key={`${c.id}-${i}`}
+                  onClick={() => setSelectedCard(c)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <TcgCardImage card={c} width={75} />
                 </div>
               ))}
@@ -329,7 +352,8 @@ export default function DeckPlaytestModal({
                   style={{
                     cursor: 'pointer',
                     transition: 'transform 200ms ease',
-                    transform: selectedCard?.id === c.id ? 'scale(1.05) translateY(-4px)' : 'scale(1)',
+                    transform:
+                      selectedCard?.id === c.id ? 'scale(1.05) translateY(-4px)' : 'scale(1)',
                   }}
                 >
                   <TcgCardImage card={c} width={80} />
@@ -416,7 +440,14 @@ export default function DeckPlaytestModal({
             flexDirection: 'column',
           }}
         >
-          <div style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: 'rgba(255,255,255,0.5)',
+              marginBottom: 8,
+            }}
+          >
             Registro de Juego:
           </div>
           <div

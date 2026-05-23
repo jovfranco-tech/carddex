@@ -101,7 +101,8 @@ export default function DeckShareScreen() {
     if (!deckCards.data || cardIds.length === 0) return;
     try {
       const ptcglText = exportDeckToPTCGL(deckCards.data, cardIds);
-      navigator.clipboard.writeText(ptcglText)
+      navigator.clipboard
+        .writeText(ptcglText)
         .then(() => {
           showToast('Lista de mazo copiada en formato PTCGL');
         })
@@ -232,8 +233,17 @@ export default function DeckShareScreen() {
       <div style={{ padding: '14px 0 0' }}>
         {/* Banner */}
         <div style={{ padding: '0 14px 14px' }}>
-          <Surface style={{ padding: 16, textAlign: 'center', background: 'linear-gradient(135deg, var(--surface), rgba(240, 243, 250, 0.5))', border: '1px dashed var(--accent-tint)' }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--ink)', letterSpacing: -0.5 }}>
+          <Surface
+            style={{
+              padding: 16,
+              textAlign: 'center',
+              background: 'linear-gradient(135deg, var(--surface), rgba(240, 243, 250, 0.5))',
+              border: '1px dashed var(--accent-tint)',
+            }}
+          >
+            <div
+              style={{ fontSize: 28, fontWeight: 900, color: 'var(--ink)', letterSpacing: -0.5 }}
+            >
               {cardIds.length} / 60
             </div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, fontWeight: 700 }}>
@@ -244,7 +254,23 @@ export default function DeckShareScreen() {
 
         {/* Visual Analytics */}
         {deckCards.data && deckCards.data.length > 0 && (
-          <React.Suspense fallback={<div style={{ minHeight: 80, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>Cargando análisis visual...</div>}>
+          <React.Suspense
+            fallback={
+              <div
+                style={{
+                  minHeight: 80,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  color: 'var(--muted)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Cargando análisis visual...
+              </div>
+            }
+          >
             <VisualCollectionStats
               ownedCards={deckCards.data}
               collection={collectionMock}

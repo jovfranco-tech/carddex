@@ -62,25 +62,27 @@ const ELEMENT_EMOJIS: Record<string, string> = {
 
 export default function CustomCardScreen() {
   const navigate = useNavigate();
-  
+
   // Form states
   const [name, setName] = useState('Gemini Dragon');
   const [type, setType] = useState('Dragon');
   const [style, setStyle] = useState('Illustration Rare');
-  const [artPrompt, setArtPrompt] = useState('Dragon composed of glowing neural network paths, neon circuitry, epic fantasy landscape');
-  
+  const [artPrompt, setArtPrompt] = useState(
+    'Dragon composed of glowing neural network paths, neon circuitry, epic fantasy landscape'
+  );
+
   // Fusion mode
   const [isFusionMode, setIsFusionMode] = useState(false);
   const [fusionCardA, setFusionCardA] = useState('Charizard ex');
   const [fusionCardB, setFusionCardB] = useState('Mewtwo ex');
-  
+
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Active custom card preview
   const [currentCard, setCurrentCard] = useState<CustomCard | null>(null);
-  
+
   // Custom cards collection saved locally
   const [savedCards, setSavedCards] = useState<CustomCard[]>([]);
 
@@ -116,7 +118,7 @@ export default function CustomCardScreen() {
       'Canalizando energía de IA...',
       'Calculando HP y habilidades balanceadas...',
       'Consultando al ilustrador DALL-E...',
-      'Holografiando bordes metálicos...'
+      'Holografiando bordes metálicos...',
     ];
 
     let currentStepIdx = 0;
@@ -142,26 +144,32 @@ export default function CustomCardScreen() {
       }
 
       const data = await res.json();
-      
+
       const newCard: CustomCard = {
         id: `custom-${Date.now()}`,
-        name: isFusionMode ? (data.name || `${fusionCardA} × ${fusionCardB}`) : name,
+        name: isFusionMode ? data.name || `${fusionCardA} × ${fusionCardB}` : name,
         type: type,
         style: style,
         hp: data.hp || '160',
         stage: data.stage || 'Basic',
         attack1: data.attack1 || { name: 'Ataque IA 1', cost: [type], damage: '50', effect: '' },
-        attack2: data.attack2 || { name: 'Ataque IA 2', cost: [type, 'Colorless'], damage: '100', effect: '' },
+        attack2: data.attack2 || {
+          name: 'Ataque IA 2',
+          cost: [type, 'Colorless'],
+          damage: '100',
+          effect: '',
+        },
         weakness: data.weakness || 'Colorless',
         resistance: data.resistance || null,
         retreatCost: data.retreatCost || 1,
-        description: data.description || 'Una asombrosa creación impulsada por inteligencia artificial.',
+        description:
+          data.description || 'Una asombrosa creación impulsada por inteligencia artificial.',
         imageUrl: data.imageUrl,
         createdAt: new Date().toISOString(),
       };
 
       setCurrentCard(newCard);
-      
+
       // Auto-save to list
       const updatedList = [newCard, ...savedCards];
       setSavedCards(updatedList);
@@ -187,7 +195,7 @@ export default function CustomCardScreen() {
   const handleDeleteCard = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     triggerHaptic('medium');
-    const updated = savedCards.filter(c => c.id !== id);
+    const updated = savedCards.filter((c) => c.id !== id);
     setSavedCards(updated);
     localStorage.setItem('carddex.customCards', JSON.stringify(updated));
     triggerCustomCardsSync();
@@ -203,7 +211,7 @@ export default function CustomCardScreen() {
 
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left; // x position within element
-    const y = e.clientY - rect.top;  // y position within element
+    const y = e.clientY - rect.top; // y position within element
 
     const width = rect.width;
     const height = rect.height;
@@ -430,7 +438,8 @@ export default function CustomCardScreen() {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    backgroundImage: 'linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.08) 55%, rgba(255,255,255,0) 80%)',
+                    backgroundImage:
+                      'linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.08) 55%, rgba(255,255,255,0) 80%)',
                     backgroundPosition: `${tilt.bx}% ${tilt.by}%`,
                     backgroundSize: '250% 250%',
                     mixBlendMode: 'overlay',
@@ -445,7 +454,8 @@ export default function CustomCardScreen() {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    backgroundImage: 'radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%)',
+                    backgroundImage:
+                      'radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%)',
                     mixBlendMode: 'color-dodge',
                     zIndex: 3,
                     pointerEvents: 'none',
@@ -469,12 +479,32 @@ export default function CustomCardScreen() {
                   }}
                 >
                   {/* Top header: Name, HP, Type */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          color: 'rgba(255,255,255,0.5)',
+                          textTransform: 'uppercase',
+                        }}
+                      >
                         {currentCard.stage}
                       </span>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#fff', letterSpacing: -0.3 }}>
+                      <span
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 900,
+                          color: '#fff',
+                          letterSpacing: -0.3,
+                        }}
+                      >
                         {currentCard.name}
                       </span>
                     </div>
@@ -482,16 +512,18 @@ export default function CustomCardScreen() {
                       <span style={{ fontSize: 16, fontWeight: 900, color: '#FF3B30' }}>
                         {currentCard.hp} HP
                       </span>
-                      <span style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        background: ELEMENT_COLORS[currentCard.type],
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 12,
-                      }}>
+                      <span
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          background: ELEMENT_COLORS[currentCard.type],
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                        }}
+                      >
                         {ELEMENT_EMOJIS[currentCard.type]}
                       </span>
                     </div>
@@ -516,37 +548,84 @@ export default function CustomCardScreen() {
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       loading="lazy"
                     />
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 4,
-                      right: 6,
-                      fontSize: 8,
-                      color: 'rgba(255,255,255,0.4)',
-                      background: 'rgba(0,0,0,0.5)',
-                      padding: '1px 4px',
-                      borderRadius: 4,
-                    }}>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 4,
+                        right: 6,
+                        fontSize: 8,
+                        color: 'rgba(255,255,255,0.4)',
+                        background: 'rgba(0,0,0,0.5)',
+                        padding: '1px 4px',
+                        borderRadius: 4,
+                      }}
+                    >
                       IA Art: {currentCard.style}
                     </div>
                   </div>
 
                   {/* Body: Attacks */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, justifyContent: 'center', padding: '8px 2px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      flex: 1,
+                      justifyContent: 'center',
+                      padding: '8px 2px',
+                    }}
+                  >
                     {/* Attack 1 */}
-                    <div style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', paddingBottom: 6 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+                        paddingBottom: 6,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           {currentCard.attack1.cost.map((c, i) => (
-                            <span key={i} style={{ width: 14, height: 14, borderRadius: '50%', background: ELEMENT_COLORS[c] || '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>
+                            <span
+                              key={i}
+                              style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: '50%',
+                                background: ELEMENT_COLORS[c] || '#fff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 8,
+                              }}
+                            >
                               {ELEMENT_EMOJIS[c] || '⭐'}
                             </span>
                           ))}
-                          <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginLeft: 4 }}>{currentCard.attack1.name}</span>
+                          <span
+                            style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginLeft: 4 }}
+                          >
+                            {currentCard.attack1.name}
+                          </span>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{currentCard.attack1.damage}</span>
+                        <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>
+                          {currentCard.attack1.damage}
+                        </span>
                       </div>
                       {currentCard.attack1.effect && (
-                        <p style={{ margin: '2px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>
+                        <p
+                          style={{
+                            margin: '2px 0 0',
+                            fontSize: 10,
+                            color: 'rgba(255,255,255,0.7)',
+                            lineHeight: 1.2,
+                          }}
+                        >
                           {currentCard.attack1.effect}
                         </p>
                       )}
@@ -554,19 +633,50 @@ export default function CustomCardScreen() {
 
                     {/* Attack 2 */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           {currentCard.attack2.cost.map((c, i) => (
-                            <span key={i} style={{ width: 14, height: 14, borderRadius: '50%', background: ELEMENT_COLORS[c] || '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>
+                            <span
+                              key={i}
+                              style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: '50%',
+                                background: ELEMENT_COLORS[c] || '#fff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 8,
+                              }}
+                            >
                               {ELEMENT_EMOJIS[c] || '⭐'}
                             </span>
                           ))}
-                          <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginLeft: 4 }}>{currentCard.attack2.name}</span>
+                          <span
+                            style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginLeft: 4 }}
+                          >
+                            {currentCard.attack2.name}
+                          </span>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{currentCard.attack2.damage}</span>
+                        <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>
+                          {currentCard.attack2.damage}
+                        </span>
                       </div>
                       {currentCard.attack2.effect && (
-                        <p style={{ margin: '2px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>
+                        <p
+                          style={{
+                            margin: '2px 0 0',
+                            fontSize: 10,
+                            color: 'rgba(255,255,255,0.7)',
+                            lineHeight: 1.2,
+                          }}
+                        >
                           {currentCard.attack2.effect}
                         </p>
                       )}
@@ -575,7 +685,15 @@ export default function CustomCardScreen() {
 
                   {/* Footer: Weakness, Resistance, Retreat */}
                   <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.15)', paddingTop: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 9,
+                        color: 'rgba(255,255,255,0.6)',
+                        fontWeight: 600,
+                      }}
+                    >
                       <div>
                         <span>Debilidad: </span>
                         <span style={{ color: '#fff' }}>
@@ -584,25 +702,43 @@ export default function CustomCardScreen() {
                       </div>
                       <div>
                         <span>Resistencia: </span>
-                        <span style={{ color: '#fff' }}>
-                          {currentCard.resistance || 'Ninguna'}
-                        </span>
+                        <span style={{ color: '#fff' }}>{currentCard.resistance || 'Ninguna'}</span>
                       </div>
                       <div>
                         <span>Coste Retirada: </span>
                         <span style={{ color: '#fff' }}>
-                          {Array.from({ length: currentCard.retreatCost }).map(() => '★').join('') || '—'}
+                          {Array.from({ length: currentCard.retreatCost })
+                            .map(() => '★')
+                            .join('') || '—'}
                         </span>
                       </div>
                     </div>
                     {/* Flavor Text */}
-                    <p style={{ margin: '4px 0 0', fontSize: 8.5, fontStyle: 'italic', color: 'rgba(255,255,255,0.45)', textAlign: 'center', borderTop: '0.5px solid rgba(255,255,255,0.06)', paddingTop: 3 }}>
+                    <p
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: 8.5,
+                        fontStyle: 'italic',
+                        color: 'rgba(255,255,255,0.45)',
+                        textAlign: 'center',
+                        borderTop: '0.5px solid rgba(255,255,255,0.06)',
+                        paddingTop: 3,
+                      }}
+                    >
                       "{currentCard.description}"
                     </p>
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: 12, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: 'var(--muted)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
                 💡 Tip: Mueve el mouse sobre la carta para ver el efecto holográfico 3D
               </span>
               {/* Download as PNG button */}
@@ -624,8 +760,12 @@ export default function CustomCardScreen() {
                   marginTop: 2,
                   transition: 'background 150ms ease',
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }}
               >
                 ⬇ Descargar como PNG
               </button>
@@ -650,25 +790,34 @@ export default function CustomCardScreen() {
             >
               <span style={{ fontSize: 40 }}>🃏</span>
               <div style={{ fontWeight: 700, fontSize: 14 }}>Sin carta generada aún</div>
-              <p style={{ fontSize: 12, margin: 0 }}>Completa el formulario para forjar tu primera carta con Inteligencia Artificial.</p>
+              <p style={{ fontSize: 12, margin: 0 }}>
+                Completa el formulario para forjar tu primera carta con Inteligencia Artificial.
+              </p>
             </div>
           )}
         </div>
 
         {/* Creator Form Column */}
         <Surface style={{ padding: 20 }}>
-          <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>Configuración de la Carta</h2>
-            
+          <form
+            onSubmit={handleGenerate}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>
+              Configuración de la Carta
+            </h2>
+
             {/* Mode Toggle */}
-            <div style={{
-              display: 'flex',
-              background: 'rgba(255,255,255,0.04)',
-              border: '0.5px solid rgba(255,255,255,0.08)',
-              borderRadius: 14,
-              padding: 4,
-              gap: 4,
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                background: 'rgba(255,255,255,0.04)',
+                border: '0.5px solid rgba(255,255,255,0.08)',
+                borderRadius: 14,
+                padding: 4,
+                gap: 4,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setIsFusionMode(false)}
@@ -696,7 +845,9 @@ export default function CustomCardScreen() {
                   padding: '8px 12px',
                   borderRadius: 10,
                   border: isFusionMode ? '1px solid rgba(255,149,0,0.4)' : '1px solid transparent',
-                  background: isFusionMode ? 'linear-gradient(135deg, rgba(255,149,0,0.3), rgba(255,59,48,0.3))' : 'transparent',
+                  background: isFusionMode
+                    ? 'linear-gradient(135deg, rgba(255,149,0,0.3), rgba(255,59,48,0.3))'
+                    : 'transparent',
                   color: isFusionMode ? '#FF9500' : 'rgba(255,255,255,0.5)',
                   fontSize: 13,
                   fontWeight: 700,
@@ -711,25 +862,27 @@ export default function CustomCardScreen() {
 
             {/* Name (only shown in normal mode) */}
             {!isFusionMode && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>Nombre del Pokémon</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Antigravity Coder"
-                required={!isFusionMode}
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 14,
-                  color: 'var(--ink)',
-                  fontFamily: 'inherit',
-                }}
-              />
-            </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>
+                  Nombre del Pokémon
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ej: Antigravity Coder"
+                  required={!isFusionMode}
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    padding: 12,
+                    fontSize: 14,
+                    color: 'var(--ink)',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
             )}
 
             {/* Fusion inputs (only in fusion mode) */}
@@ -737,26 +890,88 @@ export default function CustomCardScreen() {
               <>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pokémon A</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: 'rgba(255,255,255,0.6)',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Pokémon A
+                    </label>
                     <input
                       value={fusionCardA}
-                      onChange={e => setFusionCardA(e.target.value)}
+                      onChange={(e) => setFusionCardA(e.target.value)}
                       placeholder="Charizard ex"
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,149,0,0.3)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(255,149,0,0.3)',
+                        background: 'rgba(255,255,255,0.04)',
+                        color: '#fff',
+                        fontSize: 13,
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 10, fontSize: 20 }}>🧬</div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      paddingBottom: 10,
+                      fontSize: 20,
+                    }}
+                  >
+                    🧬
+                  </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pokémon B</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: 'rgba(255,255,255,0.6)',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Pokémon B
+                    </label>
                     <input
                       value={fusionCardB}
-                      onChange={e => setFusionCardB(e.target.value)}
+                      onChange={(e) => setFusionCardB(e.target.value)}
                       placeholder="Mewtwo ex"
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,149,0,0.3)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(255,149,0,0.3)',
+                        background: 'rgba(255,255,255,0.04)',
+                        color: '#fff',
+                        fontSize: 13,
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'rgba(255,149,0,0.8)', textAlign: 'center', fontStyle: 'italic' }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'rgba(255,149,0,0.8)',
+                    textAlign: 'center',
+                    fontStyle: 'italic',
+                  }}
+                >
                   ✦ La IA fusionará ambos Pokémon en una carta épica con arte generativo
                 </div>
               </>
@@ -765,7 +980,9 @@ export default function CustomCardScreen() {
             {/* Type & Style in Row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>Elemento / Tipo</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>
+                  Elemento / Tipo
+                </label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
@@ -780,13 +997,17 @@ export default function CustomCardScreen() {
                   }}
                 >
                   {Object.keys(ELEMENT_COLORS).map((t) => (
-                    <option key={t} value={t}>{ELEMENT_EMOJIS[t]} {t}</option>
+                    <option key={t} value={t}>
+                      {ELEMENT_EMOJIS[t]} {t}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>Estilo de Rareza</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>
+                  Estilo de Rareza
+                </label>
                 <select
                   value={style}
                   onChange={(e) => setStyle(e.target.value)}
@@ -810,26 +1031,28 @@ export default function CustomCardScreen() {
 
             {/* Art Prompt (only in normal mode) */}
             {!isFusionMode && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>Indicación de Arte para IA (DALL-E)</label>
-              <textarea
-                value={artPrompt}
-                onChange={(e) => setArtPrompt(e.target.value)}
-                placeholder="Describe la escena, colores y detalles que quieres que la IA ilustre."
-                rows={3}
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 13,
-                  color: 'var(--ink)',
-                  fontFamily: 'inherit',
-                  resize: 'none',
-                  lineHeight: 1.4,
-                }}
-              />
-            </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)' }}>
+                  Indicación de Arte para IA (DALL-E)
+                </label>
+                <textarea
+                  value={artPrompt}
+                  onChange={(e) => setArtPrompt(e.target.value)}
+                  placeholder="Describe la escena, colores y detalles que quieres que la IA ilustre."
+                  rows={3}
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    padding: 12,
+                    fontSize: 13,
+                    color: 'var(--ink)',
+                    fontFamily: 'inherit',
+                    resize: 'none',
+                    lineHeight: 1.4,
+                  }}
+                />
+              </div>
             )}
 
             {error && (
@@ -843,7 +1066,9 @@ export default function CustomCardScreen() {
               type="submit"
               disabled={loading}
               style={{
-                background: loading ? 'rgba(123,90,217,0.2)' : 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
+                background: loading
+                  ? 'rgba(123,90,217,0.2)'
+                  : 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 14,
@@ -861,14 +1086,16 @@ export default function CustomCardScreen() {
             >
               {loading ? (
                 <>
-                  <div style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.2)',
-                    borderTopColor: '#fff',
-                    animation: 'spinCreatorLoader 0.7s linear infinite'
-                  }} />
+                  <div
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      borderTopColor: '#fff',
+                      animation: 'spinCreatorLoader 0.7s linear infinite',
+                    }}
+                  />
                   <span>{loadingStep || 'Generando carta...'}</span>
                 </>
               ) : (
@@ -885,7 +1112,15 @@ export default function CustomCardScreen() {
       {/* Saved Custom Creations Gallery */}
       {savedCards.length > 0 && (
         <div style={{ padding: '24px 18px 0' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)', margin: '0 0 12px', letterSpacing: -0.4 }}>
+          <h2
+            style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: 'var(--ink)',
+              margin: '0 0 12px',
+              letterSpacing: -0.4,
+            }}
+          >
             Mis Creaciones Custom ({savedCards.length})
           </h2>
           <div
@@ -918,22 +1153,43 @@ export default function CustomCardScreen() {
                     cursor: 'pointer',
                   }}
                 >
-                  <div style={{ width: '100%', aspectRatio: '1.2 / 1', borderRadius: 8, overflow: 'hidden', background: '#090a0f' }}>
-                    <img src={c.imageUrl} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1.2 / 1',
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      background: '#090a0f',
+                    }}
+                  >
+                    <img
+                      src={c.imageUrl}
+                      alt={c.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </div>
-                  <div style={{
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    color: 'var(--ink)',
-                    marginTop: 6,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    textAlign: 'center',
-                  }}>
+                  <div
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 800,
+                      color: 'var(--ink)',
+                      marginTop: 6,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      textAlign: 'center',
+                    }}
+                  >
                     {c.name}
                   </div>
-                  <div style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center', marginTop: 2 }}>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      color: 'var(--muted)',
+                      textAlign: 'center',
+                      marginTop: 2,
+                    }}
+                  >
                     {ELEMENT_EMOJIS[c.type]} {c.type}
                   </div>
                   {/* Delete button */}

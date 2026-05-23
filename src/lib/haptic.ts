@@ -2,13 +2,7 @@
  * Utility for triggering haptic feedback via the HTML5 vibration API.
  */
 
-export type HapticType =
-  | 'light'
-  | 'medium'
-  | 'heavy'
-  | 'success'
-  | 'warning'
-  | 'error';
+export type HapticType = 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error';
 
 const HAPTIC_PATTERNS: Record<HapticType, number[]> = {
   light: [15],

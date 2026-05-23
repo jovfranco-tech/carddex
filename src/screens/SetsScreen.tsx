@@ -107,10 +107,7 @@ export default function SetsScreen() {
       {/* Error */}
       {setsState.error && !setsState.data && (
         <div style={{ padding: '24px 18px' }}>
-          <ErrorState
-            message={setsState.error}
-            onRetry={() => setsState.reload()}
-          />
+          <ErrorState message={setsState.error} onRetry={() => setsState.reload()} />
         </div>
       )}
 
@@ -154,26 +151,25 @@ export default function SetsScreen() {
   );
 }
 
-function SetChecklist({
-  setId,
-  collection,
-}: {
-  setId: string;
-  collection: any;
-}) {
+function SetChecklist({ setId, collection }: { setId: string; collection: any }) {
   const navigate = useViewTransitionNavigate();
-  const { data: cards, loading, error } = useAsync(async (signal) => {
-    const res = await getCardsBySet(setId, 1, 250, { signal });
-    return res.data;
-  }, [setId]);
+  const {
+    data: cards,
+    loading,
+    error,
+  } = useAsync(
+    async (signal) => {
+      const res = await getCardsBySet(setId, 1, 250, { signal });
+      return res.data;
+    },
+    [setId]
+  );
 
   useEffect(() => {
     if (!cards || cards.length === 0) return;
 
     // Filter first 12 cards not owned by the user
-    const unownedCards = cards
-      .filter((c) => !collection.cards[c.id]?.owned)
-      .slice(0, 12);
+    const unownedCards = cards.filter((c) => !collection.cards[c.id]?.owned).slice(0, 12);
 
     const urlsToPrefetch: string[] = [];
     unownedCards.forEach((c) => {
@@ -250,9 +246,10 @@ function SetChecklist({
             key={i}
             style={{
               width: 78,
-              height: 78 * 1.4,
+              aspectRatio: '5 / 7',
               borderRadius: 6,
-              background: 'linear-gradient(135deg, rgba(15, 20, 40, 0.05) 0%, rgba(15, 20, 40, 0.02) 100%)',
+              background:
+                'linear-gradient(135deg, rgba(15, 20, 40, 0.05) 0%, rgba(15, 20, 40, 0.02) 100%)',
               border: '1.5px solid var(--border-soft)',
               boxShadow: 'inset 0 0 12px rgba(255, 255, 255, 0.02)',
               position: 'relative',
@@ -268,7 +265,8 @@ function SetChecklist({
                 left: 0,
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                background:
+                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
                 transform: 'translateX(-100%)',
                 animation: 'shimmerSkeleton 1.8s infinite',
               }}
@@ -290,7 +288,9 @@ function SetChecklist({
 
   if (error) {
     return (
-      <div style={{ color: 'var(--error)', fontSize: 12.5, padding: '12px 0', textAlign: 'center' }}>
+      <div
+        style={{ color: 'var(--error)', fontSize: 12.5, padding: '12px 0', textAlign: 'center' }}
+      >
         ⚠️ {error}
       </div>
     );
@@ -531,7 +531,10 @@ function SetRow({
         containIntrinsicSize: isExpanded ? '0 450px' : '0 88px',
       }}
     >
-      <div onClick={onToggleExpand} style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}>
+      <div
+        onClick={onToggleExpand}
+        style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
+      >
         <SetLogoTile set={set} fallbackBg={fallbackBg} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -636,13 +639,7 @@ function SetRow({
   );
 }
 
-function SetLogoTile({
-  set,
-  fallbackBg,
-}: {
-  set: CardSet;
-  fallbackBg: string;
-}) {
+function SetLogoTile({ set, fallbackBg }: { set: CardSet; fallbackBg: string }) {
   const logo = set.images?.logo;
   const symbol = set.images?.symbol;
 
@@ -744,8 +741,7 @@ function SetRowSkeleton() {
             height: 14,
             width: '60%',
             borderRadius: 6,
-            background:
-              'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
+            background: 'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.4s linear infinite',
           }}
@@ -756,8 +752,7 @@ function SetRowSkeleton() {
             height: 10,
             width: '40%',
             borderRadius: 6,
-            background:
-              'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
+            background: 'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.4s linear infinite',
           }}

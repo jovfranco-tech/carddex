@@ -132,7 +132,6 @@ function nextDemoName(): string {
   return name;
 }
 
-
 /* Offline Card Catalog — extracted to offlineCardCatalog.ts and dynamically imported when needed */
 
 /**
@@ -238,7 +237,7 @@ export function scoreOfflineCardMatch(card: PokemonCard, ocrText: string): numbe
   // E.g. "125/197" or "125 of 197" or "125 de 197"
   const numberPart = card.number ? card.number.toLowerCase() : '';
   const printedTotal = card.set.printedTotal ? String(card.set.printedTotal) : '';
-  
+
   if (numberPart) {
     if (printedTotal) {
       const fractionRegex = new RegExp(`${numberPart}\\s*[\\/|of|de]\\s*${printedTotal}`, 'i');
@@ -246,7 +245,7 @@ export function scoreOfflineCardMatch(card: PokemonCard, ocrText: string): numbe
         score += 15;
       }
     }
-    
+
     // Check if the number itself appears as a standalone word/token
     const numberRegex = new RegExp(`(?:^|\\D)${numberPart}(?:$|\\D)`);
     if (numberRegex.test(cleanOcr)) {
@@ -256,8 +255,10 @@ export function scoreOfflineCardMatch(card: PokemonCard, ocrText: string): numbe
 
   // 2. Match Card Name
   const cleanName = card.name.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-  const nameWords = cleanName.split(/\s+/).filter(w => w.length > 2 && w !== 'the' && w !== 'and');
-  
+  const nameWords = cleanName
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && w !== 'the' && w !== 'and');
+
   if (cleanOcr.includes(cleanName)) {
     score += 10;
   } else {
@@ -285,7 +286,10 @@ export function scoreOfflineCardMatch(card: PokemonCard, ocrText: string): numbe
   return score;
 }
 
-export async function getOfflineRecognitionResult(imageHash: string, ocrText?: string): Promise<RecognitionResult> {
+export async function getOfflineRecognitionResult(
+  imageHash: string,
+  ocrText?: string
+): Promise<RecognitionResult> {
   const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
   let card: PokemonCard;
 
@@ -300,7 +304,7 @@ export async function getOfflineRecognitionResult(imageHash: string, ocrText?: s
 
         if (ocrText) {
           const ocrScore = scoreOfflineCardMatch(c, ocrText);
-          combinedScore = visualDistance - (ocrScore * 1.2);
+          combinedScore = visualDistance - ocrScore * 1.2;
         }
 
         if (combinedScore < minScore) {
@@ -342,7 +346,6 @@ export async function getOfflineRecognitionResult(imageHash: string, ocrText?: s
 /* Pure helpers — tested in isolation                                         */
 /* ------------------------------------------------------------------------- */
 
-
 /**
  * Classify a card into a high-level category from its supertype.
  * Pure, synchronous, easy to test.
@@ -379,10 +382,7 @@ export function classifyPokemonTypes(card?: PokemonCard | null): string[] {
  * Pure function: only looks at what's already in the result, no I/O.
  */
 export function getRecognitionConfidence(
-  result: Pick<
-    RecognitionResult,
-    'card' | 'cardName' | 'cardCategory' | 'number' | 'possibleSet'
-  >,
+  result: Pick<RecognitionResult, 'card' | 'cardName' | 'cardCategory' | 'number' | 'possibleSet'>
 ): number {
   if (!result.card) return 0;
   let score = 0.5; // base score for having any API match at all
@@ -408,7 +408,7 @@ export function buildRecognitionResultFromApiCard(
     source?: RecognitionResult['source'];
     simulated?: boolean;
     detectedLanguage?: string | null;
-  } = {},
+  } = {}
 ): RecognitionResult {
   const cardCategory = classifyCardCategory(card);
   const pokemonTypes = classifyPokemonTypes(card);
@@ -430,8 +430,7 @@ export function buildRecognitionResultFromApiCard(
     number,
   };
 
-  const confidence =
-    options.confidence ?? getRecognitionConfidence({ ...base });
+  const confidence = options.confidence ?? getRecognitionConfidence({ ...base });
   return {
     ...base,
     confidence,
@@ -510,11 +509,9 @@ function setOcrCache(cache: Record<string, OcrCacheEntry>): void {
 function saveToOcrCache(hash: string, data: any): void {
   const cache = getOcrCache();
   const keys = Object.keys(cache);
-  
+
   if (keys.length >= 100) {
-    const sorted = keys
-      .map((k) => cache[k])
-      .sort((a, b) => a.timestamp - b.timestamp);
+    const sorted = keys.map((k) => cache[k]).sort((a, b) => a.timestamp - b.timestamp);
     const evictCount = Math.max(1, keys.length - 99);
     for (let i = 0; i < evictCount; i++) {
       delete cache[sorted[i].hash];
@@ -543,11 +540,11 @@ function getNumberQuery(rawNum: string): string {
   const clean = rawNum.split('/')[0].trim();
   const digits = clean.replace(/\D/g, '');
   const nonDigits = clean.replace(/\d/g, '');
-  
+
   if (!digits) {
     return `number:"${clean}"`;
   }
-  
+
   const val = parseInt(digits, 10);
   const variants = new Set<string>();
   variants.add(clean);
@@ -555,21 +552,21 @@ function getNumberQuery(rawNum: string): string {
   variants.add(nonDigits + val.toString().padStart(2, '0'));
   variants.add(nonDigits + val.toString().padStart(3, '0'));
   variants.add(nonDigits + val.toString().padStart(4, '0'));
-  
-  const variantQueries = Array.from(variants).map(v => `number:"${v}"`);
+
+  const variantQueries = Array.from(variants).map((v) => `number:"${v}"`);
   return `(${variantQueries.join(' OR ')})`;
 }
 
 export async function recognizeCardFromImage(
   input: RecognitionInput,
-  opts: RecognizeOptions = {},
+  opts: RecognizeOptions = {}
 ): Promise<RecognitionResult> {
   let seed: string;
   let ocrNumber: string | undefined;
   let detectedLanguage: string | null = null;
   let englishNumber: string | null = null;
   let englishSetHint: string | null = null;
-  
+
   if (input.type === 'seed') {
     seed = input.name;
   } else if (input.type === 'file' || input.type === 'frame') {
@@ -578,7 +575,7 @@ export async function recognizeCardFromImage(
     // In ScanScreen.tsx, we pass `{ type: 'file', file }` for both live camera frames and gallery picker!
     // So it's always type === 'file'.
     if (input.type !== 'file') {
-       seed = nextDemoName();
+      seed = nextDemoName();
     } else {
       let imageHash = '';
       let base64 = '';
@@ -588,7 +585,7 @@ export async function recognizeCardFromImage(
           const reader = new FileReader();
           reader.readAsDataURL(optimizedFile);
           reader.onload = () => resolve(reader.result as string);
-          reader.onerror = error => reject(error);
+          reader.onerror = (error) => reject(error);
         });
 
         // 1.5. Calculate hash & check Cache (combining hash and active languageHint)
@@ -610,7 +607,7 @@ export async function recognizeCardFromImage(
                 const rawNum = vectorData.number.split('/')[0].trim();
                 const numQ = getNumberQuery(rawNum);
                 const q = `name:"${cleanName}" AND ${numQ}`;
-                
+
                 try {
                   const apiRes = await searchCards({ q, pageSize: 1 }, { signal: opts.signal });
                   const card = apiRes.data[0] || null;
@@ -639,7 +636,7 @@ export async function recognizeCardFromImage(
 
         if (localCache[cacheIndex]) {
           ocrData = localCache[cacheIndex].data;
-          
+
           // Refresh access timestamp (LRU update)
           localCache[cacheIndex].timestamp = Date.now();
           setOcrCache(localCache);
@@ -662,7 +659,7 @@ export async function recognizeCardFromImage(
           });
 
           if (!ocrRes.ok) {
-             throw new Error(await ocrRes.text());
+            throw new Error(await ocrRes.text());
           }
 
           ocrData = await ocrRes.json();
@@ -672,7 +669,7 @@ export async function recognizeCardFromImage(
         }
 
         if (!ocrData.cardName) {
-           return buildEmptyResult('no_match');
+          return buildEmptyResult('no_match');
         }
 
         seed = ocrData.cardName;
@@ -692,12 +689,14 @@ export async function recognizeCardFromImage(
         let ocrText: string | undefined = undefined;
         if (base64) {
           try {
-            const langCode = opts.languageHint === 'ES' ? 'spa' : opts.languageHint === 'JP' ? 'jpn' : 'eng';
+            const langCode =
+              opts.languageHint === 'ES' ? 'spa' : opts.languageHint === 'JP' ? 'jpn' : 'eng';
             const { createWorker } = await import('tesseract.js');
             const worker = await createWorker(langCode, 1, {
               workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
               langPath: 'https://tessdata.projectnaptha.com/4.0.0_fast',
-              corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core.wasm.js',
+              corePath:
+                'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core.wasm.js',
             });
             const ret = await worker.recognize(base64);
             ocrText = ret.data.text;
@@ -776,31 +775,46 @@ export async function recognizeCardFromImage(
     // Capa 1: Búsqueda precisa (Nombre + Número + Set)
     if (nameQuery && numberQuery && targetSetId) {
       const q = `${nameQuery} AND ${numberQuery} AND set.id:${targetSetId}`;
-      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal: opts.signal }
+      );
     }
 
     // Capa 1.5: Nombre + Set (Si falló la Capa 1 pero teníamos Set. Útil si el número de la carta japonesa/extranjera difiere del número occidental)
     if (res.data.length === 0 && nameQuery && targetSetId) {
       const q = `${nameQuery} AND set.id:${targetSetId}`;
-      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal: opts.signal }
+      );
     }
 
     // Capa 2: Nombre + Número (Si falló la Capa 1 o no teníamos Set)
     if (res.data.length === 0 && nameQuery && numberQuery) {
       const q = `${nameQuery} AND ${numberQuery}`;
-      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal: opts.signal }
+      );
     }
 
     // Capa 3: Nombre completo (Si falló la Capa 2 o no teníamos Número)
     if (res.data.length === 0 && nameQuery) {
       const q = nameQuery;
-      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal: opts.signal }
+      );
     }
 
     // Capa 4: Primer término del nombre (Si falló la Capa 3 - súper robusto)
     if (res.data.length === 0 && firstWordQuery) {
       const q = firstWordQuery;
-      res = await searchCards({ q, pageSize: 4, orderBy: '-set.releaseDate' }, { signal: opts.signal });
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal: opts.signal }
+      );
     }
 
     if (res.data.length === 0) {
@@ -808,9 +822,11 @@ export async function recognizeCardFromImage(
       const cleanSeedLower = seed.toLowerCase().trim();
       const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
       const localMatch = OFFLINE_CARD_CATALOG.find((card: PokemonCard) => {
-        const nameMatch = card.name.toLowerCase().includes(cleanSeedLower) || cleanSeedLower.includes(card.name.toLowerCase());
+        const nameMatch =
+          card.name.toLowerCase().includes(cleanSeedLower) ||
+          cleanSeedLower.includes(card.name.toLowerCase());
         if (!nameMatch) return false;
-        
+
         if (ocrNumber) {
           const cleanOcrNum = ocrNumber.split('/')[0].replace(/^[0]+/, '').trim();
           const cleanCardNum = card.number.replace(/^[0]+/, '').trim();
@@ -836,8 +852,7 @@ export async function recognizeCardFromImage(
     const detected =
       res.data.find(
         (c: any) =>
-          Boolean(c.images?.large || c.images?.small) &&
-          Boolean(c.tcgplayer || c.cardmarket),
+          Boolean(c.images?.large || c.images?.small) && Boolean(c.tcgplayer || c.cardmarket)
       ) ?? res.data[0];
 
     seedCache.set(cacheKey, detected);

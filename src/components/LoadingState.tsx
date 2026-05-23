@@ -30,8 +30,7 @@ export default function LoadingState({
             style={{
               aspectRatio: '5 / 7',
               borderRadius: 8,
-              background:
-                'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
+              background: 'linear-gradient(110deg, #EAECF1 8%, #F2F4F7 18%, #EAECF1 33%)',
               backgroundSize: '200% 100%',
               animation: 'shimmer 1.4s linear infinite',
             }}

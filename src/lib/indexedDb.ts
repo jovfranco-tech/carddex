@@ -71,9 +71,13 @@ export async function getCardFromDb(id: string): Promise<PokemonCard | null> {
         const result = request.result;
         if (result && result.card) {
           const card = result.card;
-          const isLocal = card.set?.id === 'custom' || card.subtypes?.includes('Custom') || card.id.startsWith('mep-') || card.id.startsWith('custom-');
+          const isLocal =
+            card.set?.id === 'custom' ||
+            card.subtypes?.includes('Custom') ||
+            card.id.startsWith('mep-') ||
+            card.id.startsWith('custom-');
           const hasImages = card.images && (card.images.small || card.images.large);
-          
+
           if (!isLocal && !hasImages) {
             // Delete corrupt card entry asynchronously
             store.delete(id);
@@ -93,7 +97,9 @@ export async function getCardFromDb(id: string): Promise<PokemonCard | null> {
   }
 }
 
-export async function getAllCardsFromDb(): Promise<{ id: string; card: PokemonCard; timestamp: number }[]> {
+export async function getAllCardsFromDb(): Promise<
+  { id: string; card: PokemonCard; timestamp: number }[]
+> {
   if (!canUseIndexedDb()) return [];
   try {
     const db = await getDb();

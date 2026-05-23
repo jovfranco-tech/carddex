@@ -1,9 +1,18 @@
 import type { PokemonCard } from '@/types/pokemon';
 
 interface JitterState {
-  x1: number; y1: number; scale1: number; conf1: number;
-  x2: number; y2: number; scale2: number; conf2: number;
-  x3: number; y3: number; scale3: number; conf3: number;
+  x1: number;
+  y1: number;
+  scale1: number;
+  conf1: number;
+  x2: number;
+  y2: number;
+  scale2: number;
+  conf2: number;
+  x3: number;
+  y3: number;
+  scale3: number;
+  conf3: number;
 }
 
 interface MulticardBoundingBoxesProps {
@@ -56,7 +65,9 @@ export default function MulticardBoundingBoxes({
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7B5AD9' }} />
-            <span>{detectedMulticards[0].name} ({jitter.conf1}%)</span>
+            <span>
+              {detectedMulticards[0].name} ({jitter.conf1}%)
+            </span>
           </div>
         </div>
       )}
@@ -99,7 +110,9 @@ export default function MulticardBoundingBoxes({
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#E07A25' }} />
-            <span>{detectedMulticards[1].name} ({jitter.conf2}%)</span>
+            <span>
+              {detectedMulticards[1].name} ({jitter.conf2}%)
+            </span>
           </div>
         </div>
       )}
@@ -142,7 +155,9 @@ export default function MulticardBoundingBoxes({
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2F6FE0' }} />
-            <span>{detectedMulticards[2].name} ({jitter.conf3}%)</span>
+            <span>
+              {detectedMulticards[2].name} ({jitter.conf3}%)
+            </span>
           </div>
         </div>
       )}

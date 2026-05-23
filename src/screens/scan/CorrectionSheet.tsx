@@ -10,10 +10,7 @@ interface CorrectionSheetProps {
   onPick: (card: PokemonCard) => void;
 }
 
-export default function CorrectionSheet({
-  onClose,
-  onPick,
-}: CorrectionSheetProps) {
+export default function CorrectionSheet({ onClose, onPick }: CorrectionSheetProps) {
   const [q, setQ] = useState('');
   const debounced = useDebounced(q, 280);
   const [results, setResults] = useState<PokemonCard[]>([]);
@@ -90,9 +87,7 @@ export default function CorrectionSheet({
             marginBottom: 10,
           }}
         >
-          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.3 }}>
-            Buscar carta
-          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.3 }}>Buscar carta</div>
           <button
             onClick={onClose}
             style={{

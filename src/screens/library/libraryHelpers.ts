@@ -20,28 +20,53 @@ export interface AdvancedFilters {
 
 export function mapTypeToEnglish(t: string): string {
   switch (t) {
-    case 'fuego': return 'fire';
-    case 'agua': return 'water';
-    case 'planta': return 'grass';
-    case 'rayo': case 'eléctrico': case 'electrico': return 'lightning';
-    case 'psíquico': case 'psiquico': return 'psychic';
-    case 'lucha': return 'fighting';
-    case 'oscuridad': case 'siniestro': return 'darkness';
-    case 'metal': case 'acero': return 'metal';
-    case 'dragón': case 'dragon': return 'dragon';
-    case 'incoloro': return 'colorless';
-    case 'hada': return 'fairy';
-    default: return t;
+    case 'fuego':
+      return 'fire';
+    case 'agua':
+      return 'water';
+    case 'planta':
+      return 'grass';
+    case 'rayo':
+    case 'eléctrico':
+    case 'electrico':
+      return 'lightning';
+    case 'psíquico':
+    case 'psiquico':
+      return 'psychic';
+    case 'lucha':
+      return 'fighting';
+    case 'oscuridad':
+    case 'siniestro':
+      return 'darkness';
+    case 'metal':
+    case 'acero':
+      return 'metal';
+    case 'dragón':
+    case 'dragon':
+      return 'dragon';
+    case 'incoloro':
+      return 'colorless';
+    case 'hada':
+      return 'fairy';
+    default:
+      return t;
   }
 }
 
 export function mapRarityToEnglish(r: string): string {
   switch (r) {
-    case 'común': case 'comun': return 'common';
-    case 'infrecuente': return 'uncommon';
-    case 'rara': return 'rare';
-    case 'secreta': case 'secreto': return 'secret';
-    default: return r;
+    case 'común':
+    case 'comun':
+      return 'common';
+    case 'infrecuente':
+      return 'uncommon';
+    case 'rara':
+      return 'rare';
+    case 'secreta':
+    case 'secreto':
+      return 'secret';
+    default:
+      return r;
   }
 }
 
@@ -89,8 +114,10 @@ export function parseAdvancedQuery(query: string): AdvancedFilters {
 
 export function matchesAdvancedFilters(c: PokemonCard, f: AdvancedFilters): boolean {
   if (f.name) {
-    const cleanCardName = c.name.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const cleanCardName = c.name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -98,17 +125,20 @@ export function matchesAdvancedFilters(c: PokemonCard, f: AdvancedFilters): bool
     // Clean the Lucene query terms for robust clientside matching
     const cleanSearchQueryRaw = cleanLuceneQueryForLocalSearch(f.name);
     const cleanSearchQuery = cleanSearchQueryRaw
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
     const queryWords = cleanSearchQuery.split(' ').filter(Boolean);
-    const wordMatch = queryWords.length === 0 || queryWords.every(word => cleanCardName.includes(word));
+    const wordMatch =
+      queryWords.length === 0 || queryWords.every((word) => cleanCardName.includes(word));
 
     const numMatch = c.number?.toLowerCase().includes(f.name);
-    const setMatch = c.set?.name?.toLowerCase().includes(f.name) || c.set?.id?.toLowerCase().includes(f.name);
-    
+    const setMatch =
+      c.set?.name?.toLowerCase().includes(f.name) || c.set?.id?.toLowerCase().includes(f.name);
+
     if (!wordMatch && !numMatch && !setMatch) return false;
   }
 

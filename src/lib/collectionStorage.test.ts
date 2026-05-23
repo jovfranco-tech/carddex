@@ -164,7 +164,13 @@ describe('Historical Value Snapshots', () => {
         supertype: 'Pokémon',
         subtypes: ['Stage 2', 'Tera'],
         types: ['Fire'],
-        set: { id: 'sv3', name: 'Obsidian Flames', series: 'Scarlet & Violet', printedTotal: 197, total: 230 },
+        set: {
+          id: 'sv3',
+          name: 'Obsidian Flames',
+          series: 'Scarlet & Violet',
+          printedTotal: 197,
+          total: 230,
+        },
         number: '125',
         rarity: 'Double Rare',
         images: { small: '', large: '' },
@@ -199,7 +205,13 @@ describe('Historical Value Snapshots', () => {
         supertype: 'Pokémon',
         subtypes: [],
         types: ['Lightning'],
-        set: { id: 'cel25', name: 'Celebrations', series: 'Celebrations', printedTotal: 25, total: 25 },
+        set: {
+          id: 'cel25',
+          name: 'Celebrations',
+          series: 'Celebrations',
+          printedTotal: 25,
+          total: 25,
+        },
         number: '25',
         rarity: 'Rare',
         images: { small: '', large: '' },
@@ -250,7 +262,7 @@ describe('seedHistoricalData', () => {
     const history = getCollection().history ?? [];
     history.forEach((p) => {
       expect(p.value).toBeGreaterThanOrEqual(current * 0.4); // floor with slack
-      expect(p.value).toBeLessThanOrEqual(current * 1.3);   // cap with slack
+      expect(p.value).toBeLessThanOrEqual(current * 1.3); // cap with slack
     });
   });
 
@@ -368,4 +380,3 @@ describe('initializeCollectionStorage', () => {
     expect(restored.cards['cel25-25']).toBeUndefined();
   });
 });
-

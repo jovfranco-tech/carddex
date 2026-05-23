@@ -60,26 +60,22 @@ describe('classifyCardCategory', () => {
 describe('classifyPokemonTypes', () => {
   it('returns the elemental types when the card is a Pokémon', () => {
     expect(
-      classifyPokemonTypes(
-        makeCard({ supertype: 'Pokémon', types: ['Fire', 'Dragon'] }),
-      ),
+      classifyPokemonTypes(makeCard({ supertype: 'Pokémon', types: ['Fire', 'Dragon'] }))
     ).toEqual(['Fire', 'Dragon']);
   });
 
   it('returns an empty array for Trainer / Energy cards (even if API returns types)', () => {
-    expect(
-      classifyPokemonTypes(makeCard({ supertype: 'Trainer', types: ['Colorless'] })),
-    ).toEqual([]);
-    expect(
-      classifyPokemonTypes(makeCard({ supertype: 'Energy', types: ['Lightning'] })),
-    ).toEqual([]);
+    expect(classifyPokemonTypes(makeCard({ supertype: 'Trainer', types: ['Colorless'] }))).toEqual(
+      []
+    );
+    expect(classifyPokemonTypes(makeCard({ supertype: 'Energy', types: ['Lightning'] }))).toEqual(
+      []
+    );
   });
 
   it('returns an empty array when types is missing or empty', () => {
     expect(classifyPokemonTypes(makeCard({ supertype: 'Pokémon' }))).toEqual([]);
-    expect(
-      classifyPokemonTypes(makeCard({ supertype: 'Pokémon', types: [] })),
-    ).toEqual([]);
+    expect(classifyPokemonTypes(makeCard({ supertype: 'Pokémon', types: [] }))).toEqual([]);
   });
 
   it('returns an empty array for nullish input', () => {
@@ -142,7 +138,7 @@ describe('getRecognitionConfidence', () => {
         cardCategory: 'Unknown',
         number: null,
         possibleSet: null,
-      }),
+      })
     ).toBe(0);
   });
 
@@ -241,7 +237,7 @@ describe('Offline Fallback and Hashing', () => {
     // Mewtwo ex pre-calculated dhash signature is:
     // '0000111100001111110011001100110010101010101010100011110000111100'
     const targetMewtwoDHash = '0000111100001111110011001100110010101010101010100011110000111100';
-    
+
     // We create a slightly modified dhash (with Hamming distance 2)
     const noisyMewtwoDHash = '0000111100001111110011001100110010101010101010100011110000111111';
 
@@ -263,7 +259,7 @@ describe('Offline Fallback and Hashing', () => {
   });
 
   it('scoreOfflineCardMatch calculates correct scores for card attributes', () => {
-    const charizard = OFFLINE_CARD_CATALOG.find(c => c.id === 'sv3-125')!;
+    const charizard = OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv3-125')!;
     expect(charizard).toBeDefined();
 
     // 1. Exact match of number fraction and name should yield high score
@@ -302,4 +298,3 @@ describe('Offline Fallback and Hashing', () => {
     expect(hybridResult.card!.id).toBe('me3-50');
   });
 });
-

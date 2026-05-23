@@ -13,14 +13,22 @@ function CategoryIcon({ category }: { category: string }) {
   return <ZapIcon size={14} />;
 }
 
-function AchievementCard({ achievement, unlocked, unlockedAt }: {
+function AchievementCard({
+  achievement,
+  unlocked,
+  unlockedAt,
+}: {
   achievement: Achievement;
   unlocked: boolean;
   unlockedAt?: string;
 }) {
   const { t, locale } = useI18n();
   const dateStr = unlockedAt
-    ? new Date(unlockedAt).toLocaleDateString(locale === 'es' ? 'es-MX' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? new Date(unlockedAt).toLocaleDateString(locale === 'es' ? 'es-MX' : 'en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
     : null;
 
   return (
@@ -150,7 +158,9 @@ export default function AchievementsScreen() {
   }, []);
 
   return (
-    <div style={{ paddingBottom: 'var(--bottom-nav-clearance)', overflowY: 'auto', height: '100%' }}>
+    <div
+      style={{ paddingBottom: 'var(--bottom-nav-clearance)', overflowY: 'auto', height: '100%' }}
+    >
       {/* Hero header */}
       <div
         style={{
@@ -177,12 +187,21 @@ export default function AchievementsScreen() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <TrophyIcon size={26} color="#FFD700" />
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: -0.6 }}>
+          <h1
+            style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: -0.6 }}
+          >
             {t('achievements.title')}
           </h1>
         </div>
 
-        <p style={{ margin: '0 0 20px', fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
+        <p
+          style={{
+            margin: '0 0 20px',
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.55)',
+            lineHeight: 1.4,
+          }}
+        >
           {t('achievements.description')}
         </p>
 
@@ -208,38 +227,45 @@ export default function AchievementsScreen() {
           />
         </div>
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
-          {t('achievements.progress', { unlocked: unlockedCount, total: totalCount, percent: progress })}
+          {t('achievements.progress', {
+            unlocked: unlockedCount,
+            total: totalCount,
+            percent: progress,
+          })}
         </div>
       </div>
 
       {/* Achievement groups */}
       <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 28 }}>
-        {Object.entries(grouped).map(([cat, items]) => (
-          items.length > 0 && (
-            <div key={cat}>
-              <div style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-                marginBottom: 12,
-              }}>
-                {t('achievements.category.' + cat)}
+        {Object.entries(grouped).map(
+          ([cat, items]) =>
+            items.length > 0 && (
+              <div key={cat}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    marginBottom: 12,
+                  }}
+                >
+                  {t('achievements.category.' + cat)}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {items.map((a) => (
+                    <AchievementCard
+                      key={a.id}
+                      achievement={a}
+                      unlocked={Boolean(unlocked[a.id])}
+                      unlockedAt={unlocked[a.id]?.unlockedAt}
+                    />
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.map((a) => (
-                  <AchievementCard
-                    key={a.id}
-                    achievement={a}
-                    unlocked={Boolean(unlocked[a.id])}
-                    unlockedAt={unlocked[a.id]?.unlockedAt}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        ))}
+            )
+        )}
       </div>
     </div>
   );

@@ -69,11 +69,14 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
       const data = await response.json();
       if (data.synergies) {
         setSynergies(data.synergies);
-        localStorage.setItem('carddex.cachedSynergies', JSON.stringify({
-          data: data.synergies,
-          timestamp: Date.now(),
-          cardCount: ownedCardNames.length,
-        }));
+        localStorage.setItem(
+          'carddex.cachedSynergies',
+          JSON.stringify({
+            data: data.synergies,
+            timestamp: Date.now(),
+            cardCount: ownedCardNames.length,
+          })
+        );
         if (force) {
           triggerHaptic('success');
         }
@@ -127,7 +130,15 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
     const needed = MIN_CARDS_FOR_SYNERGIES - ownedCardNames.length;
     return (
       <div style={{ padding: '0 18px 24px' }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
+        <h3
+          style={{
+            margin: '0 0 12px',
+            fontSize: 16,
+            fontWeight: 800,
+            color: 'var(--ink)',
+            letterSpacing: -0.4,
+          }}
+        >
           Sinergias sugeridas
         </h3>
         <Surface style={{ padding: 20, border: '0.5px dashed var(--border)', textAlign: 'center' }}>
@@ -171,8 +182,23 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
 
   return (
     <div style={{ padding: '0 18px 24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 16,
+            fontWeight: 800,
+            color: 'var(--ink)',
+            letterSpacing: -0.4,
+          }}
+        >
           Sinergias sugeridas
         </h3>
         <button
@@ -195,15 +221,44 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {Array.from({ length: 2 }).map((_, idx) => (
-            <Surface key={idx} style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ height: 16, width: '40%', background: 'rgba(255,255,255,0.06)', borderRadius: 4, animation: 'synergyShimmer 1.5s ease-in-out infinite' }} />
-              <div style={{ height: 12, width: '90%', background: 'rgba(255,255,255,0.04)', borderRadius: 4, animation: 'synergyShimmer 1.5s ease-in-out infinite 0.2s' }} />
-              <div style={{ height: 12, width: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: 4, animation: 'synergyShimmer 1.5s ease-in-out infinite 0.4s' }} />
+            <Surface
+              key={idx}
+              style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}
+            >
+              <div
+                style={{
+                  height: 16,
+                  width: '40%',
+                  background: 'rgba(255,255,255,0.06)',
+                  borderRadius: 4,
+                  animation: 'synergyShimmer 1.5s ease-in-out infinite',
+                }}
+              />
+              <div
+                style={{
+                  height: 12,
+                  width: '90%',
+                  background: 'rgba(255,255,255,0.04)',
+                  borderRadius: 4,
+                  animation: 'synergyShimmer 1.5s ease-in-out infinite 0.2s',
+                }}
+              />
+              <div
+                style={{
+                  height: 12,
+                  width: '70%',
+                  background: 'rgba(255,255,255,0.04)',
+                  borderRadius: 4,
+                  animation: 'synergyShimmer 1.5s ease-in-out infinite 0.4s',
+                }}
+              />
             </Surface>
           ))}
         </div>
       ) : error ? (
-        <div style={{ color: 'var(--error)', fontSize: 12.5, textAlign: 'center', padding: '16px 0' }}>
+        <div
+          style={{ color: 'var(--error)', fontSize: 12.5, textAlign: 'center', padding: '16px 0' }}
+        >
           ⚠️ {error}
         </div>
       ) : synergies.length > 0 ? (
@@ -230,8 +285,22 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
                 }}
               />
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13.5,
+                    fontWeight: 800,
+                    color: 'var(--ink)',
+                    letterSpacing: -0.2,
+                  }}
+                >
                   {synergy.title}
                 </div>
                 <span
@@ -244,7 +313,7 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
                     borderRadius: 999,
                     background: `${getTagColor(synergy.tag)}22`,
                     color: getTagColor(synergy.tag),
-                    flexShrink: 0
+                    flexShrink: 0,
                   }}
                 >
                   {synergy.tag}
@@ -255,7 +324,9 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
                 🔗 {synergy.cardsInvolved}
               </div>
 
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}>
+              <p
+                style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}
+              >
                 {synergy.explanation}
               </p>
 
@@ -268,7 +339,7 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
                   border: '0.5px dashed var(--border)',
                   fontSize: 11,
                   color: 'var(--accent)',
-                  fontWeight: 600
+                  fontWeight: 600,
                 }}
               >
                 💡 Recomendación: {synergy.recommendation}
@@ -277,7 +348,9 @@ export default function AISynergyFeed({ ownedCardNames }: AISynergyFeedProps) {
           ))}
         </div>
       ) : (
-        <div style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
+        <div
+          style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}
+        >
           No hay sugerencias disponibles en este momento.
         </div>
       )}

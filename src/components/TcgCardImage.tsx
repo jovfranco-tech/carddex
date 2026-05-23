@@ -54,16 +54,22 @@ export default function TcgCardImage({
   viewTransitionName,
 }: TcgCardImageProps) {
   const useLarge = large ?? width >= 160;
-  const initialRawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
-  const [src, setSrc] = useState<string | undefined>(() => getOptimizedImageUrl(initialRawSrc, width));
+  const initialRawSrc = useLarge
+    ? (card.images?.large ?? card.images?.small)
+    : (card.images?.small ?? card.images?.large);
+  const [src, setSrc] = useState<string | undefined>(() =>
+    getOptimizedImageUrl(initialRawSrc, width)
+  );
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     let active = true;
-    const rawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
+    const rawSrc = useLarge
+      ? (card.images?.large ?? card.images?.small)
+      : (card.images?.small ?? card.images?.large);
     const optimized = getOptimizedImageUrl(rawSrc, width);
-    
+
     if (!optimized) {
       setSrc(undefined);
       setErrored(false);
@@ -93,9 +99,10 @@ export default function TcgCardImage({
   const [active, setActive] = useState(false);
 
   const isHolo = isHolographic(card.rarity);
-  const isRainbow = card.rarity?.toLowerCase().includes('rainbow') ||
-                    card.rarity?.toLowerCase().includes('secret') ||
-                    card.rarity?.toLowerCase().includes('hyper');
+  const isRainbow =
+    card.rarity?.toLowerCase().includes('rainbow') ||
+    card.rarity?.toLowerCase().includes('secret') ||
+    card.rarity?.toLowerCase().includes('hyper');
 
   const height = width * 1.4; // 5:7 ratio
   const radius = Math.max(6, width * 0.05);
@@ -108,7 +115,7 @@ export default function TcgCardImage({
     const handleOrientation = (e: DeviceOrientationEvent) => {
       if (requestScheduled) return;
       requestScheduled = true;
-      
+
       requestAnimationFrame(() => {
         requestScheduled = false;
         if (e.beta === null || e.gamma === null) return;
@@ -122,7 +129,7 @@ export default function TcgCardImage({
         const ry = Math.max(-maxRotate, Math.min(maxRotate, gammaDelta * 0.4));
 
         setRotate({ x: rx, y: ry });
-        
+
         // Map degrees to gradient coordinates (0% to 100%)
         const hx = ((gammaDelta + 25) / 50) * 100;
         const hy = ((betaDelta + 25) / 50) * 100;
@@ -246,13 +253,15 @@ export default function TcgCardImage({
         primary: 'rgba(255, 190, 225, 0.65)',
         secondary: 'rgba(120, 225, 255, 0.45)',
         accent: 'rgba(255, 225, 130, 0.45)',
-        rainbow: 'linear-gradient(115deg, rgba(255,0,0,.15), rgba(255,120,0,.15), rgba(255,230,0,.15), rgba(0,255,100,.15), rgba(0,200,255,.15), rgba(150,0,255,.15), rgba(255,0,220,.15))'
+        rainbow:
+          'linear-gradient(115deg, rgba(255,0,0,.15), rgba(255,120,0,.15), rgba(255,230,0,.15), rgba(0,255,100,.15), rgba(0,200,255,.15), rgba(150,0,255,.15), rgba(255,0,220,.15))',
       }
     : {
         primary: 'rgba(255, 255, 255, 0.55)',
         secondary: 'rgba(0, 220, 255, 0.3)',
         accent: 'rgba(255, 0, 128, 0.25)',
-        rainbow: 'linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(0,220,255,0.12) 30%, rgba(255,0,128,0.12) 50%, rgba(255,220,0,0.12) 70%, rgba(255,255,255,0) 100%)'
+        rainbow:
+          'linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(0,220,255,0.12) 30%, rgba(255,0,128,0.12) 50%, rgba(255,220,0,0.12) 70%, rgba(255,255,255,0) 100%)',
       };
 
   const holoOverlayStyle: CSSProperties = {
@@ -335,8 +344,10 @@ export default function TcgCardImage({
             }
           }}
           onError={() => {
-            const currentRawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
-            
+            const currentRawSrc = useLarge
+              ? (card.images?.large ?? card.images?.small)
+              : (card.images?.small ?? card.images?.large);
+
             if (src && src.includes('images.weserv.nl')) {
               // Fallback 1: If optimized weserv.nl fails, try the original direct unoptimized URL
               if (currentRawSrc) {
@@ -424,95 +435,110 @@ function Placeholder({ card, width }: { card: PokemonCard; width: number }) {
       }}
     >
       {/* Card back decorative ring */}
-      <div style={{
-        position: 'absolute',
-        width: width * 0.75,
-        height: width * 0.75,
-        borderRadius: '50%',
-        border: `${Math.max(2, width * 0.03)}px solid rgba(255,255,255,0.08)`,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      }} />
-      <div style={{
-        position: 'absolute',
-        width: width * 0.55,
-        height: width * 0.55,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.06) 0%, transparent 70%)',
-        border: `${Math.max(1, width * 0.02)}px solid rgba(255,255,255,0.12)`,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      }} />
-
-      {isCustom ? (
-        <div style={{
+      <div
+        style={{
           position: 'absolute',
-          width: width * 0.42,
-          height: width * 0.42,
+          width: width * 0.75,
+          height: width * 0.75,
           borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.08)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.18)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: width * 0.2,
+          border: `${Math.max(2, width * 0.03)}px solid rgba(255,255,255,0.08)`,
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-        }}>
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          width: width * 0.55,
+          height: width * 0.55,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.06) 0%, transparent 70%)',
+          border: `${Math.max(1, width * 0.02)}px solid rgba(255,255,255,0.12)`,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+      />
+
+      {isCustom ? (
+        <div
+          style={{
+            position: 'absolute',
+            width: width * 0.42,
+            height: width * 0.42,
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: width * 0.2,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+          }}
+        >
           {emoji}
         </div>
       ) : (
         <>
           {/* Pokéball upper half */}
-          <div style={{
-            position: 'absolute',
-            width: width * 0.38,
-            height: width * 0.19,
-            borderRadius: `${width * 0.19}px ${width * 0.19}px 0 0`,
-            background: 'rgba(220, 50, 50, 0.7)',
-            top: `calc(50% - ${width * 0.19}px)`,
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              width: width * 0.38,
+              height: width * 0.19,
+              borderRadius: `${width * 0.19}px ${width * 0.19}px 0 0`,
+              background: 'rgba(220, 50, 50, 0.7)',
+              top: `calc(50% - ${width * 0.19}px)`,
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
+          />
           {/* Pokéball lower half */}
-          <div style={{
-            position: 'absolute',
-            width: width * 0.38,
-            height: width * 0.19,
-            borderRadius: `0 0 ${width * 0.19}px ${width * 0.19}px`,
-            background: 'rgba(240,240,240,0.15)',
-            top: '50%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              width: width * 0.38,
+              height: width * 0.19,
+              borderRadius: `0 0 ${width * 0.19}px ${width * 0.19}px`,
+              background: 'rgba(240,240,240,0.15)',
+              top: '50%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
+          />
           {/* Pokéball divider */}
-          <div style={{
-            position: 'absolute',
-            width: width * 0.38,
-            height: Math.max(2, width * 0.025),
-            background: 'rgba(255,255,255,0.3)',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              width: width * 0.38,
+              height: Math.max(2, width * 0.025),
+              background: 'rgba(255,255,255,0.3)',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
           {/* Pokéball center button */}
-          <div style={{
-            position: 'absolute',
-            width: width * 0.1,
-            height: width * 0.1,
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.9)',
-            border: `${Math.max(2, width * 0.02)}px solid rgba(255,255,255,0.5)`,
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 8px rgba(255,255,255,0.4)',
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              width: width * 0.1,
+              height: width * 0.1,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.9)',
+              border: `${Math.max(2, width * 0.02)}px solid rgba(255,255,255,0.5)`,
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              boxShadow: '0 0 8px rgba(255,255,255,0.4)',
+            }}
+          />
         </>
       )}
 

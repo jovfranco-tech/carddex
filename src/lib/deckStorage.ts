@@ -14,7 +14,7 @@ export interface DecksState {
 
 const DEFAULT_DECKS: DecksState = {
   version: 1,
-  decks: {}
+  decks: {},
 };
 
 const DECKS_KEY = 'carddex.decks.v1';
@@ -46,7 +46,7 @@ function safeWrite(key: string, value: unknown): void {
   if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch { }
+  } catch {}
 }
 
 export function getDecksState(): DecksState {
@@ -67,9 +67,8 @@ export function getDecksState(): DecksState {
       cards: Array.isArray(candidate.cards)
         ? candidate.cards.filter((cardId) => typeof cardId === 'string').slice(0, 60)
         : [],
-      updatedAt: typeof candidate.updatedAt === 'string'
-        ? candidate.updatedAt
-        : new Date().toISOString(),
+      updatedAt:
+        typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date().toISOString(),
     };
   }
 
@@ -88,7 +87,7 @@ export function createDeck(name: string): Deck {
     id,
     name,
     cards: [],
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
   state.decks[id] = deck;
   writeDecksState(state);

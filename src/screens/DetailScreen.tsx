@@ -35,11 +35,7 @@ import {
   toggleWishlist,
   triggerCustomCardsSync,
 } from '@/lib/collectionStorage';
-import {
-  getEstimatedPrice,
-  formatPrice,
-  PRICE_DISCLAIMER,
-} from '@/lib/pricing';
+import { getEstimatedPrice, formatPrice, PRICE_DISCLAIMER } from '@/lib/pricing';
 import { addCardToDeck, createDeck } from '@/lib/deckStorage';
 import { rarityColor, rarityLabel } from '@/lib/rarity';
 import { buildCardAssistantContext } from '@/lib/cardAssistant';
@@ -75,10 +71,7 @@ export default function DetailScreen() {
   if (card.error || !card.data) {
     return (
       <div style={{ paddingTop: 80 }}>
-        <ErrorState
-          message={card.error ?? 'No se pudo cargar la carta.'}
-          onRetry={card.reload}
-        />
+        <ErrorState message={card.error ?? 'No se pudo cargar la carta.'} onRetry={card.reload} />
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
           <button
             onClick={() => navigate(-1)}
@@ -134,7 +127,10 @@ function Detail({
 
   const card = localCard;
 
-  const isCustom = localCard.id.startsWith('custom-') || localCard.set?.id === 'custom' || localCard.subtypes?.includes('Custom');
+  const isCustom =
+    localCard.id.startsWith('custom-') ||
+    localCard.set?.id === 'custom' ||
+    localCard.subtypes?.includes('Custom');
 
   const handleCustomImageUploaded = (newImageUrl: string) => {
     try {
@@ -276,7 +272,7 @@ function Detail({
 
   const similar = useAsync(
     (signal) => getSimilarCardsByName(card.name.split(' ')[0], 6, { signal }),
-    [card.name],
+    [card.name]
   );
   const otherPrints = (similar.data ?? []).filter((c) => c.id !== card.id).slice(0, 5);
 
@@ -289,7 +285,7 @@ function Detail({
         similarCards: similar.data ?? [],
         printedTotalInSet: card.set?.printedTotal,
       }),
-    [card, meta, similar.data],
+    [card, meta, similar.data]
   );
 
   const heroBgTint = card.types?.[0] ? `${typeColor(card.types[0])}28` : 'rgba(47,111,224,0.15)';
@@ -311,8 +307,7 @@ function Detail({
           top: 0,
           zIndex: 10,
           padding: '54px 14px 10px',
-          background:
-            'linear-gradient(180deg, var(--bg) 60%, rgba(247,248,251,0))',
+          background: 'linear-gradient(180deg, var(--bg) 60%, rgba(247,248,251,0))',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
@@ -336,7 +331,13 @@ function Detail({
         <RoundBtn ariaLabel="Compartir" onClick={handleShare}>
           <ShareIcon size={18} />
         </RoundBtn>
-        <RoundBtn ariaLabel="Más" onClick={() => { triggerHaptic('light'); setMoreOpen(true); }}>
+        <RoundBtn
+          ariaLabel="Más"
+          onClick={() => {
+            triggerHaptic('light');
+            setMoreOpen(true);
+          }}
+        >
           <MoreIcon size={18} />
         </RoundBtn>
       </div>
@@ -352,7 +353,13 @@ function Detail({
           background: `radial-gradient(60% 50% at 50% 35%, ${heroBgTint} 0%, transparent 70%)`,
         }}
       >
-        <TcgCardImage card={card} width={250} hero large viewTransitionName={`card-image-${card.id}`} />
+        <TcgCardImage
+          card={card}
+          width={250}
+          hero
+          large
+          viewTransitionName={`card-image-${card.id}`}
+        />
         {isCustom && <CustomImageUploader onImageUploaded={handleCustomImageUploaded} />}
       </div>
 
@@ -517,19 +524,31 @@ function Detail({
 
       {/* Details paragraph + ataques */}
       <div style={{ padding: '0 18px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <UpperLabel>Detalles</UpperLabel>
-          <div style={{
+        <div
+          style={{
             display: 'flex',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '999px',
-            padding: '2px',
-            gap: '2px',
-            backdropFilter: 'blur(8px)',
-          }}>
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+        >
+          <UpperLabel>Detalles</UpperLabel>
+          <div
+            style={{
+              display: 'flex',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '999px',
+              padding: '2px',
+              gap: '2px',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
             <button
-              onClick={() => { setLang('EN'); triggerHaptic('light'); }}
+              onClick={() => {
+                setLang('EN');
+                triggerHaptic('light');
+              }}
               style={{
                 background: lang === 'EN' ? 'var(--ink)' : 'transparent',
                 color: lang === 'EN' ? 'var(--canvas)' : 'var(--ink-3)',
@@ -545,7 +564,10 @@ function Detail({
               EN
             </button>
             <button
-              onClick={() => { setLang('ES'); triggerHaptic('light'); }}
+              onClick={() => {
+                setLang('ES');
+                triggerHaptic('light');
+              }}
               style={{
                 background: lang === 'ES' ? 'var(--accent)' : 'transparent',
                 color: lang === 'ES' ? '#000000' : 'var(--ink-3)',
@@ -573,10 +595,13 @@ function Detail({
             letterSpacing: -0.1,
           }}
         >
-          {lang === 'ES' ? (translateCardText(card.flavorText) || 'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.') : (card.flavorText ??
-            (card.artist
-              ? `Ilustrada por ${card.artist}.`
-              : 'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.'))}
+          {lang === 'ES'
+            ? translateCardText(card.flavorText) ||
+              'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.'
+            : (card.flavorText ??
+              (card.artist
+                ? `Ilustrada por ${card.artist}.`
+                : 'Una criatura de la franquicia Pokémon ilustrada en esta entrega del TCG.'))}
         </p>
 
         {/* Abilities Section */}
@@ -585,7 +610,14 @@ function Detail({
             <UpperLabel>Habilidades</UpperLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
               {card.abilities.map((ab, i) => (
-                <Surface key={`ability-${i}`} style={{ padding: 12, background: 'rgba(255, 65, 54, 0.04)', border: '1px solid rgba(255, 65, 54, 0.15)' }}>
+                <Surface
+                  key={`ability-${i}`}
+                  style={{
+                    padding: 12,
+                    background: 'rgba(255, 65, 54, 0.04)',
+                    border: '1px solid rgba(255, 65, 54, 0.15)',
+                  }}
+                >
                   <div
                     style={{
                       display: 'flex',
@@ -706,7 +738,10 @@ function Detail({
             <UpperLabel>Reglas</UpperLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
               {card.rules.map((rule, i) => (
-                <Surface key={`rule-${i}`} style={{ padding: 10, borderLeft: '3px solid var(--accent)' }}>
+                <Surface
+                  key={`rule-${i}`}
+                  style={{ padding: 10, borderLeft: '3px solid var(--accent)' }}
+                >
                   <p
                     style={{
                       margin: 0,
@@ -787,12 +822,15 @@ function Detail({
             >
               Añadir a un mazo
             </div>
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} className="no-scrollbar">
-              {decks.map(deck => {
-                const count = deck.cards.filter(id => id === card.id).length;
+            <div
+              style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}
+              className="no-scrollbar"
+            >
+              {decks.map((deck) => {
+                const count = deck.cards.filter((id) => id === card.id).length;
                 const isMaxed = count >= 4 && card.supertype !== 'Energy';
                 const isSavedHere = deckSavedId === deck.id;
-                
+
                 return (
                   <button
                     key={deck.id}
@@ -845,13 +883,7 @@ function Detail({
         aria-label="Estado de la carta"
       >
         <ActionBtn
-          icon={
-            meta?.favorite ? (
-              <HeartFilledIcon size={18} />
-            ) : (
-              <HeartIcon size={18} />
-            )
-          }
+          icon={meta?.favorite ? <HeartFilledIcon size={18} /> : <HeartIcon size={18} />}
           label="Favorita"
           active={!!meta?.favorite}
           color="#FF3B30"
@@ -892,7 +924,7 @@ function Detail({
           stats={[
             { label: 'PS', value: card.hp ?? '—' },
             { label: 'Número', value: card.number },
-            { label: 'Rareza', value: card.rarity ? card.rarity.slice(0, 10) : 'Común' }
+            { label: 'Rareza', value: card.rarity ? card.rarity.slice(0, 10) : 'Común' },
           ]}
           onToast={setToastMessage}
         />
@@ -1051,11 +1083,7 @@ function ActionBtn({
  *   "En mi colección · 3", "Favorita", "Wishlist", "Falta", "Duplicada".
  * Hidden entirely when the card is not in the local collection.
  */
-function CollectionStateRow({
-  meta,
-}: {
-  meta: ReturnType<typeof useCardMeta>;
-}) {
+function CollectionStateRow({ meta }: { meta: ReturnType<typeof useCardMeta> }) {
   if (!meta) return null;
   const badges: Array<{ label: string; color: string; bg: string }> = [];
   if (meta.owned && meta.quantity > 0) {
@@ -1197,5 +1225,3 @@ function CustomImageUploader({ onImageUploaded }: CustomImageUploaderProps) {
     </div>
   );
 }
-
-

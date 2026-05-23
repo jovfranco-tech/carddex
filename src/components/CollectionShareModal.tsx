@@ -195,7 +195,7 @@ export default function CollectionShareModal({
         const card = showcaseCards[i];
         const row = Math.floor(i / 2);
         const col = i % 2;
-        
+
         // Coordinates for card drawing
         const x = startX + col * (340 + gapX);
         const y = startY + row * (cardHeight + gapY);
@@ -236,7 +236,12 @@ export default function CollectionShareModal({
               ctx.restore();
             } catch (imgError) {
               // Fallback: draw stylish card mockup placeholder inside the slot
-              const fallbackGrad = ctx.createLinearGradient(x + 16, y + 16, x + 16 + cardWidth, y + 16 + cardHeight - 32);
+              const fallbackGrad = ctx.createLinearGradient(
+                x + 16,
+                y + 16,
+                x + 16 + cardWidth,
+                y + 16 + cardHeight - 32
+              );
               fallbackGrad.addColorStop(0, '#1C2030');
               fallbackGrad.addColorStop(1, '#0B0C10');
               ctx.fillStyle = fallbackGrad;
@@ -244,7 +249,8 @@ export default function CollectionShareModal({
 
               // Inside card title
               ctx.fillStyle = '#FFFFFF';
-              ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+              ctx.font =
+                'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
               ctx.fillText(card.name.substring(0, 14), x + 26, y + 50);
               ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
               ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -255,11 +261,19 @@ export default function CollectionShareModal({
           // Draw Details next to card image (Rarity, Name, Price)
           ctx.fillStyle = '#FFFFFF';
           ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText(card.name.length > 15 ? card.name.substring(0, 14) + '…' : card.name, x + 172, y + 54);
+          ctx.fillText(
+            card.name.length > 15 ? card.name.substring(0, 14) + '…' : card.name,
+            x + 172,
+            y + 54
+          );
 
           ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-          ctx.fillText(`${card.supertype} - ${card.number}/${card.set?.printedTotal || card.set?.total || ''}`, x + 172, y + 78);
+          ctx.fillText(
+            `${card.supertype} - ${card.number}/${card.set?.printedTotal || card.set?.total || ''}`,
+            x + 172,
+            y + 78
+          );
 
           ctx.fillStyle = '#00BCD4';
           ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -293,7 +307,7 @@ export default function CollectionShareModal({
       const qrX = 90;
       const qrY = 785;
       const qrS = 120;
-      
+
       ctx.strokeStyle = 'rgba(0, 188, 212, 0.4)';
       ctx.lineWidth = 2;
       drawRoundRect(ctx, qrX, qrY, qrS, qrS, 10, false, true);
@@ -321,12 +335,39 @@ export default function CollectionShareModal({
       // Technical random QR noise
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       const randPoints = [
-        [55, 20], [65, 20], [75, 20], [55, 30], [75, 35], [85, 30],
-        [20, 55], [30, 55], [35, 65], [20, 75], [30, 85], [35, 85],
-        [55, 55], [65, 55], [75, 55], [85, 55], [55, 65], [75, 65],
-        [55, 75], [65, 85], [75, 85], [85, 75], [85, 85],
-        [55, 95], [65, 95], [75, 95], [95, 95], [95, 55], [95, 65],
-        [95, 15], [95, 25], [15, 95], [25, 95]
+        [55, 20],
+        [65, 20],
+        [75, 20],
+        [55, 30],
+        [75, 35],
+        [85, 30],
+        [20, 55],
+        [30, 55],
+        [35, 65],
+        [20, 75],
+        [30, 85],
+        [35, 85],
+        [55, 55],
+        [65, 55],
+        [75, 55],
+        [85, 55],
+        [55, 65],
+        [75, 65],
+        [55, 75],
+        [65, 85],
+        [75, 85],
+        [85, 75],
+        [85, 85],
+        [55, 95],
+        [65, 95],
+        [75, 95],
+        [95, 95],
+        [95, 55],
+        [95, 65],
+        [95, 15],
+        [95, 25],
+        [15, 95],
+        [25, 95],
       ];
       randPoints.forEach(([px, py]) => {
         ctx.fillRect(qrX + px, qrY + py, 6, 6);
@@ -370,7 +411,7 @@ export default function CollectionShareModal({
 
   const handleShare = async () => {
     if (!previewUrl || !canvasRef.current) return;
-    
+
     try {
       const blob = await new Promise<Blob | null>((resolve) =>
         canvasRef.current?.toBlob((b) => resolve(b), 'image/png')
@@ -436,7 +477,9 @@ export default function CollectionShareModal({
         onClick={(e: MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, letterSpacing: -0.4 }}>Compartir Showcase Poster</h3>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, letterSpacing: -0.4 }}>
+            Compartir Showcase Poster
+          </h3>
           <button
             onClick={onClose}
             className="modal-close-btn"
@@ -485,8 +528,17 @@ export default function CollectionShareModal({
           )}
         </div>
 
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '0 10px', lineHeight: 1.4 }}>
-          Crea una infografía elegante de tus cartas destacadas en alta resolución. Lista para compartir en tus redes sociales.
+        <div
+          style={{
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.4)',
+            textAlign: 'center',
+            padding: '0 10px',
+            lineHeight: 1.4,
+          }}
+        >
+          Crea una infografía elegante de tus cartas destacadas en alta resolución. Lista para
+          compartir en tus redes sociales.
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>

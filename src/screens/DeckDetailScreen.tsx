@@ -7,7 +7,15 @@ import { removeCardFromDeck, updateDeckCards, removeCardFromDeckAll } from '@/li
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
 import EmptyState from '@/components/EmptyState';
-import { BackIcon, TrashIcon, LayersIcon, ShareIcon, DownloadIcon, GalleryIcon, BookIcon } from '@/components/icons';
+import {
+  BackIcon,
+  TrashIcon,
+  LayersIcon,
+  ShareIcon,
+  DownloadIcon,
+  GalleryIcon,
+  BookIcon,
+} from '@/components/icons';
 import { Toast } from '@/components/Section';
 import { ROUTES } from '@/app/routes';
 import type { PokemonCard } from '@/types/pokemon';
@@ -86,7 +94,9 @@ export default function DeckDetailScreen() {
     return (
       <div style={{ padding: '80px 20px', textAlign: 'center' }}>
         <div>Mazo no encontrado</div>
-        <button onClick={() => navigate(-1)} style={{ marginTop: 20 }}>Volver</button>
+        <button onClick={() => navigate(-1)} style={{ marginTop: 20 }}>
+          Volver
+        </button>
       </div>
     );
   }
@@ -159,7 +169,7 @@ export default function DeckDetailScreen() {
     const draggedCard = nextCards[draggedIndex];
     nextCards.splice(draggedIndex, 1);
     nextCards.splice(index, 0, draggedCard);
-    
+
     setDraggedIndex(index);
     setOrderedCards(nextCards);
     triggerHaptic('light');
@@ -204,19 +214,18 @@ export default function DeckDetailScreen() {
     const trashEl = document.getElementById('deck-trash-zone');
     if (trashEl) {
       const rect = trashEl.getBoundingClientRect();
-      const isOverTrash = (
+      const isOverTrash =
         clientX >= rect.left &&
         clientX <= rect.right &&
         clientY >= rect.top &&
-        clientY <= rect.bottom
-      );
+        clientY <= rect.bottom;
       setIsDraggingOverTrash(isOverTrash);
       if (isOverTrash) return;
     }
 
     const element = document.elementFromPoint(clientX, clientY);
     if (!element) return;
-    
+
     const tileContainer = element.closest('[data-index]');
     if (tileContainer) {
       const hoverIndex = parseInt(tileContainer.getAttribute('data-index') || '', 10);
@@ -225,7 +234,7 @@ export default function DeckDetailScreen() {
         const draggedCard = nextCards[draggedIndex];
         nextCards.splice(draggedIndex, 1);
         nextCards.splice(hoverIndex, 0, draggedCard);
-        
+
         setDraggedIndex(hoverIndex);
         setOrderedCards(nextCards);
         triggerHaptic('light');
@@ -265,7 +274,8 @@ export default function DeckDetailScreen() {
     if (!deckCards.data || !deck || deck.cards.length === 0) return;
     try {
       const ptcglText = exportDeckToPTCGL(deckCards.data, deck.cards);
-      navigator.clipboard.writeText(ptcglText)
+      navigator.clipboard
+        .writeText(ptcglText)
         .then(() => {
           showToast('Lista de mazo copiada en formato PTCGL');
         })
@@ -283,7 +293,8 @@ export default function DeckDetailScreen() {
     if (!deck) return;
     try {
       const shareUrl = `${window.location.origin}${ROUTES.deckShare(deck.id)}?name=${encodeURIComponent(deck.name)}&cards=${deck.cards.join(',')}`;
-      navigator.clipboard.writeText(shareUrl)
+      navigator.clipboard
+        .writeText(shareUrl)
         .then(() => {
           showToast('¡Enlace de mazo público copiado!');
         })
@@ -364,7 +375,17 @@ export default function DeckDetailScreen() {
               transition: 'all 200ms',
             }}
           >
-            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="18" width="18" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              stroke="currentColor"
+              fill="none"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              height="18"
+              width="18"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
               <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5 5 3Z" />
               <path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" />
@@ -476,7 +497,7 @@ export default function DeckDetailScreen() {
             stats={[
               { label: 'Cartas', value: `${deck.cards.length}` },
               { label: 'Únicas', value: `${orderedCards.length}` },
-              { label: 'Tipo', value: orderedCards[0]?.supertype || 'Mazo' }
+              { label: 'Tipo', value: orderedCards[0]?.supertype || 'Mazo' },
             ]}
             onToast={showToast}
           />
@@ -624,9 +645,7 @@ export default function DeckDetailScreen() {
             maxWidth: 400,
             height: 70,
             borderRadius: 16,
-            background: isDraggingOverTrash
-              ? 'rgba(239, 68, 68, 0.25)'
-              : 'rgba(0, 0, 0, 0.75)',
+            background: isDraggingOverTrash ? 'rgba(239, 68, 68, 0.25)' : 'rgba(0, 0, 0, 0.75)',
             backdropFilter: 'blur(20px)',
             border: isDraggingOverTrash
               ? '2px solid rgba(239, 68, 68, 0.8)'

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  type CollectionState,
-  type CollectionCardMeta,
-} from '@/types/collection';
+import { type CollectionState, type CollectionCardMeta } from '@/types/collection';
 import {
   getCollection,
   getCardMeta,
@@ -30,11 +27,9 @@ export function useCollection(): CollectionState {
   return state;
 }
 
-export function useCardMeta(
-  cardId: string | undefined | null,
-): CollectionCardMeta | undefined {
+export function useCardMeta(cardId: string | undefined | null): CollectionCardMeta | undefined {
   const [meta, setMeta] = useState<CollectionCardMeta | undefined>(() =>
-    cardId ? getCardMeta(cardId) : undefined,
+    cardId ? getCardMeta(cardId) : undefined
   );
   useEffect(() => {
     if (!cardId) {
@@ -78,7 +73,7 @@ export interface AsyncState<T> {
  */
 export function useAsync<T>(
   fn: (signal: AbortSignal) => Promise<T>,
-  deps: ReadonlyArray<unknown>,
+  deps: ReadonlyArray<unknown>
 ): AsyncState<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,7 +163,6 @@ export function useViewTransitionNavigate() {
         }
       }
     },
-    [navigate],
+    [navigate]
   );
 }
-

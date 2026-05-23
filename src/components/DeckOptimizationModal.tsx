@@ -98,32 +98,31 @@ export default function DeckOptimizationModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [
-            { role: 'user', content: prompt }
-          ],
+          messages: [{ role: 'user', content: prompt }],
           collectionStats: {
             deckName: deck.name,
             pokemonCount: stats.pokemon,
             trainerCount: stats.trainer,
             energyCount: stats.energy,
             totalCards: deck.cards.length,
-          }
+          },
         }),
       });
 
       if (!res.ok) throw new Error('Failed API response');
       const data = await res.json();
-      
-      setMessages([
-        userMessage,
-        { role: 'assistant', content: data.reply }
-      ]);
+
+      setMessages([userMessage, { role: 'assistant', content: data.reply }]);
       triggerHaptic('success');
     } catch (err) {
       console.error('Failed optimizing deck:', err);
       setMessages([
         userMessage,
-        { role: 'assistant', content: 'Lo siento, no he podido conectar con el motor de optimización de IA en este momento. Por favor, reinténtalo más tarde.' }
+        {
+          role: 'assistant',
+          content:
+            'Lo siento, no he podido conectar con el motor de optimización de IA en este momento. Por favor, reinténtalo más tarde.',
+        },
       ]);
       triggerHaptic('warning');
     } finally {
@@ -155,7 +154,7 @@ export default function DeckOptimizationModal({
             trainerCount: stats.trainer,
             energyCount: stats.energy,
             totalCards: deck.cards.length,
-          }
+          },
         }),
       });
 
@@ -168,7 +167,10 @@ export default function DeckOptimizationModal({
       console.error('Failed sending message:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'Hubo un error de conexión al enviar tu mensaje. Inténtalo de nuevo.' }
+        {
+          role: 'assistant',
+          content: 'Hubo un error de conexión al enviar tu mensaje. Inténtalo de nuevo.',
+        },
       ]);
       triggerHaptic('warning');
     } finally {
@@ -211,19 +213,31 @@ export default function DeckOptimizationModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}
+        >
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 18,
+                fontWeight: 800,
+                color: 'var(--ink)',
+                letterSpacing: -0.4,
+              }}
+            >
               Optimizador de Mazo IA
             </h2>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted)' }}>
               {deck.name} ({deck.cards.length}/60 cartas)
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="modal-close-btn"
-          >
+          <button onClick={onClose} className="modal-close-btn">
             ✕
           </button>
         </div>
@@ -283,12 +297,24 @@ export default function DeckOptimizationModal({
         </div>
 
         {/* Tab content */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} className="no-scrollbar">
+        <div
+          style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
+          className="no-scrollbar"
+        >
           {activeTab === 'stats' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Composition indicators */}
               <div>
-                <h3 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <h3
+                  style={{
+                    margin: '0 0 12px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: 'var(--muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
                   Composición de Cartas
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -319,7 +345,16 @@ export default function DeckOptimizationModal({
               {/* Types distributions */}
               {stats.types.length > 0 && (
                 <div>
-                  <h3 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <h3
+                    style={{
+                      margin: '0 0 12px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                  >
                     Distribución de Tipos Pokémon
                   </h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -363,16 +398,43 @@ export default function DeckOptimizationModal({
             </div>
           ) : (
             /* IA Chat Tab */
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 260 }}>
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                minHeight: 260,
+              }}
+            >
               {messages.length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, gap: 16 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    padding: 24,
+                    gap: 16,
+                  }}
+                >
                   <span style={{ fontSize: 36 }}>🤖</span>
                   <div>
                     <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--ink)' }}>
                       El motor de IA está listo
                     </h4>
-                    <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4 }}>
-                      Haz clic abajo para analizar tus cartas, sinergias y recibir recomendaciones automáticas.
+                    <p
+                      style={{
+                        margin: '6px 0 0',
+                        fontSize: 12.5,
+                        color: 'var(--muted)',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Haz clic abajo para analizar tus cartas, sinergias y recibir recomendaciones
+                      automáticas.
                     </p>
                   </div>
                   <button
@@ -408,11 +470,7 @@ export default function DeckOptimizationModal({
                     className="no-scrollbar"
                   >
                     {messages.map((m, index) => (
-                      <ChatMessage
-                        key={index}
-                        role={m.role}
-                        text={m.content}
-                      />
+                      <ChatMessage key={index} role={m.role} text={m.content} />
                     ))}
                     {loading && <ChatMessage role="assistant" text="" pending />}
                   </div>
@@ -497,14 +555,36 @@ function ProgressBarLabel({
 }) {
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 6 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: 12.5,
+          marginBottom: 6,
+        }}
+      >
         <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{label}</span>
         <span style={{ color: 'var(--muted)', fontWeight: 600 }}>
           {count} cartas ({pct}%) · <span style={{ fontSize: 11 }}>Ideal: {idealRange}</span>
         </span>
       </div>
-      <div style={{ width: '100%', height: 8, background: 'rgba(0, 0, 0, 0.05)', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: color, borderRadius: 4 }} />
+      <div
+        style={{
+          width: '100%',
+          height: 8,
+          background: 'rgba(0, 0, 0, 0.05)',
+          borderRadius: 4,
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            width: `${Math.min(100, pct)}%`,
+            height: '100%',
+            background: color,
+            borderRadius: 4,
+          }}
+        />
       </div>
     </div>
   );

@@ -83,10 +83,10 @@ async function checkImageBlur(file: File): Promise<{ isBlurry: boolean; score: n
       ctx.drawImage(img, 0, 0, 150, 150);
       const imgData = ctx.getImageData(0, 0, 150, 150);
       const data = imgData.data;
-      
+
       const grayscale = new Uint8Array(150 * 150);
       for (let i = 0; i < data.length; i += 4) {
-        grayscale[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
+        grayscale[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
       }
 
       let diffSum = 0;
@@ -95,7 +95,7 @@ async function checkImageBlur(file: File): Promise<{ isBlurry: boolean; score: n
         for (let x = 0; x < 150; x++) {
           const idx = y * 150 + x;
           const val = grayscale[idx];
-          
+
           if (x < 149) {
             diffSum += Math.abs(val - grayscale[idx + 1]);
             count++;
@@ -168,7 +168,7 @@ export default function ScanScreen() {
       localStorage.setItem('carddex.scanner.scanMode', mode);
       localStorage.setItem('carddex.scanner.isBatchMode', String(mode === 'batch'));
     } catch {}
-    
+
     // Reset scanner states to prevent UI conflicts
     setState('idle');
     setConfidence(0);
@@ -198,9 +198,18 @@ export default function ScanScreen() {
 
   // Estado de fluctuación cinética para simulación de rastreo espacial multicarta en tiempo real
   const [jitter, setJitter] = useState({
-    x1: 0, y1: 0, scale1: 1, conf1: 98,
-    x2: 0, y2: 0, scale2: 1, conf2: 96,
-    x3: 0, y3: 0, scale3: 1, conf3: 95,
+    x1: 0,
+    y1: 0,
+    scale1: 1,
+    conf1: 98,
+    x2: 0,
+    y2: 0,
+    scale2: 1,
+    conf2: 96,
+    x3: 0,
+    y3: 0,
+    scale3: 1,
+    conf3: 95,
   });
 
   // Real-time CV edge alignment auto-scan states
@@ -252,11 +261,9 @@ export default function ScanScreen() {
     return () => clearInterval(interval);
   }, [state, isMulticardMode]);
 
-
-
   const handleSaveBatch = () => {
     if (scannedBatch.length === 0) return;
-    
+
     // Sequence-save all cards to LocalStorage / Cloud
     scannedBatch.forEach((item) => {
       if (item.card) {
@@ -303,7 +310,7 @@ export default function ScanScreen() {
     }, 3000);
 
     triggerHaptic('success');
-    
+
     // Clear and reset state
     setState('idle');
     setDetectedMulticards([]);
@@ -393,7 +400,7 @@ export default function ScanScreen() {
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (w === 0 || h === 0) return null;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
@@ -406,7 +413,15 @@ export default function ScanScreen() {
 
     let targetCanvas = canvas;
 
-    if (cv && cv.Mat && cv.matFromArray && cv.getPerspectiveTransform && cv.warpPerspective && quad && quad.length === 4) {
+    if (
+      cv &&
+      cv.Mat &&
+      cv.matFromArray &&
+      cv.getPerspectiveTransform &&
+      cv.warpPerspective &&
+      quad &&
+      quad.length === 4
+    ) {
       // Perspective Warp with OpenCV
       let src: any = null;
       let dst: any = null;
@@ -418,24 +433,40 @@ export default function ScanScreen() {
         const destHeight = 700;
         src = cv.imread(canvas);
         dst = new cv.Mat();
-        
+
         srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-          quad[0].x, quad[0].y,
-          quad[1].x, quad[1].y,
-          quad[2].x, quad[2].y,
-          quad[3].x, quad[3].y,
+          quad[0].x,
+          quad[0].y,
+          quad[1].x,
+          quad[1].y,
+          quad[2].x,
+          quad[2].y,
+          quad[3].x,
+          quad[3].y,
         ]);
-        
+
         dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-          0, 0,
-          destWidth, 0,
-          destWidth, destHeight,
-          0, destHeight,
+          0,
+          0,
+          destWidth,
+          0,
+          destWidth,
+          destHeight,
+          0,
+          destHeight,
         ]);
 
         M = cv.getPerspectiveTransform(srcTri, dstTri);
         const dsize = new cv.Size(destWidth, destHeight);
-        cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+        cv.warpPerspective(
+          src,
+          dst,
+          M,
+          dsize,
+          cv.INTER_LINEAR,
+          cv.BORDER_CONSTANT,
+          new cv.Scalar()
+        );
 
         const warpCanvas = document.createElement('canvas');
         warpCanvas.width = destWidth;
@@ -460,157 +491,162 @@ export default function ScanScreen() {
           resolve(
             new File([blob], `carddex-capture-${Date.now()}.jpg`, {
               type: 'image/jpeg',
-            }),
+            })
           );
         },
         'image/jpeg',
-        0.9,
+        0.9
       );
     });
   }, [cameraLive]);
 
-  const runScan = useCallback(async (input: RecognitionInput) => {
-    setError(null);
-    setConfidence(0);
-    const start = Date.now();
-    // Confidence bar animation, ~1.8s
-    const tick = window.setInterval(() => {
-      const t = Math.min(1, (Date.now() - start) / 1800);
-      setConfidence(Math.round(t * 92));
-      if (t >= 1) window.clearInterval(tick);
-    }, 60);
-
-    try {
-      if (isGradingMode) {
-        let payloadGrading;
-        if (input.type === 'file') {
-          const rawBase64 = await fileToBase64(input.file);
-          // Compress client-side before upload: typically 4MB → 300-500KB
-          const base64 = await compressForAI(rawBase64, 500);
-          const res = await fetch('/api/grade-card', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64 }),
-          });
-          if (!res.ok) throw new Error('Error al evaluar la carta física.');
-          payloadGrading = await res.json();
-        } else {
-          // Simulated demo mode
-          const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
-          const randomOffline = OFFLINE_CARD_CATALOG[Math.floor(Math.random() * OFFLINE_CARD_CATALOG.length)];
-          payloadGrading = {
-            cardName: randomOffline?.name || 'Charizard ex',
-            centering: 9.5,
-            corners: 9.0,
-            edges: 9.0,
-            surface: 9.5,
-            overallGrade: 9.5,
-            qualifier: 'Mint',
-            issues: [
-              'Desgaste milimétrico en el borde superior trasero.',
-              'Centrado frontal ligeramente desplazado (60/40).'
-            ]
-          };
-        }
-
-        let cardObj = null;
-        try {
-          const { data } = await searchCards({ name: payloadGrading.cardName, pageSize: 1 });
-          if (data && data.length > 0) {
-            cardObj = data[0];
-          }
-        } catch {
-          // The grading overlay can still show the simulated result.
-        }
-
-        const elapsed = Date.now() - start;
-        if (elapsed < 1200) {
-          await new Promise((r) => window.setTimeout(r, 1200 - elapsed));
-        }
-        window.clearInterval(tick);
-
-        setConfidence(100);
-        setGradingResult({ ...payloadGrading, cardObj });
-        setState('detected');
-        triggerHaptic('success');
-        return;
-      }
-
-      if (isMulticardMode) {
-        // Simular escaneo de 2 o 3 cartas populares del catálogo offline
-        const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
-        const charizard = OFFLINE_CARD_CATALOG.find(c => c.id === 'sv3-125') || OFFLINE_CARD_CATALOG[0];
-        const pikachu = OFFLINE_CARD_CATALOG.find(c => c.id === 'cel25-25') || OFFLINE_CARD_CATALOG[1];
-        const mewtwo = OFFLINE_CARD_CATALOG.find(c => c.id === 'sv4-58') || OFFLINE_CARD_CATALOG[2];
-        const cardsToDetect = [charizard, pikachu, mewtwo].filter(Boolean);
-
-        // Simulamos un retraso de 1.2 segundos para la experiencia visual premium
-        const elapsed = Date.now() - start;
-        if (elapsed < 1200) {
-          await new Promise((r) => window.setTimeout(r, 1200 - elapsed));
-        }
-        window.clearInterval(tick);
-
-        setConfidence(98);
-        setDetectedMulticards(cardsToDetect);
-        setState('detected');
-        triggerHaptic('success');
-        return;
-      }
-
-      const recognition = await recognizeCardFromImage(input, { languageHint: scanLanguage });
-
-      // We still use a minimum of 800ms to ensure the visual feedback shows 
-      // up briefly even if the network is extremely fast, but we drop the 1.8s.
-      const elapsed = Date.now() - start;
-      if (elapsed < 800) {
-        await new Promise((r) => window.setTimeout(r, 800 - elapsed));
-      }
-      window.clearInterval(tick);
-
-      if (!recognition.card || !recognition.highConfidence) {
-        setConfidence(Math.round(recognition.confidence * 100));
-        setResult(recognition);
-        setState('lowConf');
-        triggerHaptic('warning'); // Error vibration pattern
-        return;
-      }
-
-      setConfidence(Math.round(recognition.confidence * 100));
-
-      if (isBatchMode) {
-        // Mode Lote: add to batch, trigger feedback, and auto-reset
-        setScannedBatch((prev) => {
-          const exists = prev.some((item) => item.card?.id === recognition.card?.id);
-          if (exists) return prev;
-          return [...prev, recognition];
-        });
-        setJustAddedToBatch(true);
-        setTimeout(() => setJustAddedToBatch(false), 800);
-        triggerHaptic('success');
-
-        setState('idle');
-        setConfidence(0);
-        setResult(null);
-        setBlurWarning(false);
-      } else {
-        // Mode Único: show single card detected panel
-        setResult(recognition);
-        setState('detected');
-        triggerHaptic('success'); // Success vibration
-      }
-    } catch (err) {
-      window.clearInterval(tick);
+  const runScan = useCallback(
+    async (input: RecognitionInput) => {
+      setError(null);
       setConfidence(0);
-      if (isAbortError(err)) return;
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo conectar con el servicio de cartas.',
-      );
-      setState('lowConf');
-    }
-  }, [isBatchMode, isMulticardMode, isGradingMode]);
+      const start = Date.now();
+      // Confidence bar animation, ~1.8s
+      const tick = window.setInterval(() => {
+        const t = Math.min(1, (Date.now() - start) / 1800);
+        setConfidence(Math.round(t * 92));
+        if (t >= 1) window.clearInterval(tick);
+      }, 60);
+
+      try {
+        if (isGradingMode) {
+          let payloadGrading;
+          if (input.type === 'file') {
+            const rawBase64 = await fileToBase64(input.file);
+            // Compress client-side before upload: typically 4MB → 300-500KB
+            const base64 = await compressForAI(rawBase64, 500);
+            const res = await fetch('/api/grade-card', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: base64 }),
+            });
+            if (!res.ok) throw new Error('Error al evaluar la carta física.');
+            payloadGrading = await res.json();
+          } else {
+            // Simulated demo mode
+            const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
+            const randomOffline =
+              OFFLINE_CARD_CATALOG[Math.floor(Math.random() * OFFLINE_CARD_CATALOG.length)];
+            payloadGrading = {
+              cardName: randomOffline?.name || 'Charizard ex',
+              centering: 9.5,
+              corners: 9.0,
+              edges: 9.0,
+              surface: 9.5,
+              overallGrade: 9.5,
+              qualifier: 'Mint',
+              issues: [
+                'Desgaste milimétrico en el borde superior trasero.',
+                'Centrado frontal ligeramente desplazado (60/40).',
+              ],
+            };
+          }
+
+          let cardObj = null;
+          try {
+            const { data } = await searchCards({ name: payloadGrading.cardName, pageSize: 1 });
+            if (data && data.length > 0) {
+              cardObj = data[0];
+            }
+          } catch {
+            // The grading overlay can still show the simulated result.
+          }
+
+          const elapsed = Date.now() - start;
+          if (elapsed < 1200) {
+            await new Promise((r) => window.setTimeout(r, 1200 - elapsed));
+          }
+          window.clearInterval(tick);
+
+          setConfidence(100);
+          setGradingResult({ ...payloadGrading, cardObj });
+          setState('detected');
+          triggerHaptic('success');
+          return;
+        }
+
+        if (isMulticardMode) {
+          // Simular escaneo de 2 o 3 cartas populares del catálogo offline
+          const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
+          const charizard =
+            OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv3-125') || OFFLINE_CARD_CATALOG[0];
+          const pikachu =
+            OFFLINE_CARD_CATALOG.find((c) => c.id === 'cel25-25') || OFFLINE_CARD_CATALOG[1];
+          const mewtwo =
+            OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv4-58') || OFFLINE_CARD_CATALOG[2];
+          const cardsToDetect = [charizard, pikachu, mewtwo].filter(Boolean);
+
+          // Simulamos un retraso de 1.2 segundos para la experiencia visual premium
+          const elapsed = Date.now() - start;
+          if (elapsed < 1200) {
+            await new Promise((r) => window.setTimeout(r, 1200 - elapsed));
+          }
+          window.clearInterval(tick);
+
+          setConfidence(98);
+          setDetectedMulticards(cardsToDetect);
+          setState('detected');
+          triggerHaptic('success');
+          return;
+        }
+
+        const recognition = await recognizeCardFromImage(input, { languageHint: scanLanguage });
+
+        // We still use a minimum of 800ms to ensure the visual feedback shows
+        // up briefly even if the network is extremely fast, but we drop the 1.8s.
+        const elapsed = Date.now() - start;
+        if (elapsed < 800) {
+          await new Promise((r) => window.setTimeout(r, 800 - elapsed));
+        }
+        window.clearInterval(tick);
+
+        if (!recognition.card || !recognition.highConfidence) {
+          setConfidence(Math.round(recognition.confidence * 100));
+          setResult(recognition);
+          setState('lowConf');
+          triggerHaptic('warning'); // Error vibration pattern
+          return;
+        }
+
+        setConfidence(Math.round(recognition.confidence * 100));
+
+        if (isBatchMode) {
+          // Mode Lote: add to batch, trigger feedback, and auto-reset
+          setScannedBatch((prev) => {
+            const exists = prev.some((item) => item.card?.id === recognition.card?.id);
+            if (exists) return prev;
+            return [...prev, recognition];
+          });
+          setJustAddedToBatch(true);
+          setTimeout(() => setJustAddedToBatch(false), 800);
+          triggerHaptic('success');
+
+          setState('idle');
+          setConfidence(0);
+          setResult(null);
+          setBlurWarning(false);
+        } else {
+          // Mode Único: show single card detected panel
+          setResult(recognition);
+          setState('detected');
+          triggerHaptic('success'); // Success vibration
+        }
+      } catch (err) {
+        window.clearInterval(tick);
+        setConfidence(0);
+        if (isAbortError(err)) return;
+        setError(
+          err instanceof Error ? err.message : 'No se pudo conectar con el servicio de cartas.'
+        );
+        setState('lowConf');
+      }
+    },
+    [isBatchMode, isMulticardMode, isGradingMode]
+  );
 
   useEffect(() => {
     if (state === 'scanning') {
@@ -660,7 +696,7 @@ export default function ScanScreen() {
       return;
     }
     if (state === 'scanning') return;
-    
+
     triggerHaptic('light'); // Tap vibration
     setBlurWarning(false);
 
@@ -764,8 +800,14 @@ export default function ScanScreen() {
             transition: 'opacity 200ms',
           }}
         >
-          {state === 'idle' && (isBatchMode ? 'Escaneo continuo en lote' : isMulticardMode ? 'Escaneo Multicarta Simultáneo' : 'Toma una foto de la carta')}
-          {state === 'scanning' && (isMulticardMode ? 'Identificando cartas…' : 'Identificando carta…')}
+          {state === 'idle' &&
+            (isBatchMode
+              ? 'Escaneo continuo en lote'
+              : isMulticardMode
+                ? 'Escaneo Multicarta Simultáneo'
+                : 'Toma una foto de la carta')}
+          {state === 'scanning' &&
+            (isMulticardMode ? 'Identificando cartas…' : 'Identificando carta…')}
           {state === 'detected' && (isMulticardMode ? '¡Cartas detectadas!' : '¡Carta detectada!')}
           {state === 'lowConf' && 'Detección poco fiable'}
         </div>
@@ -777,11 +819,18 @@ export default function ScanScreen() {
             letterSpacing: 0,
           }}
         >
-          {state === 'idle' && (isBatchMode ? `Acumuladas: ${scannedBatch.length} cartas en bandeja` : isMulticardMode ? 'Coloca múltiples cartas en el visor' : 'Alinea la carta dentro del marco')}
+          {state === 'idle' &&
+            (isBatchMode
+              ? `Acumuladas: ${scannedBatch.length} cartas en bandeja`
+              : isMulticardMode
+                ? 'Coloca múltiples cartas en el visor'
+                : 'Alinea la carta dentro del marco')}
           {state === 'scanning' && 'Mantén la cámara estable'}
-          {state === 'detected' && (isMulticardMode ? 'Revisa y guarda todo tu lote de cartas' : 'Revisa los detalles antes de guardar')}
-          {state === 'lowConf' &&
-            (error ?? 'Inténtalo de nuevo o introduce los datos manualmente')}
+          {state === 'detected' &&
+            (isMulticardMode
+              ? 'Revisa y guarda todo tu lote de cartas'
+              : 'Revisa los detalles antes de guardar')}
+          {state === 'lowConf' && (error ?? 'Inténtalo de nuevo o introduce los datos manualmente')}
         </div>
         <div
           style={{
@@ -842,7 +891,7 @@ export default function ScanScreen() {
             }}
             aria-hidden
           />
-           <EdgeDetectorCanvas
+          <EdgeDetectorCanvas
             videoRef={videoRef}
             active={cameraLive && state === 'idle'}
             onAlignmentChange={(score, aligned) => {
@@ -894,10 +943,16 @@ export default function ScanScreen() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 8px 32px rgba(0, 255, 127, 0.2), inset 0 0 12px rgba(0, 255, 127, 0.05)',
+                  boxShadow:
+                    '0 8px 32px rgba(0, 255, 127, 0.2), inset 0 0 12px rgba(0, 255, 127, 0.05)',
                 }}
               >
-                <svg width="76" height="76" viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)', display: 'block' }}>
+                <svg
+                  width="76"
+                  height="76"
+                  viewBox="0 0 80 80"
+                  style={{ transform: 'rotate(-90deg)', display: 'block' }}
+                >
                   {/* Track ring */}
                   <circle
                     cx="40"
@@ -931,14 +986,16 @@ export default function ScanScreen() {
                   </defs>
                 </svg>
                 {/* Countdown percentage */}
-                <div style={{
-                  position: 'absolute',
-                  fontSize: 15,
-                  fontWeight: 900,
-                  color: '#00ff7f',
-                  letterSpacing: 0,
-                  textShadow: '0 0 8px rgba(0, 255, 127, 0.65)',
-                }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    fontSize: 15,
+                    fontWeight: 900,
+                    color: '#00ff7f',
+                    letterSpacing: 0,
+                    textShadow: '0 0 8px rgba(0, 255, 127, 0.65)',
+                  }}
+                >
                   {Math.min(100, Math.round(autoScanCountdown))}%
                 </div>
               </div>
@@ -961,14 +1018,16 @@ export default function ScanScreen() {
                   gap: 6,
                 }}
               >
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  backgroundColor: '#00ff7f',
-                  boxShadow: '0 0 6px #00ff7f',
-                  animation: 'pulseIndicator 1s ease-in-out infinite',
-                }} />
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: '#00ff7f',
+                    boxShadow: '0 0 6px #00ff7f',
+                    animation: 'pulseIndicator 1s ease-in-out infinite',
+                  }}
+                />
                 Auto-Escaneando
               </div>
               <style>{`
@@ -1002,7 +1061,8 @@ export default function ScanScreen() {
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'radial-gradient(circle at center, rgba(52, 199, 89, 0.25) 0%, transparent 70%)',
+                background:
+                  'radial-gradient(circle at center, rgba(52, 199, 89, 0.25) 0%, transparent 70%)',
                 zIndex: 2,
                 pointerEvents: 'none',
                 animation: justAddedToBatch ? 'flashGreen 800ms ease-out' : 'none',
@@ -1048,8 +1108,7 @@ export default function ScanScreen() {
               borderRadius: 14,
               position: 'relative',
               zIndex: 1,
-              background:
-                'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
             }}
           />
         )}
@@ -1076,60 +1135,70 @@ export default function ScanScreen() {
             }}
           >
             {/* Brackets in the four corners */}
-            <div style={{
-              position: 'absolute',
-              top: -2,
-              left: -2,
-              width: 20,
-              height: 20,
-              borderTop: '3px solid var(--accent)',
-              borderLeft: '3px solid var(--accent)',
-              borderTopLeftRadius: 16,
-              boxShadow: '0 0 8px var(--accent)',
-            }} />
-            <div style={{
-              position: 'absolute',
-              top: -2,
-              right: -2,
-              width: 20,
-              height: 20,
-              borderTop: '3px solid var(--accent)',
-              borderRight: '3px solid var(--accent)',
-              borderTopRightRadius: 16,
-              boxShadow: '0 0 8px var(--accent)',
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: -2,
-              left: -2,
-              width: 20,
-              height: 20,
-              borderBottom: '3px solid var(--accent)',
-              borderLeft: '3px solid var(--accent)',
-              borderBottomLeftRadius: 16,
-              boxShadow: '0 0 8px var(--accent)',
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: -2,
-              right: -2,
-              width: 20,
-              height: 20,
-              borderBottom: '3px solid var(--accent)',
-              borderRight: '3px solid var(--accent)',
-              borderBottomRightRadius: 16,
-              boxShadow: '0 0 8px var(--accent)',
-            }} />
-            
-            <div style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'rgba(255, 255, 255, 0.85)',
-              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-              letterSpacing: 0,
-              maxWidth: 180,
-              lineHeight: 1.4,
-            }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: -2,
+                left: -2,
+                width: 20,
+                height: 20,
+                borderTop: '3px solid var(--accent)',
+                borderLeft: '3px solid var(--accent)',
+                borderTopLeftRadius: 16,
+                boxShadow: '0 0 8px var(--accent)',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                width: 20,
+                height: 20,
+                borderTop: '3px solid var(--accent)',
+                borderRight: '3px solid var(--accent)',
+                borderTopRightRadius: 16,
+                boxShadow: '0 0 8px var(--accent)',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                bottom: -2,
+                left: -2,
+                width: 20,
+                height: 20,
+                borderBottom: '3px solid var(--accent)',
+                borderLeft: '3px solid var(--accent)',
+                borderBottomLeftRadius: 16,
+                boxShadow: '0 0 8px var(--accent)',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                bottom: -2,
+                right: -2,
+                width: 20,
+                height: 20,
+                borderBottom: '3px solid var(--accent)',
+                borderRight: '3px solid var(--accent)',
+                borderBottomRightRadius: 16,
+                boxShadow: '0 0 8px var(--accent)',
+              }}
+            />
+
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'rgba(255, 255, 255, 0.85)',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                letterSpacing: 0,
+                maxWidth: 180,
+                lineHeight: 1.4,
+              }}
+            >
               Alinea la carta física en este recuadro
             </div>
           </div>
@@ -1241,9 +1310,7 @@ export default function ScanScreen() {
           <DetectedPanel
             result={result}
             confidence={confidence}
-            onView={() =>
-              navigate(`/card/${encodeURIComponent(result.card!.id)}`)
-            }
+            onView={() => navigate(`/card/${encodeURIComponent(result.card!.id)}`)}
             onWrong={() => setCorrectOpen(true)}
           />
         )}
@@ -1315,7 +1382,15 @@ export default function ScanScreen() {
             animation: 'fadeIn 300ms ease-out',
           }}
         >
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          <span
+            style={{
+              fontSize: 9.5,
+              fontWeight: 700,
+              color: 'rgba(255, 255, 255, 0.4)',
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+            }}
+          >
             Idioma OCR:
           </span>
           <div
@@ -1349,7 +1424,13 @@ export default function ScanScreen() {
                   fontFamily: 'inherit',
                 }}
               >
-                {lang === 'AUTO' ? '🌐 AUTO' : lang === 'EN' ? '🇺🇸 EN' : lang === 'ES' ? '🇪🇸 ES' : '🇯🇵 JP'}
+                {lang === 'AUTO'
+                  ? '🌐 AUTO'
+                  : lang === 'EN'
+                    ? '🇺🇸 EN'
+                    : lang === 'ES'
+                      ? '🇪🇸 ES'
+                      : '🇯🇵 JP'}
               </button>
             ))}
           </div>
@@ -1440,34 +1521,38 @@ export default function ScanScreen() {
 
       {/* Toast de Guardado Exitoso en Lote */}
       {showBatchSaveToast && (
-        <div style={{
-          position: 'absolute',
-          top: 110,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(52, 199, 89, 0.15)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(52, 199, 89, 0.4)',
-          borderRadius: 14,
-          padding: '12px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          zIndex: 100,
-          boxShadow: '0 8px 32px rgba(52, 199, 89, 0.2)',
-          animation: 'toastEnter 300ms cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
-          <div style={{
-            width: 22,
-            height: 22,
-            borderRadius: '50%',
-            background: '#34C759',
-            color: '#fff',
+        <div
+          style={{
+            position: 'absolute',
+            top: 110,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(52, 199, 89, 0.15)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(52, 199, 89, 0.4)',
+            borderRadius: 14,
+            padding: '12px 20px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-          }}>
+            gap: 10,
+            zIndex: 100,
+            boxShadow: '0 8px 32px rgba(52, 199, 89, 0.2)',
+            animation: 'toastEnter 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: '#34C759',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <CheckIcon size={12} color="#fff" />
           </div>
           <div>

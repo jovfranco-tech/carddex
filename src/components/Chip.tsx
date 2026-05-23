@@ -11,7 +11,7 @@ export interface ChipProps {
 export default function Chip({ children, active, onClick, color, style }: ChipProps) {
   const composed: CSSProperties = {
     border: 'none',
-    background: active ? color ?? 'var(--accent)' : '#F2F3F7',
+    background: active ? (color ?? 'var(--accent)') : '#F2F3F7',
     color: active ? '#fff' : 'var(--ink-2)',
     fontSize: 13,
     fontWeight: 600,

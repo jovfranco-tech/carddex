@@ -52,15 +52,11 @@ export function initTelemetry(): void {
 
   // Unhandled standard runtime exceptions
   window.onerror = (message, source, lineno, colno, error) => {
-    trackError(
-      error || new Error(String(message)),
-      'window.onerror',
-      {
-        source: String(source),
-        lineno,
-        colno
-      }
-    );
+    trackError(error || new Error(String(message)), 'window.onerror', {
+      source: String(source),
+      lineno,
+      colno,
+    });
     return false; // Let browser process it as well
   };
 
@@ -85,7 +81,7 @@ export function trackError(error: Error, context?: string, details?: Partial<Err
     context: safeText(context || 'application', 80),
     timestamp: new Date().toISOString(),
     url: safeUrl(),
-    ...details
+    ...details,
   };
 
   deliver('/api/telemetry', { type: 'error', data: payload });
@@ -101,7 +97,7 @@ export function trackEvent(name: string, metadata?: any): void {
     name: safeText(name, 80),
     metadata: safeMetadata(metadata),
     timestamp: new Date().toISOString(),
-    url: safeUrl()
+    url: safeUrl(),
   };
 
   deliver('/api/telemetry', { type: 'event', data: payload });
@@ -119,7 +115,7 @@ function deliver(url: string, body: any): void {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: dataStr,
-        keepalive: true
+        keepalive: true,
       }).catch(() => {});
     }
   } catch (e) {

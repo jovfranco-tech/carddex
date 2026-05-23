@@ -82,10 +82,7 @@ function ScreenLoader() {
  * Top-level error boundary. Catches render errors so the whole app doesn't go
  * white-screen if a single route throws.
  */
-class RootErrorBoundary extends Component<
-  { children: ReactNode },
-  { error: Error | null }
-> {
+class RootErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
 
   static getDerivedStateFromError(error: Error) {

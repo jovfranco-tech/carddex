@@ -193,7 +193,7 @@ describe('matchesAdvancedFilters', () => {
         types: ['psychic'],
         rarities: ['rare'],
         hpMin: 100,
-      }),
+      })
     ).toBe(true);
     // Name matches but wrong type → false
     expect(
@@ -201,7 +201,7 @@ describe('matchesAdvancedFilters', () => {
         name: 'mew',
         types: ['fire'],
         rarities: [],
-      }),
+      })
     ).toBe(false);
   });
 });
@@ -213,14 +213,16 @@ describe('mapTypeToEnglish', () => {
   it('maps Spanish water', () => expect(mapTypeToEnglish('agua')).toBe('water'));
   it('maps Spanish grass', () => expect(mapTypeToEnglish('planta')).toBe('grass'));
   it('maps Spanish lightning (rayo)', () => expect(mapTypeToEnglish('rayo')).toBe('lightning'));
-  it('maps Spanish lightning (electrico)', () => expect(mapTypeToEnglish('electrico')).toBe('lightning'));
+  it('maps Spanish lightning (electrico)', () =>
+    expect(mapTypeToEnglish('electrico')).toBe('lightning'));
   it('maps Spanish psychic (psiquico)', () => expect(mapTypeToEnglish('psiquico')).toBe('psychic'));
   it('maps Spanish fighting', () => expect(mapTypeToEnglish('lucha')).toBe('fighting'));
   it('maps Spanish darkness', () => expect(mapTypeToEnglish('oscuridad')).toBe('darkness'));
   it('maps Spanish metal (acero)', () => expect(mapTypeToEnglish('acero')).toBe('metal'));
   it('maps Spanish dragon', () => expect(mapTypeToEnglish('dragon')).toBe('dragon'));
   it('maps Spanish colorless', () => expect(mapTypeToEnglish('incoloro')).toBe('colorless'));
-  it('passes through unknown types unchanged', () => expect(mapTypeToEnglish('unknown')).toBe('unknown'));
+  it('passes through unknown types unchanged', () =>
+    expect(mapTypeToEnglish('unknown')).toBe('unknown'));
 });
 
 // ─── mapRarityToEnglish ──────────────────────────────────────────────────────
@@ -228,10 +230,12 @@ describe('mapTypeToEnglish', () => {
 describe('mapRarityToEnglish', () => {
   it('maps comun to common', () => expect(mapRarityToEnglish('comun')).toBe('common'));
   it('maps común to common', () => expect(mapRarityToEnglish('común')).toBe('common'));
-  it('maps infrecuente to uncommon', () => expect(mapRarityToEnglish('infrecuente')).toBe('uncommon'));
+  it('maps infrecuente to uncommon', () =>
+    expect(mapRarityToEnglish('infrecuente')).toBe('uncommon'));
   it('maps rara to rare', () => expect(mapRarityToEnglish('rara')).toBe('rare'));
   it('maps secreta to secret', () => expect(mapRarityToEnglish('secreta')).toBe('secret'));
-  it('passes through English rarities unchanged', () => expect(mapRarityToEnglish('rare')).toBe('rare'));
+  it('passes through English rarities unchanged', () =>
+    expect(mapRarityToEnglish('rare')).toBe('rare'));
 });
 
 // ─── base64ToFile ────────────────────────────────────────────────────────────

@@ -1,0 +1,36 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2020": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
+    "plugin:react-hooks/recommended"
+  ],
+  "ignorePatterns": ["dist", ".eslintrc.json", "node_modules", "android", "ios", "dev-dist", "stats.json", "tsconfig.app.tsbuildinfo"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["react-hooks"],
+  "rules": {
+    "react-hooks/rules-of-hooks": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/prop-types": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-unused-vars": "warn",
+    "no-empty": "off",
+    "react/display-name": "off",
+    "react/jsx-key": "warn",
+    "no-constant-condition": "off",
+    "react/no-unescaped-entities": "off",
+    "no-console": ["warn", { "allow": ["warn", "error", "info"] }]
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
+}

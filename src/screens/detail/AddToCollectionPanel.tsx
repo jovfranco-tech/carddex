@@ -76,14 +76,16 @@ export default function AddToCollectionPanel({
             label="Condición"
             value={condition}
             onChange={(v) => setCondition(v as CardCondition)}
-            options={[
-              'Mint',
-              'Near Mint',
-              'Lightly Played',
-              'Moderately Played',
-              'Heavily Played',
-              'Damaged',
-            ] as const}
+            options={
+              [
+                'Mint',
+                'Near Mint',
+                'Lightly Played',
+                'Moderately Played',
+                'Heavily Played',
+                'Damaged',
+              ] as const
+            }
           />
         </div>
 

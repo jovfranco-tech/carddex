@@ -3,10 +3,7 @@ interface ScanControlsBarProps {
   onSetScanMode: (mode: 'single' | 'batch' | 'multicard' | 'grading') => void;
 }
 
-export default function ScanControlsBar({
-  scanMode,
-  onSetScanMode,
-}: ScanControlsBarProps) {
+export default function ScanControlsBar({ scanMode, onSetScanMode }: ScanControlsBarProps) {
   return (
     <div
       style={{
@@ -29,8 +26,7 @@ export default function ScanControlsBar({
           padding: '6px 12px',
           borderRadius: 999,
           border: 'none',
-          background:
-            scanMode === 'single' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+          background: scanMode === 'single' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
           color: scanMode === 'single' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
           fontSize: 11.5,
           fontWeight: 700,
@@ -74,8 +70,7 @@ export default function ScanControlsBar({
             scanMode === 'multicard'
               ? 'linear-gradient(135deg, #7B5AD9 0%, #2F6FE0 100%)'
               : 'transparent',
-          color:
-            scanMode === 'multicard' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+          color: scanMode === 'multicard' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
           fontSize: 11.5,
           fontWeight: 700,
           cursor: 'pointer',

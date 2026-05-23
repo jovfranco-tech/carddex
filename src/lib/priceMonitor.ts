@@ -181,7 +181,7 @@ function sendPriceNotification(alert: PriceAlert): void {
  */
 export async function detectRealPriceChanges(
   ownedCards: PokemonCard[],
-  threshold = 5,
+  threshold = 5
 ): Promise<PriceAlert[]> {
   if (typeof localStorage === 'undefined') return [];
   if (!ownedCards || ownedCards.length === 0) return getPriceAlerts();
@@ -229,17 +229,13 @@ export async function detectRealPriceChanges(
     const newPrice = currentPrice.value;
     if (oldPrice <= 0) continue;
 
-    const changePercent = parseFloat(
-      (((newPrice - oldPrice) / oldPrice) * 100).toFixed(1),
-    );
+    const changePercent = parseFloat((((newPrice - oldPrice) / oldPrice) * 100).toFixed(1));
 
     if (Math.abs(changePercent) < threshold) continue;
 
     // Avoid duplicate alerts for the same card in the last 12h.
     const hasRecent = currentAlerts.some(
-      (a) =>
-        a.cardId === card.id &&
-        now - new Date(a.timestamp).getTime() < 12 * 60 * 60 * 1000,
+      (a) => a.cardId === card.id && now - new Date(a.timestamp).getTime() < 12 * 60 * 60 * 1000
     );
     if (hasRecent) continue;
 
@@ -320,7 +316,7 @@ export async function checkAndGeneratePriceAlerts(force = false): Promise<PriceA
       const parsed = JSON.parse(collectionRaw);
       if (parsed?.cards) {
         collectionCards = Object.keys(parsed.cards).filter(
-          (id) => parsed.cards[id].owned || parsed.cards[id].wishlist,
+          (id) => parsed.cards[id].owned || parsed.cards[id].wishlist
         );
       }
     } catch {}
@@ -358,15 +354,11 @@ export async function checkAndGeneratePriceAlerts(force = false): Promise<PriceA
         const newPrice = currentPrice.value;
         if (oldPrice <= 0) continue;
 
-        const changePercent = parseFloat(
-          (((newPrice - oldPrice) / oldPrice) * 100).toFixed(1),
-        );
+        const changePercent = parseFloat((((newPrice - oldPrice) / oldPrice) * 100).toFixed(1));
         if (Math.abs(changePercent) < 5) continue;
 
         const hasRecent = currentAlerts.some(
-          (a) =>
-            a.cardId === cardId &&
-            now - new Date(a.timestamp).getTime() < 12 * 60 * 60 * 1000,
+          (a) => a.cardId === cardId && now - new Date(a.timestamp).getTime() < 12 * 60 * 60 * 1000
         );
         if (hasRecent) continue;
 
@@ -398,10 +390,30 @@ export async function checkAndGeneratePriceAlerts(force = false): Promise<PriceA
   } else {
     // Empty collection — generate demo alerts so the UI shows something useful.
     const defaultCards = [
-      { id: 'sv3-223', name: 'Charizard ex', image: 'https://images.pokemontcg.io/sv3/223.png', basePrice: 65.50 },
-      { id: 'sv3pt5-188', name: 'Alakazam ex', image: 'https://images.pokemontcg.io/sv3pt5/188.png', basePrice: 32.20 },
-      { id: 'sv3pt5-201', name: 'Mew ex', image: 'https://images.pokemontcg.io/sv3pt5/201.png', basePrice: 110.00 },
-      { id: 'sv4-182', name: 'Roaring Moon ex', image: 'https://images.pokemontcg.io/sv4/182.png', basePrice: 58.00 },
+      {
+        id: 'sv3-223',
+        name: 'Charizard ex',
+        image: 'https://images.pokemontcg.io/sv3/223.png',
+        basePrice: 65.5,
+      },
+      {
+        id: 'sv3pt5-188',
+        name: 'Alakazam ex',
+        image: 'https://images.pokemontcg.io/sv3pt5/188.png',
+        basePrice: 32.2,
+      },
+      {
+        id: 'sv3pt5-201',
+        name: 'Mew ex',
+        image: 'https://images.pokemontcg.io/sv3pt5/201.png',
+        basePrice: 110.0,
+      },
+      {
+        id: 'sv4-182',
+        name: 'Roaring Moon ex',
+        image: 'https://images.pokemontcg.io/sv4/182.png',
+        basePrice: 58.0,
+      },
     ];
 
     const shuffledDefaults = [...defaultCards].sort(() => 0.5 - Math.random());
@@ -409,7 +421,7 @@ export async function checkAndGeneratePriceAlerts(force = false): Promise<PriceA
 
     selection.forEach((item) => {
       const changePercent = parseFloat(
-        ((Math.random() * 25 + 5) * (Math.random() > 0.45 ? 1 : -1)).toFixed(1),
+        ((Math.random() * 25 + 5) * (Math.random() > 0.45 ? 1 : -1)).toFixed(1)
       );
       const oldPrice = parseFloat(item.basePrice.toFixed(2));
       const newPrice = parseFloat((item.basePrice * (1 + changePercent / 100)).toFixed(2));

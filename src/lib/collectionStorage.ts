@@ -93,11 +93,7 @@ function safeWrite(key: string, value: unknown): void {
   }
 }
 
-
-export function mergeCollections(
-  local: CollectionState,
-  remote: CollectionState,
-): CollectionState {
+export function mergeCollections(local: CollectionState, remote: CollectionState): CollectionState {
   const mergedCards: Record<string, CollectionCardMeta> = {};
 
   const localCards = local?.cards ?? {};
@@ -177,10 +173,19 @@ export function mergeCollections(
 export function getCollection(): CollectionState {
   const raw = safeRead<unknown>(KEYS.collection, DEFAULT_COLLECTION);
   // Defensive — fix shape if a previous version stored something different.
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_COLLECTION, cards: {}, customCards: safeRead<any[]>('carddex.customCards', []) };
+  if (!raw || typeof raw !== 'object')
+    return {
+      ...DEFAULT_COLLECTION,
+      cards: {},
+      customCards: safeRead<any[]>('carddex.customCards', []),
+    };
   const obj = raw as Partial<CollectionState>;
   if (!obj.cards || typeof obj.cards !== 'object') {
-    return { ...DEFAULT_COLLECTION, cards: {}, customCards: safeRead<any[]>('carddex.customCards', []) };
+    return {
+      ...DEFAULT_COLLECTION,
+      cards: {},
+      customCards: safeRead<any[]>('carddex.customCards', []),
+    };
   }
   // Filter out clearly malformed card entries (missing cardId, non-object).
   const cleanCards: Record<string, CollectionCardMeta> = {};
@@ -213,15 +218,17 @@ function addToSyncQueue(state: CollectionState) {
 export async function flushSyncQueue() {
   const queue = getSyncQueue();
   if (queue.length === 0) return;
-  
-  const { data: { session } } = await supabase.auth.getSession();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
-  
+
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     setSyncStatus('offline-pending');
     return;
   }
-  
+
   setSyncStatus('syncing');
   const stateToSync = queue[queue.length - 1];
   const updatedAt = new Date().toISOString();
@@ -230,7 +237,7 @@ export async function flushSyncQueue() {
       .from('collections')
       .update({ state: stateToSync, updated_at: updatedAt })
       .eq('user_id', session.user.id);
-      
+
     if (error) {
       setSyncStatus('error');
     } else {
@@ -249,15 +256,17 @@ export async function flushSyncQueue() {
   }
 }
 
-async function syncToCloud(state: CollectionState) {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function syncToCloud(state: CollectionState) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (session?.user) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       addToSyncQueue(state);
       setSyncStatus('offline-pending');
       return;
     }
-    
+
     setSyncStatus('syncing');
     const updatedAt = new Date().toISOString();
     try {
@@ -265,7 +274,7 @@ async function syncToCloud(state: CollectionState) {
         .from('collections')
         .update({ state, updated_at: updatedAt })
         .eq('user_id', session.user.id);
-      
+
       if (error) {
         addToSyncQueue(state);
         setSyncStatus('offline-pending');
@@ -287,8 +296,19 @@ async function syncToCloud(state: CollectionState) {
   }
 }
 
+export function replaceCollection(state: CollectionState): void {
+  if (state.customCards) {
+    safeWrite('carddex.customCards', state.customCards);
+  }
+  safeWrite(KEYS.collection, state);
+  notify();
+  syncToCloud(state).catch(() => {});
+}
+
 export async function fetchCloudCollection(): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (session?.user) {
     setSyncStatus('syncing');
     try {
@@ -297,11 +317,11 @@ export async function fetchCloudCollection(): Promise<void> {
         .select('state, updated_at')
         .eq('user_id', session.user.id)
         .single();
-        
+
       if (!error && data) {
         const remoteUpdatedAt = data.updated_at;
         const lastSync = localStorage.getItem(KEYS.lastSyncTimestamp);
-        
+
         // If remote timestamp matches our last sync timestamp, and there is no sync queue, we can skip merging
         if (remoteUpdatedAt && lastSync === remoteUpdatedAt && getSyncQueue().length === 0) {
           setSyncStatus('synced');
@@ -317,7 +337,7 @@ export async function fetchCloudCollection(): Promise<void> {
           const localState = getCollection();
           const remoteState = data.state as CollectionState;
           const mergedState = mergeCollections(localState, remoteState);
-          
+
           // Write the merged custom cards list back to localStorage
           if (mergedState.customCards) {
             safeWrite('carddex.customCards', mergedState.customCards);
@@ -325,12 +345,12 @@ export async function fetchCloudCollection(): Promise<void> {
 
           safeWrite(KEYS.collection, mergedState);
           notify();
-          
+
           const newSyncTime = remoteUpdatedAt || new Date().toISOString();
           localStorage.setItem(KEYS.lastSyncTimestamp, newSyncTime);
-          
+
           setSyncStatus('synced');
-          
+
           // If the merged state contains new local modifications not present on the remote database,
           // instantly push it up to Supabase to unify both states.
           if (JSON.stringify(mergedState) !== JSON.stringify(remoteState)) {
@@ -391,7 +411,7 @@ export function getCardMeta(cardId: string): CollectionCardMeta | undefined {
 
 export function saveCardMeta(
   cardId: string,
-  patch: Partial<CollectionCardMeta>,
+  patch: Partial<CollectionCardMeta>
 ): CollectionCardMeta {
   const state = getCollection();
   const existing = state.cards[cardId] ?? makeDefaultMeta(cardId);
@@ -436,20 +456,20 @@ export function updateQuantity(cardId: string, quantity: number): CollectionCard
   const q = Math.max(0, Math.floor(quantity));
   return saveCardMeta(cardId, {
     quantity: q,
-    owned: q > 0 ? true : getCardMeta(cardId)?.owned ?? false,
+    owned: q > 0 ? true : (getCardMeta(cardId)?.owned ?? false),
   });
 }
 
 export function updateCondition(
   cardId: string,
-  condition: CollectionCardMeta['condition'],
+  condition: CollectionCardMeta['condition']
 ): CollectionCardMeta {
   return saveCardMeta(cardId, { condition });
 }
 
 export function updateVariant(
   cardId: string,
-  variant: CollectionCardMeta['variant'],
+  variant: CollectionCardMeta['variant']
 ): CollectionCardMeta {
   return saveCardMeta(cardId, { variant });
 }
@@ -541,10 +561,7 @@ export function importCollection(json: string): { imported: number } {
     if (typeof id !== 'string' || !id) continue;
     const m = meta as Partial<CollectionCardMeta>;
     // Defensive coercion — never trust an imported file.
-    const safeQty = Math.max(
-      0,
-      Math.floor(typeof m.quantity === 'number' ? m.quantity : 0),
-    );
+    const safeQty = Math.max(0, Math.floor(typeof m.quantity === 'number' ? m.quantity : 0));
     state.cards[id] = {
       ...makeDefaultMeta(id),
       ...m,
@@ -595,7 +612,7 @@ export function summarize(): CollectionSummary {
       if (c.missing) acc.missingCount += 1;
       return acc;
     },
-    { uniqueCount: 0, totalQuantity: 0, favoriteCount: 0, wishlistCount: 0, missingCount: 0 },
+    { uniqueCount: 0, totalQuantity: 0, favoriteCount: 0, wishlistCount: 0, missingCount: 0 }
   );
 }
 
@@ -612,7 +629,9 @@ export async function initializeCollectionStorage(): Promise<void> {
       if (backup && typeof backup === 'object' && backup.cards) {
         safeWrite(KEYS.collection, backup);
         notify();
-        logStorageWarning(`[Backup Sync] Restored collection from IndexedDB backup: ${Object.keys(backup.cards).length} cards.`);
+        logStorageWarning(
+          `[Backup Sync] Restored collection from IndexedDB backup: ${Object.keys(backup.cards).length} cards.`
+        );
       }
     } catch {
       logStorageWarning('[Backup Sync] Failed to restore backup on initialization.');
@@ -631,7 +650,7 @@ if (typeof window !== 'undefined') {
       setSyncStatus('offline-pending');
     }
   });
-  
+
   // Trigger flush immediately on startup if online
   if (navigator.onLine) {
     flushSyncQueue().catch(() => {

@@ -27,22 +27,14 @@ import {
   useDebounced,
   useViewTransitionNavigate,
 } from '@/lib/hooks';
-import {
-  getCardsByIds,
-  searchCards,
-} from '@/lib/pokemonTcgApi';
+import { getCardsByIds, searchCards } from '@/lib/pokemonTcgApi';
 import {
   getEstimatedPrice,
   sumCollectionValue,
   formatCollectionValue,
   formatPrice,
 } from '@/lib/pricing';
-import {
-  RARITY_FILTERS,
-  rarityMatchesFilter,
-  raritySortWeight,
-  rarityLabel,
-} from '@/lib/rarity';
+import { RARITY_FILTERS, rarityMatchesFilter, raritySortWeight, rarityLabel } from '@/lib/rarity';
 import { formatInt } from '@/lib/formatters';
 import type { PokemonCard } from '@/types/pokemon';
 import AISynergyFeed from '@/components/AISynergyFeed';
@@ -62,13 +54,13 @@ export default function HomeScreen() {
       Object.values(collection.cards)
         .filter((c) => c.owned)
         .map((c) => c.cardId),
-    [collection],
+    [collection]
   );
 
   // Fetch owned card data so we can compute estimated value & featured set.
   const owned = useAsync(
     (signal) => getCardsByIds(collectionIds.slice(0, 60), { signal }),
-    [collectionIds.join(',')],
+    [collectionIds.join(',')]
   );
 
   // Pull-to-refresh state
@@ -106,18 +98,21 @@ export default function HomeScreen() {
 
   // Search results — only if the user types something.
   const trimmed = debouncedQuery.trim();
-  const search = useAsync(async (signal) => {
-    if (!trimmed) return [];
-    const { data } = await searchCards(
-      {
-        name: trimmed,
-        pageSize: 18,
-        orderBy: '-set.releaseDate',
-      },
-      { signal },
-    );
-    return data;
-  }, [trimmed]);
+  const search = useAsync(
+    async (signal) => {
+      if (!trimmed) return [];
+      const { data } = await searchCards(
+        {
+          name: trimmed,
+          pageSize: 18,
+          orderBy: '-set.releaseDate',
+        },
+        { signal }
+      );
+      return data;
+    },
+    [trimmed]
+  );
 
   /* --------------------------------------------------------------------- */
   /* Derived data                                                           */
@@ -160,7 +155,7 @@ export default function HomeScreen() {
     if (ownedCards.length === 0) return null;
 
     const rarest = [...ownedCards].sort(
-      (a, b) => raritySortWeight(b.rarity) - raritySortWeight(a.rarity),
+      (a, b) => raritySortWeight(b.rarity) - raritySortWeight(a.rarity)
     )[0];
 
     let mostValuable: PokemonCard | null = null;
@@ -174,10 +169,7 @@ export default function HomeScreen() {
     }
 
     // Most-progressed set by owned count relative to printedTotal.
-    const setCounts = new Map<
-      string,
-      { name: string; owned: number; total: number }
-    >();
+    const setCounts = new Map<string, { name: string; owned: number; total: number }>();
     for (const c of ownedCards) {
       if (!c.set?.id) continue;
       const cur = setCounts.get(c.set.id) ?? {
@@ -193,7 +185,7 @@ export default function HomeScreen() {
       .sort((a, b) => b.owned / b.total - a.owned / a.total)[0];
 
     const duplicates = Object.values(collection.cards).filter(
-      (m) => m.owned && m.quantity > 1,
+      (m) => m.owned && m.quantity > 1
     ).length;
 
     return { rarest, mostValuable, bestSet, duplicates };
@@ -205,9 +197,9 @@ export default function HomeScreen() {
   }, [search.data, rarityFilter]);
 
   const sparklineData = useMemo(() => {
-    const currentValue = totalValue ? (totalValue.usd || totalValue.eur || 120) : 120;
+    const currentValue = totalValue ? totalValue.usd || totalValue.eur || 120 : 120;
     let rawPoints: { date: string; value: number }[] = [];
-    
+
     if (collection.history && collection.history.length >= 2) {
       rawPoints = collection.history;
     } else {
@@ -235,13 +227,13 @@ export default function HomeScreen() {
       }
       rawPoints = seedPoints;
     }
-    
+
     // Calculate performance change
     const first = rawPoints[0]?.value ?? 0;
     const last = rawPoints[rawPoints.length - 1]?.value ?? 0;
     const isPositive = last >= first;
     const pctChange = first > 0 ? ((last - first) / first) * 100 : 0;
-    
+
     return {
       points: rawPoints,
       isPositive,
@@ -253,9 +245,7 @@ export default function HomeScreen() {
   /* Empty state — no collection AND no active search                       */
   /* --------------------------------------------------------------------- */
 
-  const isEmpty =
-    collectionIds.length === 0 &&
-    !trimmed;
+  const isEmpty = collectionIds.length === 0 && !trimmed;
 
   /* --------------------------------------------------------------------- */
   /* Render                                                                 */
@@ -376,7 +366,7 @@ export default function HomeScreen() {
           onScan={() => navigate('/scan')}
           onSearch={() => {
             const input = document.querySelector<HTMLInputElement>(
-              'input[aria-label="Buscar cartas"], input[type="search"]',
+              'input[aria-label="Buscar cartas"], input[type="search"]'
             );
             input?.focus();
           }}
@@ -407,20 +397,45 @@ export default function HomeScreen() {
             }}
           >
             {/* Header info */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: 6,
+              }}
+            >
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.45)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'rgba(255, 255, 255, 0.45)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.8,
+                  }}
+                >
                   Valor del Portafolio
                 </span>
-                <span style={{ fontSize: 28, fontWeight: 800, color: '#FFF', letterSpacing: -0.5, marginTop: 4 }}>
+                <span
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 800,
+                    color: '#FFF',
+                    letterSpacing: -0.5,
+                    marginTop: 4,
+                  }}
+                >
                   {totalValue ? formatCollectionValue(totalValue) : '—'}
                 </span>
               </div>
-              
+
               {/* Performance Pill Badge */}
               <div
                 style={{
-                  background: sparklineData.isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  background: sparklineData.isPositive
+                    ? 'rgba(16, 185, 129, 0.12)'
+                    : 'rgba(239, 68, 68, 0.12)',
                   border: `0.5px solid ${sparklineData.isPositive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
                   color: sparklineData.isPositive ? '#10B981' : '#EF4444',
                   padding: '4px 10px',
@@ -433,7 +448,10 @@ export default function HomeScreen() {
                 }}
               >
                 <span>{sparklineData.isPositive ? '▲' : '▼'}</span>
-                <span>{sparklineData.pctChange >= 0 ? '+' : ''}{sparklineData.pctChange.toFixed(1)}%</span>
+                <span>
+                  {sparklineData.pctChange >= 0 ? '+' : ''}
+                  {sparklineData.pctChange.toFixed(1)}%
+                </span>
                 <span style={{ fontSize: 9, opacity: 0.6, fontWeight: 500 }}>30d</span>
               </div>
             </div>
@@ -441,11 +459,22 @@ export default function HomeScreen() {
             {/* Sparkline Area Chart */}
             <div style={{ width: '100%', height: 50, marginTop: 8 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={sparklineData.points} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                <AreaChart
+                  data={sparklineData.points}
+                  margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="sparklineColorGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={sparklineData.isPositive ? '#10B981' : '#EF4444'} stopOpacity={0.25} />
-                      <stop offset="95%" stopColor={sparklineData.isPositive ? '#10B981' : '#EF4444'} stopOpacity={0} />
+                      <stop
+                        offset="5%"
+                        stopColor={sparklineData.isPositive ? '#10B981' : '#EF4444'}
+                        stopOpacity={0.25}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={sparklineData.isPositive ? '#10B981' : '#EF4444'}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
                   <Area
@@ -456,7 +485,7 @@ export default function HomeScreen() {
                     fillOpacity={1}
                     fill="url(#sparklineColorGrad)"
                     style={{
-                      filter: `drop-shadow(0 2px 6px ${sparklineData.isPositive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'})`
+                      filter: `drop-shadow(0 2px 6px ${sparklineData.isPositive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'})`,
                     }}
                   />
                 </AreaChart>
@@ -488,7 +517,11 @@ export default function HomeScreen() {
             />
             <StatCard
               label={t('home.completed') || 'Completado'}
-              value={insights?.bestSet ? `${((insights.bestSet.owned / insights.bestSet.total) * 100).toFixed(1)}%` : '0.0%'}
+              value={
+                insights?.bestSet
+                  ? `${((insights.bestSet.owned / insights.bestSet.total) * 100).toFixed(1)}%`
+                  : '0.0%'
+              }
               suffix={t('home.completedSuffix') || 'de la colección'}
               accent="#9b51e0"
               glyph="↺"
@@ -497,7 +530,9 @@ export default function HomeScreen() {
 
           {/* Active search results */}
           {trimmed ? (
-            <Section title={t('home.searchResults', { query: trimmed }) || `Resultados para “${trimmed}”`}>
+            <Section
+              title={t('home.searchResults', { query: trimmed }) || `Resultados para “${trimmed}”`}
+            >
               {/* Rarity chips */}
               <div
                 style={{
@@ -526,7 +561,10 @@ export default function HomeScreen() {
               ) : searchFiltered.length === 0 ? (
                 <EmptyState
                   title={t('home.noResults') || 'Sin resultados'}
-                  description={t('home.noResultsDesc', { query: trimmed }) || `No encontramos cartas que coincidan con “${trimmed}”.`}
+                  description={
+                    t('home.noResultsDesc', { query: trimmed }) ||
+                    `No encontramos cartas que coincidan con “${trimmed}”.`
+                  }
                 />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -551,9 +589,19 @@ export default function HomeScreen() {
                     ))}
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', padding: '10px 18px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                      alignItems: 'center',
+                      padding: '10px 18px',
+                    }}
+                  >
                     <button
-                      onClick={() => navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false&ai=true`)}
+                      onClick={() =>
+                        navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false&ai=true`)
+                      }
                       style={{
                         background: 'var(--accent-tint)',
                         color: 'var(--accent)',
@@ -585,7 +633,9 @@ export default function HomeScreen() {
                       {t('home.semanticSearch') || '✦ Búsqueda Semántica con IA'}
                     </button>
                     <button
-                      onClick={() => navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false`)}
+                      onClick={() =>
+                        navigate(`/library?q=${encodeURIComponent(trimmed)}&mine=false`)
+                      }
                       style={{
                         background: 'rgba(255, 255, 255, 0.05)',
                         color: 'var(--ink)',
@@ -626,14 +676,22 @@ export default function HomeScreen() {
             <>
               {/* Herramientas IA Native */}
               <Section title={t('home.aiTools') || 'Herramientas IA Native ✦'}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '0 18px 8px' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                    padding: '0 18px 8px',
+                  }}
+                >
                   <div
                     onClick={() => {
                       triggerHaptic('light');
                       navigate('/custom-card');
                     }}
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255, 149, 0, 0.08) 0%, rgba(255, 45, 85, 0.08) 100%)',
+                      background:
+                        'linear-gradient(135deg, rgba(255, 149, 0, 0.08) 0%, rgba(255, 45, 85, 0.08) 100%)',
                       border: '0.5px solid rgba(255, 149, 0, 0.25)',
                       borderRadius: 18,
                       padding: 14,
@@ -646,9 +704,26 @@ export default function HomeScreen() {
                   >
                     <div style={{ fontSize: 24 }}>⚖️</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>{t('home.customCreator') || 'Creador Custom'}</div>
-                      <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.3 }}>
-                        {t('home.customCreatorDesc') || 'Crea cartas TCG únicas en 3D holográfico interactivo.'}
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: 'var(--ink)',
+                          letterSpacing: -0.2,
+                        }}
+                      >
+                        {t('home.customCreator') || 'Creador Custom'}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10.5,
+                          color: 'var(--muted)',
+                          marginTop: 2,
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {t('home.customCreatorDesc') ||
+                          'Crea cartas TCG únicas en 3D holográfico interactivo.'}
                       </div>
                     </div>
                   </div>
@@ -659,7 +734,8 @@ export default function HomeScreen() {
                       navigate('/decks');
                     }}
                     style={{
-                      background: 'linear-gradient(135deg, rgba(123, 90, 217, 0.08) 0%, rgba(47, 111, 224, 0.08) 100%)',
+                      background:
+                        'linear-gradient(135deg, rgba(123, 90, 217, 0.08) 0%, rgba(47, 111, 224, 0.08) 100%)',
                       border: '0.5px solid rgba(123, 90, 217, 0.25)',
                       borderRadius: 18,
                       padding: 14,
@@ -672,9 +748,26 @@ export default function HomeScreen() {
                   >
                     <div style={{ fontSize: 24 }}>🔮</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.2 }}>{t('home.deckCopilot') || 'Copiloto de Mazos'}</div>
-                      <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.3 }}>
-                        {t('home.deckCopilotDesc') || 'Construye y optimiza mazos de competición con IA.'}
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: 'var(--ink)',
+                          letterSpacing: -0.2,
+                        }}
+                      >
+                        {t('home.deckCopilot') || 'Copiloto de Mazos'}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10.5,
+                          color: 'var(--muted)',
+                          marginTop: 2,
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {t('home.deckCopilotDesc') ||
+                          'Construye y optimiza mazos de competición con IA.'}
                       </div>
                     </div>
                   </div>
@@ -687,7 +780,9 @@ export default function HomeScreen() {
               <Section
                 title={t('home.featuredCards') || 'Cartas destacadas'}
                 action={
-                  <ActionLink onClick={() => navigate('/library')}>{t('home.viewAll') || 'Ver todas'}</ActionLink>
+                  <ActionLink onClick={() => navigate('/library')}>
+                    {t('home.viewAll') || 'Ver todas'}
+                  </ActionLink>
                 }
               >
                 {owned.loading ? (
@@ -737,10 +832,10 @@ export default function HomeScreen() {
                         onClick={() => navigate(`/card/${c.id}`)}
                       >
                         <CardTile
-                           card={c}
-                           meta={collection.cards[c.id]}
-                           width={110}
-                           viewTransitionName={`card-image-${c.id}`}
+                          card={c}
+                          meta={collection.cards[c.id]}
+                          width={110}
+                          viewTransitionName={`card-image-${c.id}`}
                         />
                         <div
                           style={{
@@ -802,9 +897,7 @@ export default function HomeScreen() {
                         label={t('home.rarestCard') || 'Carta más rara'}
                         title={insights.rarest.name}
                         sub={rarityLabel(insights.rarest.rarity)}
-                        onClick={() =>
-                          navigate(`/card/${insights.rarest!.id}`)
-                        }
+                        onClick={() => navigate(`/card/${insights.rarest!.id}`)}
                       />
                     )}
                     {insights.mostValuable && (
@@ -815,16 +908,19 @@ export default function HomeScreen() {
                           const p = getEstimatedPrice(insights.mostValuable);
                           return p ? formatPrice(p) : '—';
                         })()}
-                        onClick={() =>
-                          navigate(`/card/${insights.mostValuable!.id}`)
-                        }
+                        onClick={() => navigate(`/card/${insights.mostValuable!.id}`)}
                       />
                     )}
                     {insights.bestSet && (
                       <InsightCard
                         label={t('home.mostAdvancedSet') || 'Set más avanzado'}
                         title={insights.bestSet.name}
-                        sub={t('home.setCardCount', { owned: insights.bestSet.owned, total: insights.bestSet.total }) || `${insights.bestSet.owned}/${insights.bestSet.total} cartas`}
+                        sub={
+                          t('home.setCardCount', {
+                            owned: insights.bestSet.owned,
+                            total: insights.bestSet.total,
+                          }) || `${insights.bestSet.owned}/${insights.bestSet.total} cartas`
+                        }
                         onClick={() => navigate('/sets')}
                       />
                     )}
@@ -938,13 +1034,7 @@ export default function HomeScreen() {
 /* Empty home — first-launch experience                                       */
 /* ------------------------------------------------------------------------- */
 
-function HomeEmpty({
-  onScan,
-  onSearch,
-}: {
-  onScan: () => void;
-  onSearch: () => void;
-}) {
+function HomeEmpty({ onScan, onSearch }: { onScan: () => void; onSearch: () => void }) {
   const { t } = useI18n();
   return (
     <div style={{ padding: '8px 24px 40px' }}>
@@ -952,7 +1042,10 @@ function HomeEmpty({
         large
         icon={<ScanIcon size={42} />}
         title={t('home.emptyTitle') || 'Aún no tienes cartas'}
-        description={t('home.emptyDescription') || 'Escanea tu primera carta o búscala por nombre para empezar a construir tu binder digital.'}
+        description={
+          t('home.emptyDescription') ||
+          'Escanea tu primera carta o búscala por nombre para empezar a construir tu binder digital.'
+        }
         action={
           <div
             style={{

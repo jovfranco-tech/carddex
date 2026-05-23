@@ -10,12 +10,7 @@ interface DetectedPanelProps {
   onWrong: () => void;
 }
 
-export default function DetectedPanel({
-  result,
-  confidence,
-  onView,
-  onWrong,
-}: DetectedPanelProps) {
+export default function DetectedPanel({ result, confidence, onView, onWrong }: DetectedPanelProps) {
   const card = result.card!;
   const isVectorMatch = result.source === 'vector_match';
   const isOffline = result.source === 'offline_fallback';
@@ -37,13 +32,17 @@ export default function DetectedPanel({
         background: 'rgba(20,22,30,0.7)',
         backdropFilter: 'blur(20px) saturate(160%)',
         WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-        border: isVectorMatch ? '1px solid rgba(0, 229, 255, 0.4)' : '0.5px solid rgba(255,255,255,0.12)',
+        border: isVectorMatch
+          ? '1px solid rgba(0, 229, 255, 0.4)'
+          : '0.5px solid rgba(255,255,255,0.12)',
         borderRadius: 22,
         padding: 14,
         display: 'flex',
         gap: 14,
         alignItems: 'flex-start',
-        boxShadow: isVectorMatch ? '0 0 16px rgba(0, 229, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)' : undefined,
+        boxShadow: isVectorMatch
+          ? '0 0 16px rgba(0, 229, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)'
+          : undefined,
         animation: isVectorMatch ? 'vectorMatchPulse 2s infinite ease-in-out' : undefined,
       }}
     >
@@ -130,27 +129,29 @@ export default function DetectedPanel({
         </div>
 
         {/* Pokémon types row */}
-        {result.cardCategory === 'Pokémon' && result.pokemonTypes && result.pokemonTypes.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-            {result.pokemonTypes.map((t) => (
-              <span
-                key={t}
-                style={{
-                  fontSize: 9.5,
-                  fontWeight: 700,
-                  padding: '2px 7px',
-                  borderRadius: 999,
-                  background: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.85)',
-                  letterSpacing: 0.3,
-                  textTransform: 'uppercase',
-                }}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
+        {result.cardCategory === 'Pokémon' &&
+          result.pokemonTypes &&
+          result.pokemonTypes.length > 0 && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+              {result.pokemonTypes.map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    padding: '2px 7px',
+                    borderRadius: 999,
+                    background: 'rgba(255,255,255,0.08)',
+                    color: 'rgba(255,255,255,0.85)',
+                    letterSpacing: 0.3,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
 
         <div
           style={{

@@ -4,7 +4,8 @@
  */
 
 // A valid testing/demo VAPID Public Key
-export const VAPID_PUBLIC_KEY = 'BIH_d7q-29vC55a5bN23-LgV681f21_d3y2t0q-9u8c7x6y5z4w3v2u1t0s9r8q7p6o5n4m3l2k1j0i9h8g7f6e5d4c3b2a1';
+export const VAPID_PUBLIC_KEY =
+  'BIH_d7q-29vC55a5bN23-LgV681f21_d3y2t0q-9u8c7x6y5z4w3v2u1t0s9r8q7p6o5n4m3l2k1j0i9h8g7f6e5d4c3b2a1';
 
 // Helper to convert base64 to Uint8Array for pushManager
 function urlBase64ToUint8Array(base64String: string) {
@@ -19,7 +20,11 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export async function getPushSubscription(): Promise<PushSubscription | null> {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+  if (
+    typeof window === 'undefined' ||
+    !('serviceWorker' in navigator) ||
+    !('PushManager' in window)
+  ) {
     return null;
   }
   try {
@@ -42,7 +47,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription> 
   }
 
   const registration = await navigator.serviceWorker.ready;
-  
+
   // Request notification permission if not already granted
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
@@ -69,7 +74,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription> 
 export async function unsubscribeFromPushNotifications(): Promise<boolean> {
   const subscription = await getPushSubscription();
   if (!subscription) return false;
-  
+
   const success = await subscription.unsubscribe();
   if (success) {
     try {

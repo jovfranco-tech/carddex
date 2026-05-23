@@ -18,13 +18,13 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
   const data = useMemo(() => {
     const points = [];
     const today = new Date();
-    
+
     // Deterministic random seed based on cardName to keep chart stable on re-renders
     let seed = 0;
     for (let i = 0; i < cardName.length; i++) {
       seed += cardName.charCodeAt(i);
     }
-    
+
     const pseudoRandom = () => {
       const x = Math.sin(seed++) * 10000;
       return x - Math.floor(x);
@@ -35,11 +35,11 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
     for (let i = 30; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
-      
+
       // Daily walk fluctuation (-3% to +3.5%)
       const change = (pseudoRandom() * 6.5 - 3) / 100;
       currentPrice = currentPrice * (1 + change);
-      
+
       points.push({
         date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         Precio: parseFloat(currentPrice.toFixed(2)),
@@ -60,11 +60,35 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
         marginTop: 20,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h4 style={{ margin: 0, fontSize: 13, fontWeight: 800, letterSpacing: 0, color: 'var(--ink)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <h4
+          style={{
+            margin: 0,
+            fontSize: 13,
+            fontWeight: 800,
+            letterSpacing: 0,
+            color: 'var(--ink)',
+          }}
+        >
           Tendencia de Mercado (30d)
         </h4>
-        <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700, background: 'rgba(52, 199, 89, 0.1)', padding: '2px 8px', borderRadius: 999 }}>
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--success)',
+            fontWeight: 700,
+            background: 'rgba(52, 199, 89, 0.1)',
+            padding: '2px 8px',
+            borderRadius: 999,
+          }}
+        >
           ▲ +5.2%
         </span>
       </div>
@@ -78,7 +102,11 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
                 <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.04)" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="rgba(255, 255, 255, 0.04)"
+            />
             <XAxis
               dataKey="date"
               stroke="var(--muted)"

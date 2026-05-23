@@ -12,10 +12,7 @@ export interface CardAssistantButtonProps {
  * Pill-style entry button + the bottom sheet it opens. Placed near the
  * add-to-collection panel on the Detail screen.
  */
-export default function CardAssistantButton({
-  context,
-  enabled = true,
-}: CardAssistantButtonProps) {
+export default function CardAssistantButton({ context, enabled = true }: CardAssistantButtonProps) {
   const [open, setOpen] = useState(false);
   const disabled = !enabled || !context;
 
@@ -95,11 +92,7 @@ export default function CardAssistantButton({
           ›
         </span>
       </button>
-      <CardAssistantSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        context={context}
-      />
+      <CardAssistantSheet open={open} onClose={() => setOpen(false)} context={context} />
     </>
   );
 }

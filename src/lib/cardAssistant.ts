@@ -19,12 +19,7 @@
 
 import type { PokemonCard } from '@/types/pokemon';
 import type { CollectionCardMeta } from '@/types/collection';
-import {
-  getEstimatedPrice,
-  formatPrice,
-  type EstimatedPrice,
-  PRICE_DISCLAIMER,
-} from './pricing';
+import { getEstimatedPrice, formatPrice, type EstimatedPrice, PRICE_DISCLAIMER } from './pricing';
 import { normalizeRarity, rarityLabel } from './rarity';
 import { classifyCategory, type CardCategory } from './cardRecognition';
 
@@ -86,7 +81,7 @@ export function buildCardAssistantContext(
     similarCards?: PokemonCard[];
     ownedCountInSet?: number;
     printedTotalInSet?: number;
-  } = {},
+  } = {}
 ): CardAssistantContext {
   return {
     card,
@@ -127,19 +122,65 @@ const INTENT_RULES: ReadonlyArray<IntentRule> = [
   // More specific multi-word phrases are checked first so they don't get
   // swallowed by single-word matches further down the list (e.g.
   // "vale la pena" must hit `recommend`, not `value`'s loose "vale").
-  { intent: 'recommend', keywords: ['vale la pena', 'recomienda', 'recomendable', 'debería', 'comprar', 'agregar', 'añadir'] },
-  { intent: 'similar', keywords: ['aparece en', 'otras versiones', 'otras expansion', 'otras expansión', 'reimpresión', 'reprint', 'similares', 'otra carta'] },
+  {
+    intent: 'recommend',
+    keywords: [
+      'vale la pena',
+      'recomienda',
+      'recomendable',
+      'debería',
+      'comprar',
+      'agregar',
+      'añadir',
+    ],
+  },
+  {
+    intent: 'similar',
+    keywords: [
+      'aparece en',
+      'otras versiones',
+      'otras expansion',
+      'otras expansión',
+      'reimpresión',
+      'reprint',
+      'similares',
+      'otra carta',
+    ],
+  },
 
   { intent: 'rarity', keywords: ['rara', 'raro', 'rareza', 'rarity', 'común', 'comun'] },
-  { intent: 'value', keywords: ['valor', 'precio', 'cuesta', 'cuánto vale', 'cuanto vale', 'price'] },
-  { intent: 'set', keywords: ['expansion', 'expansión', 'set', 'colección de', 'serie', 'edición'] },
+  {
+    intent: 'value',
+    keywords: ['valor', 'precio', 'cuesta', 'cuánto vale', 'cuanto vale', 'price'],
+  },
+  {
+    intent: 'set',
+    keywords: ['expansion', 'expansión', 'set', 'colección de', 'serie', 'edición'],
+  },
   { intent: 'owned', keywords: ['tengo', 'mi colección', 'poseo', 'duplicad', 'tengo esta'] },
-  { intent: 'category', keywords: ['tipo de carta', 'qué tipo', 'pokémon o', 'entrenador', 'energía', 'category', 'type'] },
+  {
+    intent: 'category',
+    keywords: [
+      'tipo de carta',
+      'qué tipo',
+      'pokémon o',
+      'entrenador',
+      'energía',
+      'category',
+      'type',
+    ],
+  },
   { intent: 'attacks', keywords: ['ataque', 'ataques', 'movimiento', 'movimientos'] },
-  { intent: 'abilities', keywords: ['habilidad', 'habilidades', 'ability', 'abilities', 'poder', 'rule', 'regla'] },
+  {
+    intent: 'abilities',
+    keywords: ['habilidad', 'habilidades', 'ability', 'abilities', 'poder', 'rule', 'regla'],
+  },
   { intent: 'weaknesses', keywords: ['debilidad', 'debilidades', 'resistencia', 'resistencias'] },
   { intent: 'retreat', keywords: ['retirada', 'coste de retirada', 'retreat'] },
-  { intent: 'variants', keywords: ['variante', 'variantes', 'reverse', 'holo', 'foil', 'primera edición'] },
+  {
+    intent: 'variants',
+    keywords: ['variante', 'variantes', 'reverse', 'holo', 'foil', 'primera edición'],
+  },
 ];
 
 function detectIntent(question: string): AssistantIntent {
@@ -169,8 +210,9 @@ function answerRarity(ctx: CardAssistantContext): AssistantAnswer {
   const label = rarityLabel(card.rarity);
   return {
     intent: 'rarity',
-    text: `Esta carta se clasifica como **${label}** (rareza original: “${card.rarity}”).`
-      + (group === 'Secret Rare' || group === 'Hyper Rare' || group === 'Special Illustration Rare'
+    text:
+      `Esta carta se clasifica como **${label}** (rareza original: “${card.rarity}”).` +
+      (group === 'Secret Rare' || group === 'Hyper Rare' || group === 'Special Illustration Rare'
         ? ' Está entre las rarezas más altas del juego — muy buscadas por coleccionistas.'
         : group === 'Common'
           ? ' Es una rareza común, fácil de encontrar en sobres.'
@@ -185,9 +227,9 @@ function answerValue(ctx: CardAssistantContext): AssistantAnswer {
     return {
       intent: 'value',
       text:
-        'No hay precio publicado para esta carta en los proveedores que consultamos '
-        + '(TCGPlayer y Cardmarket). Esto puede pasar con cartas muy nuevas, '
-        + 'promocionales o de idiomas con poco mercado.',
+        'No hay precio publicado para esta carta en los proveedores que consultamos ' +
+        '(TCGPlayer y Cardmarket). Esto puede pasar con cartas muy nuevas, ' +
+        'promocionales o de idiomas con poco mercado.',
       unknown: true,
     };
   }
@@ -241,13 +283,16 @@ function answerOwned(ctx: CardAssistantContext): AssistantAnswer {
   }
   const lines: string[] = [];
   if (meta.owned && meta.quantity > 0) {
-    lines.push(`Tienes **${meta.quantity}** ${meta.quantity === 1 ? 'copia' : 'copias'} guardadas.`);
+    lines.push(
+      `Tienes **${meta.quantity}** ${meta.quantity === 1 ? 'copia' : 'copias'} guardadas.`
+    );
   } else if (meta.owned) {
     lines.push('Está marcada como tuya, pero la cantidad es 0.');
   }
   if (meta.favorite) lines.push('Está marcada como **favorita** ⭐.');
   if (meta.wishlist) lines.push('Está en tu **wishlist**.');
-  if (meta.missing) lines.push('Está marcada como **falta** (sabes que la quieres pero no la has conseguido).');
+  if (meta.missing)
+    lines.push('Está marcada como **falta** (sabes que la quieres pero no la has conseguido).');
   if (meta.foil || meta.variant !== 'Normal') {
     const parts: string[] = [];
     if (meta.foil) parts.push('foil');
@@ -324,7 +369,7 @@ function answerAbilities(ctx: CardAssistantContext): AssistantAnswer {
     };
   }
   const lines = abilities.map(
-    (a) => `• **${a.name}** (${a.type ?? 'Habilidad'})${a.text ? `\n  ${a.text}` : ''}`,
+    (a) => `• **${a.name}** (${a.type ?? 'Habilidad'})${a.text ? `\n  ${a.text}` : ''}`
   );
   return {
     intent: 'abilities',
@@ -337,16 +382,12 @@ function answerWeaknesses(ctx: CardAssistantContext): AssistantAnswer {
   const { card } = ctx;
   const lines: string[] = [];
   if (card.weaknesses && card.weaknesses.length > 0) {
-    lines.push(
-      `Debilidades: ${card.weaknesses.map((w) => `${w.type} ${w.value}`).join(', ')}.`,
-    );
+    lines.push(`Debilidades: ${card.weaknesses.map((w) => `${w.type} ${w.value}`).join(', ')}.`);
   } else {
     lines.push('No declara debilidades.');
   }
   if (card.resistances && card.resistances.length > 0) {
-    lines.push(
-      `Resistencias: ${card.resistances.map((r) => `${r.type} ${r.value}`).join(', ')}.`,
-    );
+    lines.push(`Resistencias: ${card.resistances.map((r) => `${r.type} ${r.value}`).join(', ')}.`);
   }
   return {
     intent: 'weaknesses',
@@ -393,16 +434,16 @@ function answerVariants(ctx: CardAssistantContext): AssistantAnswer {
     return {
       intent: 'variants',
       text:
-        'No tenemos datos de variantes (foil/normal/reverse) para esta carta. '
-        + 'Algunas cartas modernas solo se imprimen en una variante.',
+        'No tenemos datos de variantes (foil/normal/reverse) para esta carta. ' +
+        'Algunas cartas modernas solo se imprimen en una variante.',
       unknown: true,
     };
   }
   return {
     intent: 'variants',
     text:
-      `Variantes detectadas en los datos de mercado:\n• ${variants.join('\n• ')}\n\n`
-      + 'Las variantes afectan al valor estimado: por defecto preferimos la cotización Holofoil cuando existe.',
+      `Variantes detectadas en los datos de mercado:\n• ${variants.join('\n• ')}\n\n` +
+      'Las variantes afectan al valor estimado: por defecto preferimos la cotización Holofoil cuando existe.',
     sources: ['TCGPlayer · prices'],
   };
 }
@@ -427,16 +468,22 @@ function answerRecommend(ctx: CardAssistantContext): AssistantAnswer {
     lines.push('Aún no la tienes registrada.');
   }
   if (isHighEnd) {
-    lines.push(`Por rareza (${rarityLabel(card.rarity)}) es una carta destacada — buena candidata para colección.`);
+    lines.push(
+      `Por rareza (${rarityLabel(card.rarity)}) es una carta destacada — buena candidata para colección.`
+    );
   }
   if (estimatedPrice) {
-    lines.push(`Valor estimado: ${formatPrice(estimatedPrice)} — útil como referencia, no como precio de venta.`);
+    lines.push(
+      `Valor estimado: ${formatPrice(estimatedPrice)} — útil como referencia, no como precio de venta.`
+    );
   } else {
-    lines.push('Sin precio publicado en este momento, así que no puedo dar un punto de referencia económico.');
+    lines.push(
+      'Sin precio publicado en este momento, así que no puedo dar un punto de referencia económico.'
+    );
   }
   lines.push('');
   lines.push(
-    '⚠ No es consejo financiero. Decide según tu presupuesto, gustos personales, y el estado real de la carta.',
+    '⚠ No es consejo financiero. Decide según tu presupuesto, gustos personales, y el estado real de la carta.'
   );
   return {
     intent: 'recommend',
@@ -462,7 +509,7 @@ function answerSimilar(ctx: CardAssistantContext): AssistantAnswer {
     grouped.set(setName, arr);
   }
   const lines = Array.from(grouped.entries()).map(
-    ([setName, items]) => `• **${setName}** — ${items.join(', ')}`,
+    ([setName, items]) => `• **${setName}** — ${items.join(', ')}`
   );
   return {
     intent: 'similar',
@@ -478,12 +525,16 @@ function answerGeneral(ctx: CardAssistantContext): AssistantAnswer {
   lines.push(`**${card.name}** — ${rarityLabel(card.rarity)}.`);
   lines.push(`Categoría: ${category}.`);
   if (card.set) {
-    lines.push(`Expansión: ${card.set.name} (${card.set.series})${card.number ? `, número ${card.number}` : ''}.`);
+    lines.push(
+      `Expansión: ${card.set.name} (${card.set.series})${card.number ? `, número ${card.number}` : ''}.`
+    );
   }
   if (card.types?.length) lines.push(`Tipo: ${card.types.join(', ')}.`);
   if (card.hp) lines.push(`PS: ${card.hp}.`);
   if (ctx.estimatedPrice) {
-    lines.push(`Valor estimado: ${formatPrice(ctx.estimatedPrice)} (${ctx.estimatedPrice.source}).`);
+    lines.push(
+      `Valor estimado: ${formatPrice(ctx.estimatedPrice)} (${ctx.estimatedPrice.source}).`
+    );
   }
   if (ctx.collectionMeta?.owned) {
     lines.push(`Ya está en tu colección (${ctx.collectionMeta.quantity}× ).`);
@@ -505,10 +556,7 @@ function answerGeneral(ctx: CardAssistantContext): AssistantAnswer {
  * Dispatch a known intent to its renderer. Kept private so the only public
  * entry points remain `answerCardQuestion` and `answerSuggestedPrompt`.
  */
-function answerByIntent(
-  intent: AssistantIntent,
-  context: CardAssistantContext,
-): AssistantAnswer {
+function answerByIntent(intent: AssistantIntent, context: CardAssistantContext): AssistantAnswer {
   switch (intent) {
     case 'rarity':
       return answerRarity(context);
@@ -548,7 +596,7 @@ function answerByIntent(
  */
 export function answerCardQuestion(
   question: string,
-  context: CardAssistantContext,
+  context: CardAssistantContext
 ): AssistantAnswer {
   return answerByIntent(detectIntent(question), context);
 }
@@ -560,7 +608,7 @@ export function answerCardQuestion(
  */
 export function answerSuggestedPrompt(
   prompt: SuggestedPrompt,
-  context: CardAssistantContext,
+  context: CardAssistantContext
 ): AssistantAnswer {
   return answerByIntent(prompt.intent, context);
 }

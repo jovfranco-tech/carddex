@@ -1,19 +1,19 @@
 /* Design tokens — single source of truth for the visual system. */
 :root {
   /* Surfaces */
-  --bg: #F7F8FB;
-  --surface: #FFFFFF;
-  --surface-elev: #FBFCFE;
-  --scanner-bg: #0B0D12;
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --surface-elev: #fbfcfe;
+  --scanner-bg: #0b0d12;
   --scanner-surface: rgba(20, 22, 30, 0.7);
 
   /* Ink */
-  --ink: #0E1220;
-  --ink-2: #1B1F2A;
-  --ink-3: #3F4554;
-  --muted: #5B6170;
-  --muted-2: #6B7180;
-  --muted-3: #757B8A;
+  --ink: #0e1220;
+  --ink-2: #1b1f2a;
+  --ink-3: #3f4554;
+  --muted: #5b6170;
+  --muted-2: #6b7180;
+  --muted-3: #757b8a;
 
   /* Borders */
   --border: rgba(15, 20, 40, 0.08);
@@ -21,14 +21,14 @@
   --hairline: rgba(15, 20, 40, 0.06);
 
   /* Brand & status */
-  --accent: #2F6FE0;
-  --accent-dark: #1E4DA1;
-  --accent-tint: rgba(47, 111, 224, 0.10);
-  --success: #34C759;
-  --warning: #F2994A;
-  --error: #FF3B30;
-  --gold: #FFC107;
-  --purple: #7B5AD9;
+  --accent: #2f6fe0;
+  --accent-dark: #1e4da1;
+  --accent-tint: rgba(47, 111, 224, 0.1);
+  --success: #34c759;
+  --warning: #f2994a;
+  --error: #ff3b30;
+  --gold: #ffc107;
+  --purple: #7b5ad9;
 
   /* Radii */
   --radius-sm: 10px;
@@ -44,9 +44,10 @@
   --shadow-accent: 0 6px 18px var(--accent-tint);
 
   /* Type */
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui,
-    "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Helvetica, Arial,
+    sans-serif;
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
 
   /* Spacing */
   --pad-screen: 18px;

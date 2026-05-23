@@ -15,8 +15,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     types: ['Darkness'],
     evolvesFrom: 'Charmeleon',
     rules: [
-      'Tera: As long as this Pokémon is on your Bench, prevent all damage done to this Pokémon by attacks (both yours and your opponent\'s).',
-      'Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.'
+      "Tera: As long as this Pokémon is on your Bench, prevent all damage done to this Pokémon by attacks (both yours and your opponent's).",
+      'Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.',
     ],
     attacks: [
       {
@@ -24,8 +24,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Fire', 'Fire'],
         convertedEnergyCost: 2,
         damage: '180+',
-        text: 'This attack does 30 more damage for each Prize card your opponent has taken.'
-      }
+        text: 'This attack does 30 more damage for each Prize card your opponent has taken.',
+      },
     ],
     set: {
       id: 'sv3',
@@ -38,7 +38,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/sv3/125.png',
-      large: 'https://images.pokemontcg.io/sv3/125_hires.png'
+      large: 'https://images.pokemontcg.io/sv3/125_hires.png',
     },
     tcgplayer: {
       prices: {
@@ -46,11 +46,11 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           low: 45.0,
           mid: 58.5,
           high: 75.0,
-          market: 54.20
-        }
-      }
+          market: 54.2,
+        },
+      },
     },
-    dhash: '1100110011001100111100001111000000001111000011111010101010101010'
+    dhash: '1100110011001100111100001111000000001111000011111010101010101010',
   },
   {
     id: 'cel25-25',
@@ -64,15 +64,15 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Gnaw',
         cost: ['Colorless'],
         convertedEnergyCost: 1,
-        damage: '10'
+        damage: '10',
       },
       {
         name: 'Thunderbolt',
         cost: ['Lightning', 'Lightning', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '100',
-        text: 'Discard all Energy from this Pokémon.'
-      }
+        text: 'Discard all Energy from this Pokémon.',
+      },
     ],
     set: {
       id: 'cel25',
@@ -85,7 +85,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo',
     images: {
       small: 'https://images.pokemontcg.io/cel25/25.png',
-      large: 'https://images.pokemontcg.io/cel25/25_hires.png'
+      large: 'https://images.pokemontcg.io/cel25/25_hires.png',
     },
     tcgplayer: {
       prices: {
@@ -93,11 +93,11 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           low: 0.15,
           mid: 0.35,
           high: 1.5,
-          market: 0.52
-        }
-      }
+          market: 0.52,
+        },
+      },
     },
-    dhash: '1010101010101010111100001111000000111100001111000101010101010101'
+    dhash: '1010101010101010111100001111000000111100001111000101010101010101',
   },
   {
     id: 'sv4-58',
@@ -111,15 +111,15 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Transfer Charge',
         cost: ['Psychic'],
         convertedEnergyCost: 1,
-        text: 'Attach up to 2 Basic Psychic Energy cards from your discard pile to your Benched Pokémon in any way you like.'
+        text: 'Attach up to 2 Basic Psychic Energy cards from your discard pile to your Benched Pokémon in any way you like.',
       },
       {
         name: 'Photon Kinesis',
         cost: ['Psychic', 'Psychic'],
         convertedEnergyCost: 2,
         damage: '10+',
-        text: 'This attack does 30 more damage for each Psychic Energy attached to this Pokémon.'
-      }
+        text: 'This attack does 30 more damage for each Psychic Energy attached to this Pokémon.',
+      },
     ],
     set: {
       id: 'sv4',
@@ -132,7 +132,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/sv4/58.png',
-      large: 'https://images.pokemontcg.io/sv4/58_hires.png'
+      large: 'https://images.pokemontcg.io/sv4/58_hires.png',
     },
     tcgplayer: {
       prices: {
@@ -140,11 +140,11 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           low: 1.0,
           mid: 2.2,
           high: 5.0,
-          market: 1.95
-        }
-      }
+          market: 1.95,
+        },
+      },
     },
-    dhash: '0000111100001111110011001100110010101010101010100011110000111100'
+    dhash: '0000111100001111110011001100110010101010101010100011110000111100',
   },
   {
     id: 'swsh8-104',
@@ -159,15 +159,15 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Shadow Pain',
         cost: ['Psychic'],
         convertedEnergyCost: 1,
-        text: 'Put 2 damage counters on each of your opponent\'s Pokémon that has any damage counters on it.'
+        text: "Put 2 damage counters on each of your opponent's Pokémon that has any damage counters on it.",
       },
       {
         name: 'Bouncing Panic',
         cost: ['Psychic', 'Colorless'],
         convertedEnergyCost: 2,
         damage: '90',
-        text: 'This attack also does 20 damage to each of your Benched Pokémon. (Don\'t apply Weakness and Resistance for Benched Pokémon.)'
-      }
+        text: "This attack also does 20 damage to each of your Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      },
     ],
     set: {
       id: 'swsh8',
@@ -180,7 +180,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo',
     images: {
       small: 'https://images.pokemontcg.io/swsh8/104.png',
-      large: 'https://images.pokemontcg.io/swsh8/104_hires.png'
+      large: 'https://images.pokemontcg.io/swsh8/104_hires.png',
     },
     tcgplayer: {
       prices: {
@@ -188,11 +188,11 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           low: 0.45,
           mid: 0.85,
           high: 2.0,
-          market: 0.79
-        }
-      }
+          market: 0.79,
+        },
+      },
     },
-    dhash: '1111000011110000000011110000111111001100110011001010101010101010'
+    dhash: '1111000011110000000011110000111111001100110011001010101010101010',
   },
   {
     id: 'swsh9-121',
@@ -206,14 +206,14 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Vee-Search',
         cost: ['Colorless'],
         convertedEnergyCost: 1,
-        text: 'Search your deck for up to 3 Pokémon V, reveal them, and put them into your hand. Then, shuffle your deck.'
+        text: 'Search your deck for up to 3 Pokémon V, reveal them, and put them into your hand. Then, shuffle your deck.',
       },
       {
         name: 'Stampede',
         cost: ['Colorless', 'Colorless'],
         convertedEnergyCost: 2,
-        damage: '20'
-      }
+        damage: '20',
+      },
     ],
     set: {
       id: 'swsh9',
@@ -226,7 +226,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Common',
     images: {
       small: 'https://images.pokemontcg.io/swsh9/121.png',
-      large: 'https://images.pokemontcg.io/swsh9/121_hires.png'
+      large: 'https://images.pokemontcg.io/swsh9/121_hires.png',
     },
     tcgplayer: {
       prices: {
@@ -234,11 +234,11 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
           low: 0.05,
           mid: 0.15,
           high: 1.0,
-          market: 0.11
-        }
-      }
+          market: 0.11,
+        },
+      },
     },
-    dhash: '0011001100110011101010101010101011001100110011001111000011110000'
+    dhash: '0011001100110011101010101010101011001100110011001111000011110000',
   },
   {
     id: 'swsh4-131',
@@ -250,8 +250,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Gormandize',
-        text: 'Once during your turn, if this Pokémon is in the Active Spot, you may draw cards until you have 7 cards in your hand. If you use this Ability, your turn ends.'
-      }
+        text: 'Once during your turn, if this Pokémon is in the Active Spot, you may draw cards until you have 7 cards in your hand. If you use this Ability, your turn ends.',
+      },
     ],
     attacks: [
       {
@@ -259,8 +259,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Colorless', 'Colorless', 'Colorless', 'Colorless'],
         convertedEnergyCost: 4,
         damage: '100',
-        text: 'Flip a coin. If heads, your opponent\'s Active Pokémon is now Paralyzed.'
-      }
+        text: "Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.",
+      },
     ],
     set: {
       id: 'swsh4',
@@ -273,19 +273,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo',
     images: {
       small: 'https://images.pokemontcg.io/swsh4/131.png',
-      large: 'https://images.pokemontcg.io/swsh4/131_hires.png'
+      large: 'https://images.pokemontcg.io/swsh4/131_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 0.80,
-          mid: 1.50,
-          high: 3.50,
-          market: 1.25
-        }
-      }
+          low: 0.8,
+          mid: 1.5,
+          high: 3.5,
+          market: 1.25,
+        },
+      },
     },
-    dhash: '0101010101010101000011110000111111001100110011000011110000111100'
+    dhash: '0101010101010101000011110000111111001100110011000011110000111100',
   },
   {
     id: 'sit-138',
@@ -299,15 +299,15 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Read the Wind',
         cost: ['Colorless'],
         convertedEnergyCost: 1,
-        text: 'Discard a card from your hand. If you do, draw 3 cards.'
+        text: 'Discard a card from your hand. If you do, draw 3 cards.',
       },
       {
         name: 'Aero Dive',
         cost: ['Colorless', 'Colorless', 'Colorless', 'Colorless'],
         convertedEnergyCost: 4,
         damage: '130',
-        text: 'You may discard any Stadium card in play.'
-      }
+        text: 'You may discard any Stadium card in play.',
+      },
     ],
     set: {
       id: 'sit',
@@ -320,19 +320,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Ultra Rare',
     images: {
       small: 'https://images.pokemontcg.io/sit/138.png',
-      large: 'https://images.pokemontcg.io/sit/138_hires.png'
+      large: 'https://images.pokemontcg.io/sit/138_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 3.50,
+          low: 3.5,
           mid: 5.75,
-          high: 12.00,
-          market: 4.88
-        }
-      }
+          high: 12.0,
+          market: 4.88,
+        },
+      },
     },
-    dhash: '1001100110011001011001100110011000001111000011111111000011110000'
+    dhash: '1001100110011001011001100110011000001111000011111111000011110000',
   },
   {
     id: 'swsh7-111',
@@ -345,8 +345,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Azure Pulse',
-        text: 'Once during your turn, you may discard your hand and draw 3 cards.'
-      }
+        text: 'Once during your turn, you may discard your hand and draw 3 cards.',
+      },
     ],
     attacks: [
       {
@@ -354,8 +354,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Fire', 'Lightning'],
         convertedEnergyCost: 2,
         damage: '20+',
-        text: 'Discard any amount of basic Fire Energy or basic Lightning Energy from this Pokémon. This attack does 80 more damage for each card you discarded in this way.'
-      }
+        text: 'Discard any amount of basic Fire Energy or basic Lightning Energy from this Pokémon. This attack does 80 more damage for each card you discarded in this way.',
+      },
     ],
     set: {
       id: 'swsh7',
@@ -368,19 +368,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo VMAX',
     images: {
       small: 'https://images.pokemontcg.io/swsh7/111.png',
-      large: 'https://images.pokemontcg.io/swsh7/111_hires.png'
+      large: 'https://images.pokemontcg.io/swsh7/111_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 15.00,
-          mid: 28.00,
-          high: 45.00,
-          market: 23.50
-        }
-      }
+          low: 15.0,
+          mid: 28.0,
+          high: 45.0,
+          market: 23.5,
+        },
+      },
     },
-    dhash: '0110011001100110100110011001100111110000111100000000111100001111'
+    dhash: '0110011001100110100110011001100111110000111100000000111100001111',
   },
   {
     id: 'me1-3',
@@ -396,8 +396,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Grass', 'Grass', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '150',
-        text: 'Heal 30 damage from this Pokémon.'
-      }
+        text: 'Heal 30 damage from this Pokémon.',
+      },
     ],
     set: {
       id: 'me1',
@@ -410,19 +410,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/me1/3.png',
-      large: 'https://images.pokemontcg.io/me1/3_hires.png'
+      large: 'https://images.pokemontcg.io/me1/3_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 2.00,
+          low: 2.0,
           mid: 4.25,
-          high: 8.00,
-          market: 3.82
-        }
-      }
+          high: 8.0,
+          market: 3.82,
+        },
+      },
     },
-    dhash: '0011001100110011111100001111000000001111000011110101010101010101'
+    dhash: '0011001100110011111100001111000000001111000011110101010101010101',
   },
   {
     id: 'me1-9',
@@ -438,8 +438,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Water', 'Water'],
         convertedEnergyCost: 2,
         damage: '140x',
-        text: 'Discard up to 2 Basic Water Energy cards from your hand. This attack does 140 damage for each card you discarded in this way.'
-      }
+        text: 'Discard up to 2 Basic Water Energy cards from your hand. This attack does 140 damage for each card you discarded in this way.',
+      },
     ],
     set: {
       id: 'me1',
@@ -452,19 +452,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/me1/9.png',
-      large: 'https://images.pokemontcg.io/me1/9_hires.png'
+      large: 'https://images.pokemontcg.io/me1/9_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 2.50,
-          mid: 5.00,
-          high: 10.00,
-          market: 4.20
-        }
-      }
+          low: 2.5,
+          mid: 5.0,
+          high: 10.0,
+          market: 4.2,
+        },
+      },
     },
-    dhash: '0101010101010101110011001100110000111100001111000000111100001111'
+    dhash: '0101010101010101110011001100110000111100001111000000111100001111',
   },
   {
     id: 'me1-151',
@@ -476,16 +476,16 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Restart',
-        text: 'Once during your turn, you may draw cards until you have 3 cards in your hand.'
-      }
+        text: 'Once during your turn, you may draw cards until you have 3 cards in your hand.',
+      },
     ],
     attacks: [
       {
         name: 'Genome Hacking',
         cost: ['Colorless', 'Colorless', 'Colorless'],
         convertedEnergyCost: 3,
-        text: 'Choose 1 of your opponent\'s Active Pokémon\'s attacks and use it as this attack.'
-      }
+        text: "Choose 1 of your opponent's Active Pokémon's attacks and use it as this attack.",
+      },
     ],
     set: {
       id: 'me1',
@@ -498,19 +498,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/me1/151.png',
-      large: 'https://images.pokemontcg.io/me1/151_hires.png'
+      large: 'https://images.pokemontcg.io/me1/151_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 5.00,
-          mid: 8.50,
-          high: 15.00,
-          market: 7.42
-        }
-      }
+          low: 5.0,
+          mid: 8.5,
+          high: 15.0,
+          market: 7.42,
+        },
+      },
     },
-    dhash: '1001100110011001011001100110011011110000111100000000111100001111'
+    dhash: '1001100110011001011001100110011011110000111100000000111100001111',
   },
   {
     id: 'sv1-86',
@@ -523,16 +523,16 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Psychic Embrace',
-        text: 'As often as you like during your turn, you may attach a Basic Psychic Energy card from your discard pile to 1 of your Psychic Pokémon.'
-      }
+        text: 'As often as you like during your turn, you may attach a Basic Psychic Energy card from your discard pile to 1 of your Psychic Pokémon.',
+      },
     ],
     attacks: [
       {
         name: 'Force Leap',
         cost: ['Psychic', 'Psychic', 'Colorless'],
         convertedEnergyCost: 3,
-        damage: '190'
-      }
+        damage: '190',
+      },
     ],
     set: {
       id: 'sv1',
@@ -545,19 +545,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/sv1/86.png',
-      large: 'https://images.pokemontcg.io/sv1/86_hires.png'
+      large: 'https://images.pokemontcg.io/sv1/86_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 2.00,
-          mid: 3.50,
-          high: 7.00,
-          market: 3.12
-        }
-      }
+          low: 2.0,
+          mid: 3.5,
+          high: 7.0,
+          market: 3.12,
+        },
+      },
     },
-    dhash: '1100110011001100001111000011110010101010101010101111000011110000'
+    dhash: '1100110011001100001111000011110010101010101010101111000011110000',
   },
   {
     id: 'swsh7-95',
@@ -570,16 +570,16 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Dark Signal',
-        text: 'When you play this Pokémon from your hand to evolve 1 of your Pokémon during your turn, you may switch 1 of your opponent\'s Benched Pokémon with their Active Pokémon.'
-      }
+        text: "When you play this Pokémon from your hand to evolve 1 of your Pokémon during your turn, you may switch 1 of your opponent's Benched Pokémon with their Active Pokémon.",
+      },
     ],
     attacks: [
       {
         name: 'Max Darkness',
         cost: ['Darkness', 'Colorless', 'Colorless'],
         convertedEnergyCost: 3,
-        damage: '160'
-      }
+        damage: '160',
+      },
     ],
     set: {
       id: 'swsh7',
@@ -592,19 +592,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo VMAX',
     images: {
       small: 'https://images.pokemontcg.io/swsh7/95.png',
-      large: 'https://images.pokemontcg.io/swsh7/95_hires.png'
+      large: 'https://images.pokemontcg.io/swsh7/95_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 6.00,
-          mid: 10.50,
-          high: 22.00,
-          market: 8.85
-        }
-      }
+          low: 6.0,
+          mid: 10.5,
+          high: 22.0,
+          market: 8.85,
+        },
+      },
     },
-    dhash: '0000111100001111111100001111000000110011001100111010101010101010'
+    dhash: '0000111100001111111100001111000000110011001100111010101010101010',
   },
   {
     id: 'lor-131',
@@ -620,8 +620,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Grass', 'Psychic', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '280',
-        text: 'Put 2 Energy attached to your Pokémon in the Lost Zone.'
-      }
+        text: 'Put 2 Energy attached to your Pokémon in the Lost Zone.',
+      },
     ],
     set: {
       id: 'lor',
@@ -634,19 +634,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo VSTAR',
     images: {
       small: 'https://images.pokemontcg.io/lor/131.png',
-      large: 'https://images.pokemontcg.io/lor/131_hires.png'
+      large: 'https://images.pokemontcg.io/lor/131_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 4.00,
-          mid: 7.20,
-          high: 15.00,
-          market: 6.10
-        }
-      }
+          low: 4.0,
+          mid: 7.2,
+          high: 15.0,
+          market: 6.1,
+        },
+      },
     },
-    dhash: '1111000011110000101010101010101000111100001111000101010101010101'
+    dhash: '1111000011110000101010101010101000111100001111000101010101010101',
   },
   {
     id: 'brs-123',
@@ -659,8 +659,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Starbirth',
-        text: 'During your turn, you may search your deck for up to 2 cards and put them into your hand. Then, shuffle your deck.'
-      }
+        text: 'During your turn, you may search your deck for up to 2 cards and put them into your hand. Then, shuffle your deck.',
+      },
     ],
     attacks: [
       {
@@ -668,8 +668,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Colorless', 'Colorless', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '200',
-        text: 'Search your deck for up to 3 Basic Energy cards and attach them to your Pokémon V in any way you like.'
-      }
+        text: 'Search your deck for up to 3 Basic Energy cards and attach them to your Pokémon V in any way you like.',
+      },
     ],
     set: {
       id: 'brs',
@@ -682,19 +682,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo VSTAR',
     images: {
       small: 'https://images.pokemontcg.io/brs/123.png',
-      large: 'https://images.pokemontcg.io/brs/123_hires.png'
+      large: 'https://images.pokemontcg.io/brs/123_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 5.00,
-          mid: 9.80,
-          high: 18.00,
-          market: 8.24
-        }
-      }
+          low: 5.0,
+          mid: 9.8,
+          high: 18.0,
+          market: 8.24,
+        },
+      },
     },
-    dhash: '0110011001100110100110011001100111110000111100001010101010101010'
+    dhash: '0110011001100110100110011001100111110000111100001010101010101010',
   },
   {
     id: 'twm-106',
@@ -710,8 +710,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Water'],
         convertedEnergyCost: 1,
         damage: '170',
-        text: 'Search your deck for any 1 card and put it into your hand. Then, shuffle your deck.'
-      }
+        text: 'Search your deck for any 1 card and put it into your hand. Then, shuffle your deck.',
+      },
     ],
     set: {
       id: 'twm',
@@ -724,19 +724,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/twm/106.png',
-      large: 'https://images.pokemontcg.io/twm/106_hires.png'
+      large: 'https://images.pokemontcg.io/twm/106_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 4.50,
-          mid: 7.50,
-          high: 14.00,
-          market: 6.80
-        }
-      }
+          low: 4.5,
+          mid: 7.5,
+          high: 14.0,
+          market: 6.8,
+        },
+      },
     },
-    dhash: '1010101010101010000011110000111111001100110011000011110000111100'
+    dhash: '1010101010101010000011110000111111001100110011000011110000111100',
   },
   {
     id: 'par-124',
@@ -750,8 +750,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Frenzied Gouging',
         cost: ['Darkness', 'Darkness', 'Colorless'],
         convertedEnergyCost: 3,
-        text: 'Knock Out your opponent\'s Active Pokémon. If you do, this Pokémon does 200 damage to itself.'
-      }
+        text: "Knock Out your opponent's Active Pokémon. If you do, this Pokémon does 200 damage to itself.",
+      },
     ],
     set: {
       id: 'par',
@@ -764,19 +764,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/par/124.png',
-      large: 'https://images.pokemontcg.io/par/124_hires.png'
+      large: 'https://images.pokemontcg.io/par/124_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 3.50,
-          mid: 6.00,
-          high: 12.00,
-          market: 5.15
-        }
-      }
+          low: 3.5,
+          mid: 6.0,
+          high: 12.0,
+          market: 5.15,
+        },
+      },
     },
-    dhash: '1111111100000000101010101010101001010101010101010011110000111100'
+    dhash: '1111111100000000101010101010101001010101010101010011110000111100',
   },
   {
     id: 'par-89',
@@ -788,8 +788,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Tachyon Bits',
-        text: 'Once during your turn, when this Pokémon moves from your Bench to the Active Spot, you may put 2 damage counters on 1 of your opponent\'s Pokémon.'
-      }
+        text: "Once during your turn, when this Pokémon moves from your Bench to the Active Spot, you may put 2 damage counters on 1 of your opponent's Pokémon.",
+      },
     ],
     attacks: [
       {
@@ -797,8 +797,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Psychic', 'Psychic', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '200',
-        text: 'This Pokémon can\'t attack during your next turn.'
-      }
+        text: "This Pokémon can't attack during your next turn.",
+      },
     ],
     set: {
       id: 'par',
@@ -811,19 +811,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/par/89.png',
-      large: 'https://images.pokemontcg.io/par/89_hires.png'
+      large: 'https://images.pokemontcg.io/par/89_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 2.00,
-          mid: 4.00,
-          high: 9.00,
-          market: 3.42
-        }
-      }
+          low: 2.0,
+          mid: 4.0,
+          high: 9.0,
+          market: 3.42,
+        },
+      },
     },
-    dhash: '0000000011111111010101010101010110101010101010101100110011001100'
+    dhash: '0000000011111111010101010101010110101010101010101100110011001100',
   },
   {
     id: 'sv1-81',
@@ -835,8 +835,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Tandem Unit',
-        text: 'Once during your turn, you may search your deck for up to 2 Basic Lightning Pokémon and put them onto your Bench. Then, shuffle your deck.'
-      }
+        text: 'Once during your turn, you may search your deck for up to 2 Basic Lightning Pokémon and put them onto your Bench. Then, shuffle your deck.',
+      },
     ],
     attacks: [
       {
@@ -844,8 +844,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Lightning', 'Lightning', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '220',
-        text: 'This Pokémon can\'t attack during your next turn.'
-      }
+        text: "This Pokémon can't attack during your next turn.",
+      },
     ],
     set: {
       id: 'sv1',
@@ -858,19 +858,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/sv1/81.png',
-      large: 'https://images.pokemontcg.io/sv1/81_hires.png'
+      large: 'https://images.pokemontcg.io/sv1/81_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 1.50,
-          mid: 3.20,
-          high: 8.00,
-          market: 2.90
-        }
-      }
+          low: 1.5,
+          mid: 3.2,
+          high: 8.0,
+          market: 2.9,
+        },
+      },
     },
-    dhash: '1100110011001100101010101010101000001111000011110110011001100110'
+    dhash: '1100110011001100101010101010101000001111000011110110011001100110',
   },
   {
     id: 'sv1-125',
@@ -882,8 +882,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     abilities: [
       {
         name: 'Dino Cry',
-        text: 'Once during your turn, you may attach up to 2 Basic Fighting Energy cards from your discard pile to your Fighting Pokémon in any way you like. If you use this Ability, your turn ends.'
-      }
+        text: 'Once during your turn, you may attach up to 2 Basic Fighting Energy cards from your discard pile to your Fighting Pokémon in any way you like. If you use this Ability, your turn ends.',
+      },
     ],
     attacks: [
       {
@@ -891,8 +891,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Fighting', 'Fighting', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '220',
-        text: 'This Pokémon can\'t attack during your next turn.'
-      }
+        text: "This Pokémon can't attack during your next turn.",
+      },
     ],
     set: {
       id: 'sv1',
@@ -905,19 +905,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/sv1/125.png',
-      large: 'https://images.pokemontcg.io/sv1/125_hires.png'
+      large: 'https://images.pokemontcg.io/sv1/125_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 1.20,
-          mid: 2.80,
-          high: 6.00,
-          market: 2.10
-        }
-      }
+          low: 1.2,
+          mid: 2.8,
+          high: 6.0,
+          market: 2.1,
+        },
+      },
     },
-    dhash: '0011001100110011010101010101010111110000111100001001100110011001'
+    dhash: '0011001100110011010101010101010111110000111100001001100110011001',
   },
   {
     id: 'brs-79',
@@ -932,8 +932,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'Roaring Resolve',
         cost: ['Fighting'],
         convertedEnergyCost: 1,
-        text: 'Once during your turn, you may put 2 damage counters on this Pokémon. If you do, search your deck for a Fighting Energy card and attach it to this Pokémon.'
-      }
+        text: 'Once during your turn, you may put 2 damage counters on this Pokémon. If you do, search your deck for a Fighting Energy card and attach it to this Pokémon.',
+      },
     ],
     set: {
       id: 'brs',
@@ -946,19 +946,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo',
     images: {
       small: 'https://images.pokemontcg.io/brs/79.png',
-      large: 'https://images.pokemontcg.io/brs/79_hires.png'
+      large: 'https://images.pokemontcg.io/brs/79_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
           low: 0.15,
           mid: 0.45,
-          high: 2.00,
-          market: 0.38
-        }
-      }
+          high: 2.0,
+          market: 0.38,
+        },
+      },
     },
-    dhash: '0101010110101010111100000000111111001100001111000110011010011001'
+    dhash: '0101010110101010111100000000111111001100001111000110011010011001',
   },
   {
     id: 'evs-191',
@@ -973,8 +973,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Water', 'Lightning', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '250',
-        text: 'This attack also does 20 damage to each of your Benched Pokémon.'
-      }
+        text: 'This attack also does 20 damage to each of your Benched Pokémon.',
+      },
     ],
     set: {
       id: 'evs',
@@ -987,19 +987,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Ultra Rare',
     images: {
       small: 'https://images.pokemontcg.io/evs/191.png',
-      large: 'https://images.pokemontcg.io/evs/191_hires.png'
+      large: 'https://images.pokemontcg.io/evs/191_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 8.00,
-          mid: 15.00,
-          high: 35.00,
-          market: 11.50
-        }
-      }
+          low: 8.0,
+          mid: 15.0,
+          high: 35.0,
+          market: 11.5,
+        },
+      },
     },
-    dhash: '1001100101100110111100001111000000001111111100000110011010011001'
+    dhash: '1001100101100110111100001111000000001111111100000110011010011001',
   },
   {
     id: 'obf-66',
@@ -1015,8 +1015,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Fighting', 'Fighting'],
         convertedEnergyCost: 2,
         damage: '150+',
-        text: 'If your Benched Pokémon have any damage counters on them, this attack does 100 more damage.'
-      }
+        text: 'If your Benched Pokémon have any damage counters on them, this attack does 100 more damage.',
+      },
     ],
     set: {
       id: 'obf',
@@ -1029,19 +1029,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/obf/66.png',
-      large: 'https://images.pokemontcg.io/obf/66_hires.png'
+      large: 'https://images.pokemontcg.io/obf/66_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 1.50,
-          mid: 3.00,
-          high: 7.00,
-          market: 2.45
-        }
-      }
+          low: 1.5,
+          mid: 3.0,
+          high: 7.0,
+          market: 2.45,
+        },
+      },
     },
-    dhash: '1111000011110000010101010101010110101010101010100000111111110000'
+    dhash: '1111000011110000010101010101010110101010101010100000111111110000',
   },
   {
     id: 'asr-73',
@@ -1056,8 +1056,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         name: 'G-Max Chi Strike',
         cost: ['Fighting', 'Fighting', 'Colorless'],
         convertedEnergyCost: 3,
-        damage: '240'
-      }
+        damage: '240',
+      },
     ],
     set: {
       id: 'asr',
@@ -1070,19 +1070,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Rare Holo VMAX',
     images: {
       small: 'https://images.pokemontcg.io/asr/73.png',
-      large: 'https://images.pokemontcg.io/asr/73_hires.png'
+      large: 'https://images.pokemontcg.io/asr/73_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 2.00,
-          mid: 4.80,
-          high: 11.00,
-          market: 3.75
-        }
-      }
+          low: 2.0,
+          mid: 4.8,
+          high: 11.0,
+          market: 3.75,
+        },
+      },
     },
-    dhash: '0000111100001111101010101010101001100110011001101111000000001111'
+    dhash: '0000111100001111101010101010101001100110011001101111000000001111',
   },
   {
     id: 'zsv10pt5-25',
@@ -1097,8 +1097,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Lightning', 'Lightning', 'Colorless'],
         convertedEnergyCost: 3,
         damage: '120',
-        text: 'This attack does 30 damage to 1 of your opponent\'s Benched Pokémon. (Don\'t apply Weakness and Resistance for Benched Pokémon.)'
-      }
+        text: "This attack does 30 damage to 1 of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      },
     ],
     set: {
       id: 'zsv10pt5',
@@ -1111,19 +1111,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/zsv10pt5/25.png',
-      large: 'https://images.pokemontcg.io/zsv10pt5/25_hires.png'
+      large: 'https://images.pokemontcg.io/zsv10pt5/25_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 3.00,
-          mid: 5.50,
-          high: 10.00,
-          market: 4.50
-        }
-      }
+          low: 3.0,
+          mid: 5.5,
+          high: 10.0,
+          market: 4.5,
+        },
+      },
     },
-    dhash: '0101010111110000101010101100110000001111000011111111000010101010'
+    dhash: '0101010111110000101010101100110000001111000011111111000010101010',
   },
   {
     id: 'sv9-2',
@@ -1139,8 +1139,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Grass'],
         convertedEnergyCost: 1,
         damage: '20',
-        text: 'Flip a coin. If heads, your opponent\'s Active Pokémon is now Paralyzed.'
-      }
+        text: "Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.",
+      },
     ],
     set: {
       id: 'sv9',
@@ -1153,19 +1153,19 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Common',
     images: {
       small: 'https://images.pokemontcg.io/sv9/2.png',
-      large: 'https://images.pokemontcg.io/sv9/2_hires.png'
+      large: 'https://images.pokemontcg.io/sv9/2_hires.png',
     },
     tcgplayer: {
       prices: {
         normal: {
           low: 0.05,
           mid: 0.15,
-          high: 0.50,
-          market: 0.10
-        }
-      }
+          high: 0.5,
+          market: 0.1,
+        },
+      },
     },
-    dhash: '1100110011110000000011110101010100111100001111001010101000111100'
+    dhash: '1100110011110000000011110101010100111100001111001010101000111100',
   },
   {
     id: 'me3-50',
@@ -1180,14 +1180,14 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         cost: ['Psychic', 'Colorless'],
         convertedEnergyCost: 2,
         damage: '30',
-        text: 'Your opponent\'s Active Pokémon is now Confused.'
+        text: "Your opponent's Active Pokémon is now Confused.",
       },
       {
         name: 'Super Psy Bolt',
         cost: ['Psychic', 'Psychic', 'Colorless'],
         convertedEnergyCost: 3,
-        damage: '110'
-      }
+        damage: '110',
+      },
     ],
     set: {
       id: 'me3',
@@ -1200,20 +1200,20 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Double Rare',
     images: {
       small: 'https://images.pokemontcg.io/me3/50.png',
-      large: 'https://images.pokemontcg.io/me3/50_hires.png'
+      large: 'https://images.pokemontcg.io/me3/50_hires.png',
     },
     tcgplayer: {
       prices: {
         holofoil: {
-          low: 2.50,
-          mid: 4.00,
-          high: 8.00,
-          market: 3.50
-        }
-      }
+          low: 2.5,
+          mid: 4.0,
+          high: 8.0,
+          market: 3.5,
+        },
+      },
     },
-    dhash: '0000111111110000101010100110011001100110111100001010101000001111'
-  }  ,
+    dhash: '0000111111110000101010100110011001100110111100001010101000001111',
+  },
   {
     id: 'mep-la-030',
     name: 'Mega-Charizard Y ex',
@@ -1224,7 +1224,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     evolvesFrom: 'Charmeleon',
     rules: [
       'Regla de Megaevolución ex: Cuando 1 de tus Pokémon se convierte en un Pokémon de Megaevolución, tu turno termina.',
-      'Regla Pokémon ex: Cuando tu Pokémon ex queda Fuera de Combate, tu rival toma 2 cartas de Premio.'
+      'Regla Pokémon ex: Cuando tu Pokémon ex queda Fuera de Combate, tu rival toma 2 cartas de Premio.',
     ],
     attacks: [
       {
@@ -1233,7 +1233,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         convertedEnergyCost: 3,
         damage: '280',
         text: 'Descarta 3 Energías de este Pokémon, y este ataque hace 280 puntos de daño a 1 de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).',
-      }
+      },
     ],
     weaknesses: [{ type: 'Water', value: 'x2' }],
     retreatCost: ['Colorless'],
@@ -1250,9 +1250,9 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     artist: 'Ultimateinudog',
     images: {
       small: '/images/custom/mep-la-030.png',
-      large: '/images/custom/mep-la-030.png'
+      large: '/images/custom/mep-la-030.png',
     },
-    dhash: '1111000011110000111111001100110010101010101010100011110000111100'
+    dhash: '1111000011110000111111001100110010101010101010100011110000111100',
   },
   {
     id: 'mep-en-070',
@@ -1275,7 +1275,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         convertedEnergyCost: 2,
         damage: '50',
         text: 'If this Pokémon was damaged by an attack last turn, this attack does 50 more damage.',
-      }
+      },
     ],
     weaknesses: [{ type: 'Grass', value: 'x2' }],
     set: {
@@ -1289,9 +1289,9 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Promo',
     images: {
       small: 'https://images.pokemontcg.io/xy6/56.png',
-      large: 'https://images.pokemontcg.io/xy6/56_hires.png'
+      large: 'https://images.pokemontcg.io/xy6/56_hires.png',
     },
-    dhash: '1010101010101010010101010101010111001100110011001111000011110000'
+    dhash: '1010101010101010010101010101010111001100110011001111000011110000',
   },
   {
     id: 'mep-shaymin-001',
@@ -1314,7 +1314,7 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
         convertedEnergyCost: 2,
         damage: '40',
         text: 'The Defending Pokémon Weakness is now Grass until end of your next turn.',
-      }
+      },
     ],
     weaknesses: [{ type: 'Fire', value: 'x2' }],
     set: {
@@ -1328,8 +1328,8 @@ export const OFFLINE_CARD_CATALOG: PokemonCard[] = [
     rarity: 'Promo',
     images: {
       small: 'https://images.pokemontcg.io/dp4/11.png',
-      large: 'https://images.pokemontcg.io/dp4/11_hires.png'
+      large: 'https://images.pokemontcg.io/dp4/11_hires.png',
     },
-    dhash: '0101010101010101100110011001100111001100110011000011001100110011'
-  }
+    dhash: '0101010101010101100110011001100111001100110011000011001100110011',
+  },
 ];

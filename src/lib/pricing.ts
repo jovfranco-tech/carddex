@@ -2,7 +2,7 @@ import type { PokemonCard } from '@/types/pokemon';
 
 export type Currency = 'USD' | 'EUR' | 'MXN';
 
-let exchangeRates = { USD: 17.5, EUR: 19.0 }; // Fallback rough rates
+const exchangeRates = { USD: 17.5, EUR: 19.0 }; // Fallback rough rates
 try {
   fetch('https://open.er-api.com/v6/latest/MXN')
     .then((res) => res.json())
@@ -70,7 +70,7 @@ export function getEstimatedPrice(card?: PokemonCard | null): EstimatedPrice | n
   const pickTcg = (
     value: number | null | undefined,
     tier: string,
-    label: string,
+    label: string
   ): EstimatedPrice | null => {
     if (typeof value !== 'number' || !isFinite(value) || value <= 0) return null;
     return {
@@ -85,7 +85,7 @@ export function getEstimatedPrice(card?: PokemonCard | null): EstimatedPrice | n
   const pickCm = (
     value: number | null | undefined,
     tier: string,
-    label: string,
+    label: string
   ): EstimatedPrice | null => {
     if (typeof value !== 'number' || !isFinite(value) || value <= 0) return null;
     return {
@@ -114,34 +114,31 @@ export function getEstimatedPrice(card?: PokemonCard | null): EstimatedPrice | n
 /** Format a price with the proper currency symbol and locale. */
 export function formatPrice(price: EstimatedPrice | null, forceOriginal = false): string {
   if (!price) return 'Sin precio';
-  
+
   let val = price.value;
   let curr = price.currency;
-  
+
   if (!forceOriginal && prefersMXN()) {
     curr = 'MXN';
     val = price.value * (price.currency === 'USD' ? exchangeRates.USD : exchangeRates.EUR);
   }
 
-  const fmt = new Intl.NumberFormat(
-    curr === 'EUR' ? 'es-ES' : 'es-MX',
-    {
-      style: 'currency',
-      currency: curr,
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    },
-  );
+  const fmt = new Intl.NumberFormat(curr === 'EUR' ? 'es-ES' : 'es-MX', {
+    style: 'currency',
+    currency: curr,
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  });
   return fmt.format(val);
 }
 
 /** Compact formatter — drops decimals on values >= 1000, uses k/M suffixes. */
 export function formatPriceShort(price: EstimatedPrice | null): string {
   if (!price) return '—';
-  
+
   let val = price.value;
   let curr = price.currency;
-  
+
   if (prefersMXN()) {
     curr = 'MXN';
     val = price.value * (price.currency === 'USD' ? exchangeRates.USD : exchangeRates.EUR);
@@ -168,9 +165,11 @@ export function formatCurrencyTotal(value: number, currency: Currency): string {
 }
 
 /** Sum of estimated values for a list of owned cards, grouped by currency. */
-export function sumCollectionValue(
-  cards: Array<{ card: PokemonCard; quantity: number }>,
-): { usd: number; eur: number; cardsWithPrice: number } {
+export function sumCollectionValue(cards: Array<{ card: PokemonCard; quantity: number }>): {
+  usd: number;
+  eur: number;
+  cardsWithPrice: number;
+} {
   let usd = 0;
   let eur = 0;
   let cardsWithPrice = 0;
@@ -197,7 +196,7 @@ export function sumCollectionValue(
  */
 export function formatCollectionValue(totals: { usd: number; eur: number }): string {
   if (prefersMXN()) {
-    const mxnTotal = (totals.usd * exchangeRates.USD) + (totals.eur * exchangeRates.EUR);
+    const mxnTotal = totals.usd * exchangeRates.USD + totals.eur * exchangeRates.EUR;
     if (mxnTotal > 0) return formatCurrencyTotal(mxnTotal, 'MXN') + ' MXN';
     return '—';
   }

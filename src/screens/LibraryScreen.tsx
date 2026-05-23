@@ -26,12 +26,7 @@ import { getCardsByIds, searchCards } from '@/lib/pokemonTcgApi';
 import { getEstimatedPrice } from '@/lib/pricing';
 import SearchBar from '@/components/SearchBar';
 import { recognizeCardFromImage } from '@/lib/cardRecognition';
-import {
-  RARITY_FILTERS,
-  rarityMatchesFilter,
-  raritySortWeight,
-  rarityLabel,
-} from '@/lib/rarity';
+import { RARITY_FILTERS, rarityMatchesFilter, raritySortWeight, rarityLabel } from '@/lib/rarity';
 import { formatInt } from '@/lib/formatters';
 import type { CollectionState } from '@/types/collection';
 import {
@@ -40,7 +35,7 @@ import {
   clearAllPriceAlerts,
   subscribePriceAlerts,
   detectRealPriceChanges,
-  type PriceAlert
+  type PriceAlert,
 } from '@/lib/priceMonitor';
 import { triggerHaptic } from '@/lib/haptic';
 import type { PokemonCard } from '@/types/pokemon';
@@ -60,7 +55,6 @@ import LibraryFiltersBar from './library/LibraryFiltersBar';
 import PriceAlertsPanel from './library/PriceAlertsPanel';
 import CardListView from './library/CardListView';
 
-
 export default function LibraryScreen() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,7 +71,7 @@ export default function LibraryScreen() {
     try {
       const resFile = base64ToFile(base64Image, 'search-card.jpg');
       const result = await recognizeCardFromImage({ type: 'file', file: resFile });
-      
+
       if (result && result.cardName) {
         setSearchQuery(result.cardName);
         setSearchOpen(true);
@@ -100,7 +94,7 @@ export default function LibraryScreen() {
   const setFilter = searchParams.get('set') ?? '';
   const [view, setView] = useState<'grid' | 'list' | 'sets' | 'binder'>('grid');
   const [binderPage, setBinderPage] = useState(1);
-  
+
   // Parse initial states from URL query parameters
   const initialQ = useMemo(() => searchParams.get('q') ?? '', []);
   const initialMine = useMemo(() => {
@@ -193,15 +187,13 @@ export default function LibraryScreen() {
       Object.values(collection.cards)
         .filter((c) => c.owned)
         .map((c) => c.cardId),
-    [collection],
+    [collection]
   );
 
   const owned = useAsync(
     (signal) =>
-      collectionIds.length
-        ? getCardsByIds(collectionIds, { signal })
-        : Promise.resolve([]),
-    [collectionIds.join(',')],
+      collectionIds.length ? getCardsByIds(collectionIds, { signal }) : Promise.resolve([]),
+    [collectionIds.join(',')]
   );
 
   React.useEffect(() => {
@@ -213,38 +205,43 @@ export default function LibraryScreen() {
   }, [owned.data]);
 
   // When viewing "all" + a set filter (or global search query), fetch the cards from the API.
-  const setView$ = useAsync(async (signal) => {
-    if (onlyMine) return [];
+  const setView$ = useAsync(
+    async (signal) => {
+      if (onlyMine) return [];
 
-    // Promo filter: show ONLY local offline-catalog + custom cards (no API mix-in)
-    if (rarityFilter === 'promo' && !setFilter) {
-      const { data } = await searchCards(
-        { name: translatedQuery.trim() || '', pageSize: 250, localOnly: true },
-        { signal },
-      );
-      return data;
-    }
+      // Promo filter: show ONLY local offline-catalog + custom cards (no API mix-in)
+      if (rarityFilter === 'promo' && !setFilter) {
+        const { data } = await searchCards(
+          { name: translatedQuery.trim() || '', pageSize: 250, localOnly: true },
+          { signal }
+        );
+        return data;
+      }
 
-    if (!setFilter && !translatedQuery.trim()) return [];
+      if (!setFilter && !translatedQuery.trim()) return [];
 
-    if (setFilter) {
-      const { data } = await searchCards(
-        { setId: setFilter, pageSize: 250, orderBy: 'number' },
-        { signal },
-      );
-      return data;
-    } else {
-      const { data } = await searchCards(
-        { name: translatedQuery.trim(), pageSize: 250, orderBy: '-set.releaseDate' },
-        { signal },
-      );
-      return data;
-    }
-  }, [onlyMine, setFilter, translatedQuery, rarityFilter]);
+      if (setFilter) {
+        const { data } = await searchCards(
+          { setId: setFilter, pageSize: 250, orderBy: 'number' },
+          { signal }
+        );
+        return data;
+      } else {
+        const { data } = await searchCards(
+          { name: translatedQuery.trim(), pageSize: 250, orderBy: '-set.releaseDate' },
+          { signal }
+        );
+        return data;
+      }
+    },
+    [onlyMine, setFilter, translatedQuery, rarityFilter]
+  );
 
   const baseCards = onlyMine
-    ? owned.data ?? []
-    : ((setFilter || translatedQuery.trim() || rarityFilter === 'promo') ? setView$.data : null) ?? owned.data ?? [];
+    ? (owned.data ?? [])
+    : ((setFilter || translatedQuery.trim() || rarityFilter === 'promo' ? setView$.data : null) ??
+      owned.data ??
+      []);
 
   const filteredCards = useMemo(() => {
     let list = baseCards;
@@ -278,9 +275,9 @@ export default function LibraryScreen() {
     () =>
       filteredCards.reduce(
         (acc, c) => acc + (collection.cards[c.id]?.quantity ?? (onlyMine ? 1 : 0)),
-        0,
+        0
       ),
-    [filteredCards, collection, onlyMine],
+    [filteredCards, collection, onlyMine]
   );
 
   /**
@@ -304,15 +301,14 @@ export default function LibraryScreen() {
       const series = c.set?.series ?? '';
       const symbol = c.set?.images?.symbol ?? null;
       const printedTotal = c.set?.printedTotal ?? c.set?.total ?? 0;
-      const g =
-        map.get(setId) ?? {
-          setId,
-          setName,
-          setSeries: series,
-          setSymbol: symbol,
-          printedTotal,
-          cards: [] as typeof filteredCards,
-        };
+      const g = map.get(setId) ?? {
+        setId,
+        setName,
+        setSeries: series,
+        setSymbol: symbol,
+        printedTotal,
+        cards: [] as typeof filteredCards,
+      };
       g.cards.push(c);
       map.set(setId, g);
     }
@@ -369,7 +365,7 @@ export default function LibraryScreen() {
           setSearchOpen={setSearchOpen}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          unreadAlertsCount={alerts.filter(a => !a.read).length}
+          unreadAlertsCount={alerts.filter((a) => !a.read).length}
           onAlertsOpen={() => {
             setAlertsOpen(true);
             triggerHaptic('light');
@@ -395,7 +391,7 @@ export default function LibraryScreen() {
           setSearchOpen={setSearchOpen}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          unreadAlertsCount={alerts.filter(a => !a.read).length}
+          unreadAlertsCount={alerts.filter((a) => !a.read).length}
           onAlertsOpen={() => {
             setAlertsOpen(true);
             triggerHaptic('light');
@@ -467,28 +463,47 @@ export default function LibraryScreen() {
                 left: 0,
                 right: 0,
                 height: 4,
-                background: 'linear-gradient(90deg, rgba(123, 90, 217, 0), rgba(123, 90, 217, 1) 50%, rgba(123, 90, 217, 0))',
+                background:
+                  'linear-gradient(90deg, rgba(123, 90, 217, 0), rgba(123, 90, 217, 1) 50%, rgba(123, 90, 217, 0))',
                 boxShadow: '0 0 15px 3px rgba(123, 90, 217, 0.8)',
                 animation: 'laserScanAnim 2s ease-in-out infinite',
               }}
             />
-            
+
             {/* Grid overlay for scanning effect */}
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+                background:
+                  'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
                 backgroundSize: '20px 20px',
                 pointerEvents: 'none',
               }}
             />
           </div>
-          
-          <h3 style={{ margin: '24px 0 8px', fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
+
+          <h3
+            style={{
+              margin: '24px 0 8px',
+              fontSize: 18,
+              fontWeight: 800,
+              color: '#fff',
+              letterSpacing: -0.4,
+            }}
+          >
             Identificando carta...
           </h3>
-          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.6)',
+              textAlign: 'center',
+              maxWidth: 260,
+              lineHeight: 1.5,
+            }}
+          >
             CardDex está generando una sugerencia asistida. Confirma el resultado antes de guardar.
           </p>
 
@@ -510,7 +525,7 @@ export default function LibraryScreen() {
         setSearchOpen={setSearchOpen}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        unreadAlertsCount={alerts.filter(a => !a.read).length}
+        unreadAlertsCount={alerts.filter((a) => !a.read).length}
         onAlertsOpen={() => {
           setAlertsOpen(true);
           triggerHaptic('light');
@@ -544,17 +559,30 @@ export default function LibraryScreen() {
 
           {/* Collection statistics panel */}
           {owned.data && owned.data.length > 0 && (
-            <React.Suspense fallback={<div style={{ minHeight: 80, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>Cargando análisis visual...</div>}>
+            <React.Suspense
+              fallback={
+                <div
+                  style={{
+                    minHeight: 80,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    color: 'var(--muted)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Cargando análisis visual...
+                </div>
+              }
+            >
               <VisualCollectionStats ownedCards={owned.data} collection={collection} />
             </React.Suspense>
           )}
 
           {/* Rarest */}
           {rarest.length > 0 && (
-            <Section
-              title="Mis cartas más raras"
-              action={<ActionLink>Ver todas</ActionLink>}
-            >
+            <Section title="Mis cartas más raras" action={<ActionLink>Ver todas</ActionLink>}>
               <div
                 style={{
                   display: 'flex',
@@ -784,7 +812,14 @@ function Header({
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 2px',
+            }}
+          >
             <button
               type="button"
               onClick={() => setIsAiSearch(!isAiSearch)}
@@ -804,41 +839,55 @@ function Header({
               }}
             >
               <span>✦ Búsqueda asistida</span>
-              <span style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: isAiSearch ? 'var(--accent)' : 'var(--muted-3)',
-                display: 'inline-block'
-              }} />
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: isAiSearch ? 'var(--accent)' : 'var(--muted-3)',
+                  display: 'inline-block',
+                }}
+              />
             </button>
 
             {aiLoading && (
-              <span style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  border: '1.5px solid var(--border)',
-                  borderTopColor: 'var(--accent)',
-                  animation: 'spinSearchLoader 0.6s linear infinite'
-                }} />
+              <span
+                style={{
+                  fontSize: 11,
+                  color: 'var(--muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <div
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    border: '1.5px solid var(--border)',
+                    borderTopColor: 'var(--accent)',
+                    animation: 'spinSearchLoader 0.6s linear infinite',
+                  }}
+                />
                 Traduciendo...
               </span>
             )}
           </div>
 
           {aiExplanation && (
-            <div style={{
-              background: 'var(--accent-tint)',
-              color: 'var(--accent)',
-              fontSize: 12,
-              padding: '8px 12px',
-              borderRadius: 10,
-              fontWeight: 600,
-              border: '0.5px solid rgba(123,90,217,0.2)',
-              marginTop: -2,
-            }}>
+            <div
+              style={{
+                background: 'var(--accent-tint)',
+                color: 'var(--accent)',
+                fontSize: 12,
+                padding: '8px 12px',
+                borderRadius: 10,
+                fontWeight: 600,
+                border: '0.5px solid rgba(123,90,217,0.2)',
+                marginTop: -2,
+              }}
+            >
               Filtros aplicados: {aiExplanation}
             </div>
           )}
@@ -888,7 +937,14 @@ function Header({
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}
+        >
           <h1
             style={{
               margin: 0,
@@ -989,7 +1045,6 @@ function Header({
     </div>
   );
 }
-
 
 /* ------------------------------------------------------------------------- */
 /* Sets view subcomponents                                                    */
@@ -1196,8 +1251,7 @@ function MissingCardPlaceholder() {
         height: 106,
         borderRadius: 8,
         border: '1px dashed var(--border)',
-        background:
-          'repeating-linear-gradient(135deg, var(--bg) 0 6px, var(--surface) 6px 12px)',
+        background: 'repeating-linear-gradient(135deg, var(--bg) 0 6px, var(--surface) 6px 12px)',
         opacity: 0.65,
       }}
     />

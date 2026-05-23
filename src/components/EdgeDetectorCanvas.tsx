@@ -79,7 +79,7 @@ export default function EdgeDetectorCanvas({
             // Pre-create output array for grayscale
             const gray = new Uint8Array(width * height);
             for (let i = 0; i < data.length; i += 4) {
-              gray[i >> 2] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+              gray[i >> 2] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
             }
 
             // Clear main canvas
@@ -116,8 +116,8 @@ export default function EdgeDetectorCanvas({
                 const val21 = gray[idx + width];
                 const val22 = gray[idx + width + 1];
 
-                const gx = (val02 + 2 * val12 + val22) - (val00 + 2 * val10 + val20);
-                const gy = (val20 + 2 * val21 + val22) - (val00 + 2 * val01 + val02);
+                const gx = val02 + 2 * val12 + val22 - (val00 + 2 * val10 + val20);
+                const gy = val20 + 2 * val21 + val22 - (val00 + 2 * val01 + val02);
                 const mag = Math.sqrt(gx * gx + gy * gy);
 
                 if (mag > 90) {

@@ -13,13 +13,7 @@ export interface ChatMessageProps {
  * keep formatting minimal (paragraphs + soft **bold**) so the assistant feels
  * grounded rather than chatty.
  */
-export default function ChatMessage({
-  role,
-  text,
-  sources,
-  pending,
-  unknown,
-}: ChatMessageProps) {
+export default function ChatMessage({ role, text, sources, pending, unknown }: ChatMessageProps) {
   const isUser = role === 'user';
   return (
     <div
@@ -61,9 +55,7 @@ export default function ChatMessage({
                   fontSize: 10.5,
                   padding: '2px 8px',
                   borderRadius: 999,
-                  background: isUser
-                    ? 'rgba(255,255,255,0.18)'
-                    : 'var(--accent-tint)',
+                  background: isUser ? 'rgba(255,255,255,0.18)' : 'var(--accent-tint)',
                   color: isUser ? '#fff' : 'var(--accent)',
                   fontWeight: 600,
                   letterSpacing: -0.05,
@@ -106,7 +98,7 @@ function renderBoldMarkdown(text: string): ReactNode[] {
     parts.push(
       <strong key={`b${i}`} style={{ fontWeight: 700 }}>
         {m[1]}
-      </strong>,
+      </strong>
     );
     last = m.index + m[0].length;
     i += 1;

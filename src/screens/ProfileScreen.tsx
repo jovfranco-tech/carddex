@@ -10,13 +10,16 @@ import {
   ShareIcon,
   GalleryIcon,
 } from '@/components/icons';
-import { useCollectionSummary } from '@/lib/hooks';
+import { useCollectionSummary, useSyncStatus } from '@/lib/hooks';
 import {
   clearCollection,
   exportCollection,
   importCollection,
   resetRecentlyViewed,
   getCollection,
+  replaceCollection,
+  syncToCloud,
+  mergeCollections,
 } from '@/lib/collectionStorage';
 import { hasApiKey, clearApiCache, getCachedCard } from '@/lib/pokemonTcgApi';
 import { isServerOcrEnabled } from '@/lib/cardRecognition';
@@ -53,14 +56,113 @@ export default function ProfileScreen() {
   const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchTotal, setPrefetchTotal] = useState(0);
   const [prefetchCurrent, setPrefetchCurrent] = useState(0);
-  const [prefetchStatus, setPrefetchStatus] = useState<'idle' | 'fetching_cards' | 'prefetching_images' | 'success' | 'error'>('idle');
+  const [prefetchStatus, setPrefetchStatus] = useState<
+    'idle' | 'fetching_cards' | 'prefetching_images' | 'success' | 'error'
+  >('idle');
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const syncStatus = useSyncStatus();
+  const [isSyncingManual, setIsSyncingManual] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [remoteState, setRemoteState] = useState<any>(null);
+  const [mergeOption, setMergeOption] = useState<'smart' | 'local' | 'remote'>('smart');
 
   useEffect(() => {
     getPushSubscription().then((sub) => {
       setIsPushSubscribed(!!sub);
     });
   }, []);
+
+  const handleManualSync = async () => {
+    if (!user) return;
+    setIsSyncingManual(true);
+    triggerHaptic('light');
+
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .select('state, updated_at')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching remote collection:', error);
+        showToast('Error al obtener la colección en la nube.');
+        setIsSyncingManual(false);
+        return;
+      }
+
+      const localState = getCollection();
+
+      if (!data || !data.state) {
+        // No remote collection exists yet, upload local
+        await syncToCloud(localState);
+        showToast('¡Colección sincronizada por primera vez en la nube! 🚀');
+        setIsSyncingManual(false);
+        return;
+      }
+
+      const remoteCollection = data.state;
+      const localCardCount = Object.keys(localState.cards || {}).length;
+      const remoteCardCount = Object.keys(remoteCollection.cards || {}).length;
+
+      // Check if they are identical
+      const localStr = JSON.stringify(localState.cards || {});
+      const remoteStr = JSON.stringify(remoteCollection.cards || {});
+
+      if (localStr === remoteStr) {
+        showToast('¡Tu colección está completamente al día! ✨');
+        setIsSyncingManual(false);
+        return;
+      }
+
+      // If there are differences and both have cards, prompt merge
+      if (localCardCount > 0 && remoteCardCount > 0) {
+        setRemoteState(remoteCollection);
+        setShowMergeModal(true);
+      } else {
+        // If one is empty, merge automatically
+        const merged = mergeCollections(localState, remoteCollection);
+        replaceCollection(merged);
+        showToast('Colección combinada automáticamente con éxito. 🔄');
+      }
+    } catch (err) {
+      console.error('Error manually syncing:', err);
+      showToast('Error al sincronizar con la nube.');
+    } finally {
+      setIsSyncingManual(false);
+    }
+  };
+
+  const handleConfirmMerge = async () => {
+    if (!user || !remoteState) return;
+    setIsSyncingManual(true);
+    setShowMergeModal(false);
+    triggerHaptic('medium');
+
+    try {
+      const localState = getCollection();
+      let finalState = localState;
+
+      if (mergeOption === 'smart') {
+        finalState = mergeCollections(localState, remoteState);
+        showToast('Colecciones combinadas con éxito. 🧠');
+      } else if (mergeOption === 'local') {
+        finalState = localState;
+        showToast('Colección local guardada y subida a la nube. ⬆️');
+      } else if (mergeOption === 'remote') {
+        finalState = remoteState;
+        showToast('Colección de la nube descargada con éxito. ⬇️');
+      }
+
+      replaceCollection(finalState);
+    } catch (err) {
+      console.error('Error executing merge choice:', err);
+      showToast('Error al aplicar la fusión.');
+    } finally {
+      setIsSyncingManual(false);
+      setRemoteState(null);
+    }
+  };
 
   const handlePushToggle = async () => {
     try {
@@ -95,7 +197,7 @@ export default function ProfileScreen() {
       type: 'collection_updated',
       ownedCount: ownedCards.length,
       hasRareHolo: false, // full rarity check done in HomeScreen with card data
-      fireCardCount: 0,   // same
+      fireCardCount: 0, // same
     });
     achieved.forEach(dispatchAchievement);
   }, []);
@@ -128,7 +230,9 @@ export default function ProfileScreen() {
       localStorage.setItem('carddex_auto_scan_enabled', String(next));
     } catch {}
     triggerHaptic('light');
-    showToast(next ? '👁️ Auto-escaneo OpenCV activado' : 'Auto-escaneo desactivado. Captura manual activa.');
+    showToast(
+      next ? '👁️ Auto-escaneo OpenCV activado' : 'Auto-escaneo desactivado. Captura manual activa.'
+    );
   };
   const { user } = useAuth();
   const [authEmail, setAuthEmail] = useState('');
@@ -165,7 +269,9 @@ export default function ProfileScreen() {
     try {
       localStorage.setItem('carddex.scanner.language', nextLang);
     } catch {}
-    showToast(t('profile.scanLanguageChanged', { lang: nextLang }) || `Idioma de escaneo: ${nextLang}`);
+    showToast(
+      t('profile.scanLanguageChanged', { lang: nextLang }) || `Idioma de escaneo: ${nextLang}`
+    );
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -175,7 +281,10 @@ export default function ProfileScreen() {
       return;
     }
     setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password: authPassword,
+    });
     setAuthLoading(false);
     if (error) showToast(error.message);
     else showToast(t('profile.sessionStarted') || 'Sesión iniciada');
@@ -188,12 +297,12 @@ export default function ProfileScreen() {
       return;
     }
     setAuthLoading(true);
-    const { error } = await supabase.auth.signUp({ 
-      email: authEmail, 
+    const { error } = await supabase.auth.signUp({
+      email: authEmail,
       password: authPassword,
       options: {
-        data: { full_name: authName }
-      }
+        data: { full_name: authName },
+      },
     });
     setAuthLoading(false);
     if (error) showToast(error.message);
@@ -223,7 +332,7 @@ export default function ProfileScreen() {
     }
     setAuthLoading(true);
     const { error } = await supabase.auth.updateUser({
-      data: { full_name: editNameValue.trim() }
+      data: { full_name: editNameValue.trim() },
     });
     setAuthLoading(false);
     if (error) {
@@ -282,7 +391,10 @@ export default function ProfileScreen() {
     try {
       const text = await file.text();
       const { imported } = importCollection(text);
-      showToast(t('profile.importSuccess', { count: formatInt(imported) }) || `Se importaron ${formatInt(imported)} cartas`);
+      showToast(
+        t('profile.importSuccess', { count: formatInt(imported) }) ||
+          `Se importaron ${formatInt(imported)} cartas`
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Archivo inválido';
       showToast(t('profile.importError', { msg }) || `Error al importar: ${msg}`);
@@ -319,14 +431,14 @@ export default function ProfileScreen() {
   const handlePrefetchImages = async () => {
     if (isPrefetching) return;
     triggerHaptic('light');
-    
+
     const col = getCollection();
     const ownedIds = Object.values(col.cards)
       .filter((c) => c.owned)
       .map((c) => c.cardId);
 
     if (ownedIds.length === 0) {
-      showToast("No tienes cartas en tu colección para precargar.");
+      showToast('No tienes cartas en tu colección para precargar.');
       return;
     }
 
@@ -334,11 +446,11 @@ export default function ProfileScreen() {
     setPrefetchStatus('fetching_cards');
     setPrefetchCurrent(0);
     setPrefetchTotal(ownedIds.length);
-    
+
     try {
       const { getCardsByIds } = await import('@/lib/pokemonTcgApi');
       const cards = await getCardsByIds(ownedIds);
-      
+
       const urls: string[] = [];
       cards.forEach((card) => {
         if (card.images?.small) urls.push(card.images.small);
@@ -348,7 +460,7 @@ export default function ProfileScreen() {
       if (urls.length === 0) {
         setPrefetchStatus('success');
         setIsPrefetching(false);
-        showToast("Colección offline actualizada (sin imágenes pendientes).");
+        showToast('Colección offline actualizada (sin imágenes pendientes).');
         return;
       }
 
@@ -374,12 +486,12 @@ export default function ProfileScreen() {
 
       setPrefetchStatus('success');
       triggerHaptic('success');
-      showToast("¡Colección offline lista para usar!");
+      showToast('¡Colección offline lista para usar!');
     } catch (err) {
       console.error('[Offline Cache] Prefetch failed:', err);
       setPrefetchStatus('error');
       triggerHaptic('warning');
-      showToast("Ocurrió un error al precargar las imágenes.");
+      showToast('Ocurrió un error al precargar las imágenes.');
     } finally {
       setIsPrefetching(false);
     }
@@ -391,13 +503,11 @@ export default function ProfileScreen() {
       .filter((c) => c.owned)
       .map((c) => c.cardId);
 
-    const ownedCards = ownedIds
-      .map((id) => getCachedCard(id))
-      .filter((c): c is PokemonCard => !!c);
+    const ownedCards = ownedIds.map((id) => getCachedCard(id)).filter((c): c is PokemonCard => !!c);
 
     const favoriteCards = ownedCards.filter((c) => col.cards[c.id]?.favorite);
 
-    let showcase = [...favoriteCards];
+    const showcase = [...favoriteCards];
 
     if (showcase.length < 4) {
       const remainingOwned = ownedCards.filter((c) => !showcase.some((sc) => sc.id === c.id));
@@ -419,7 +529,12 @@ export default function ProfileScreen() {
 
   return (
     <div style={{ paddingBottom: 110 }}>
-      <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} duration={2000} />
+      <Toast
+        message={toast ?? ''}
+        visible={!!toast}
+        onHide={() => setToast(null)}
+        duration={2000}
+      />
 
       {/* Header */}
       <div style={{ padding: '54px 18px 18px' }}>
@@ -442,7 +557,9 @@ export default function ProfileScreen() {
           {!isSupabaseConfigured() ? (
             <div style={{ padding: '20px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>CD</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>Perfil local demo</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>
+                Perfil local demo
+              </div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, lineHeight: 1.5 }}>
                 Tu colección se guarda en este navegador. Perfiles públicos y sincronización
                 requieren Supabase configurado en servidor.
@@ -466,7 +583,7 @@ export default function ProfileScreen() {
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
                 {isLoginMode ? 'Accede a tu cuenta' : 'Crea una cuenta'}
               </div>
-              
+
               {isLoginMode && hasPasskeyStored && (
                 <button
                   type="button"
@@ -474,7 +591,8 @@ export default function ProfileScreen() {
                   disabled={authLoading || biometricScanning}
                   style={{
                     width: '100%',
-                    background: 'linear-gradient(135deg, rgba(123, 90, 217, 0.12), rgba(47, 111, 224, 0.12))',
+                    background:
+                      'linear-gradient(135deg, rgba(123, 90, 217, 0.12), rgba(47, 111, 224, 0.12))',
                     color: 'var(--accent)',
                     border: '1px dashed rgba(123, 90, 217, 0.4)',
                     padding: 14,
@@ -497,38 +615,84 @@ export default function ProfileScreen() {
                 </button>
               )}
 
-              <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <form
+                onSubmit={isLoginMode ? handleLogin : handleSignup}
+                style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
                 {!isLoginMode && (
-                  <input 
-                    type="text" 
-                    placeholder="Tu nombre o apodo" 
-                    value={authName} 
-                    onChange={(e) => setAuthName(e.target.value)} 
-                    style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)' }} 
+                  <input
+                    type="text"
+                    placeholder="Tu nombre o apodo"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 12,
+                      border: '1px solid var(--hairline)',
+                      background: 'var(--bg)',
+                      color: 'var(--ink)',
+                    }}
                     required
                   />
                 )}
-                <input 
-                  type="email" 
-                  placeholder="Correo electrónico" 
-                  value={authEmail} 
-                  onChange={(e) => setAuthEmail(e.target.value)} 
-                  style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)' }} 
+                <input
+                  type="email"
+                  placeholder="Correo electrónico"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: '1px solid var(--hairline)',
+                    background: 'var(--bg)',
+                    color: 'var(--ink)',
+                  }}
                   required
                 />
-                <input 
-                  type="password" 
-                  placeholder="Contraseña" 
-                  value={authPassword} 
-                  onChange={(e) => setAuthPassword(e.target.value)} 
-                  style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)' }} 
+                <input
+                  type="password"
+                  placeholder="Contraseña"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: '1px solid var(--hairline)',
+                    background: 'var(--bg)',
+                    color: 'var(--ink)',
+                  }}
                   required
                 />
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button type="submit" disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700 }}>
-                    {authLoading ? '...' : (isLoginMode ? 'Iniciar Sesión' : 'Registrarse')}
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      borderRadius: 12,
+                      border: 'none',
+                      background: 'var(--accent)',
+                      color: '#fff',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {authLoading ? '...' : isLoginMode ? 'Iniciar Sesión' : 'Registrarse'}
                   </button>
-                  <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} disabled={authLoading} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', fontWeight: 700 }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsLoginMode(!isLoginMode)}
+                    disabled={authLoading}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      borderRadius: 12,
+                      border: '1px solid var(--accent)',
+                      background: 'transparent',
+                      color: 'var(--accent)',
+                      fontWeight: 700,
+                    }}
+                  >
                     {isLoginMode ? 'Crear cuenta' : 'Ya tengo cuenta'}
                   </button>
                 </div>
@@ -542,8 +706,7 @@ export default function ProfileScreen() {
                   height: 72,
                   borderRadius: '50%',
                   margin: '0 auto 12px',
-                  background:
-                    'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+                  background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -568,25 +731,50 @@ export default function ProfileScreen() {
               >
                 {isEditingName ? (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input 
+                    <input
                       autoFocus
                       value={editNameValue}
-                      onChange={e => setEditNameValue(e.target.value)}
-                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--hairline)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 16 }}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        border: '1px solid var(--hairline)',
+                        background: 'var(--bg)',
+                        color: 'var(--ink)',
+                        fontSize: 16,
+                      }}
                     />
-                    <button onClick={handleUpdateName} disabled={authLoading} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700 }}>
+                    <button
+                      onClick={handleUpdateName}
+                      disabled={authLoading}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'var(--accent)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontWeight: 700,
+                      }}
+                    >
                       ✓
                     </button>
                   </div>
                 ) : (
                   <>
                     <span>{user.user_metadata?.full_name || user.email}</span>
-                    <button 
+                    <button
                       onClick={() => {
                         setEditNameValue(user.user_metadata?.full_name || '');
                         setIsEditingName(true);
                       }}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--muted)',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        textDecoration: 'underline',
+                      }}
                     >
                       Editar
                     </button>
@@ -594,12 +782,18 @@ export default function ProfileScreen() {
                 )}
               </div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
-                {formatInt(summary.uniqueCount)} únicas ·{' '}
-                {formatInt(summary.totalQuantity)} cartas
+                {formatInt(summary.uniqueCount)} únicas · {formatInt(summary.totalQuantity)} cartas
               </div>
-              <button 
+              <button
                 onClick={handleLogout}
-                style={{ marginTop: 12, background: 'transparent', border: 'none', color: 'var(--error)', fontWeight: 600, cursor: 'pointer' }}
+                style={{
+                  marginTop: 12,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--error)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
               >
                 Cerrar sesión
               </button>
@@ -616,22 +810,22 @@ export default function ProfileScreen() {
                 <Stat n={formatInt(summary.wishlistCount)} l="Wishlist" />
                 <Stat n={formatInt(summary.missingCount)} l="Faltan" />
               </div>
-              <button 
+              <button
                 onClick={handleShareProfile}
-                style={{ 
-                  marginTop: 20, 
+                style={{
+                  marginTop: 20,
                   width: '100%',
-                  background: 'var(--accent)', 
-                  color: '#fff', 
-                  border: 'none', 
-                  padding: 14, 
-                  borderRadius: 14, 
-                  fontWeight: 700, 
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: 14,
+                  borderRadius: 14,
+                  fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8
+                  gap: 8,
                 }}
               >
                 <ShareIcon size={18} />
@@ -646,6 +840,151 @@ export default function ProfileScreen() {
           )}
         </Surface>
       </div>
+
+      {/* Cloud Backup & Sync Controls */}
+      {user && (
+        <div style={{ padding: '0 14px 14px' }}>
+          <SectionTitle>Sincronización en la Nube</SectionTitle>
+          <Surface style={{ padding: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Premium Glassmorphic Sync Status Banner */}
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background:
+                    syncStatus === 'synced'
+                      ? 'rgba(52, 199, 89, 0.08)'
+                      : syncStatus === 'syncing' || isSyncingManual
+                        ? 'rgba(0, 188, 212, 0.08)'
+                        : syncStatus === 'offline-pending'
+                          ? 'rgba(255, 179, 0, 0.08)'
+                          : syncStatus === 'error'
+                            ? 'rgba(255, 59, 48, 0.08)'
+                            : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${
+                    syncStatus === 'synced'
+                      ? 'rgba(52, 199, 89, 0.25)'
+                      : syncStatus === 'syncing' || isSyncingManual
+                        ? 'rgba(0, 188, 212, 0.25)'
+                        : syncStatus === 'offline-pending'
+                          ? 'rgba(255, 179, 0, 0.25)'
+                          : syncStatus === 'error'
+                            ? 'rgba(255, 59, 48, 0.25)'
+                            : 'rgba(255, 255, 255, 0.05)'
+                  }`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  transition: 'all 300ms ease',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 20,
+                    animation:
+                      syncStatus === 'syncing' || isSyncingManual
+                        ? 'spinScreenLoader 2s linear infinite'
+                        : 'none',
+                    display: 'inline-block',
+                  }}
+                >
+                  {syncStatus === 'synced'
+                    ? '🟢'
+                    : syncStatus === 'syncing' || isSyncingManual
+                      ? '🔄'
+                      : syncStatus === 'offline-pending'
+                        ? '🟡'
+                        : syncStatus === 'error'
+                          ? '🔴'
+                          : '☁️'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    {syncStatus === 'synced'
+                      ? 'Colección Sincronizada'
+                      : syncStatus === 'syncing' || isSyncingManual
+                        ? 'Sincronizando...'
+                        : syncStatus === 'offline-pending'
+                          ? 'Pendiente (Modo Offline)'
+                          : syncStatus === 'error'
+                            ? 'Error de Conexión'
+                            : 'Copia de Seguridad Activa'}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--muted)',
+                      marginTop: 2,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {syncStatus === 'synced'
+                      ? 'Todos los datos de tu binder están seguros en la nube.'
+                      : syncStatus === 'syncing' || isSyncingManual
+                        ? 'Subiendo y de-duplicando cambios de cartas en tiempo real.'
+                        : syncStatus === 'offline-pending'
+                          ? 'Los cambios se guardan localmente y se subirán al reconectar.'
+                          : syncStatus === 'error'
+                            ? 'No pudimos conectar con el servidor. Toca para reintentar.'
+                            : 'Resguarda tu colección contra pérdidas físicas.'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sync Action Buttons */}
+              <button
+                onClick={handleManualSync}
+                disabled={isSyncingManual || syncStatus === 'syncing'}
+                style={{
+                  width: '100%',
+                  padding: 14,
+                  background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+                  border: 'none',
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: isSyncingManual || syncStatus === 'syncing' ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 4px 12px rgba(123, 90, 217, 0.15)',
+                  transition: 'all 200ms ease',
+                }}
+              >
+                {isSyncingManual || syncStatus === 'syncing' ? (
+                  <>
+                    <span
+                      className="spinner-mini"
+                      style={{
+                        width: 14,
+                        height: 14,
+                        border: '2px solid rgba(255,255,255,0.2)',
+                        borderTopColor: '#fff',
+                        borderRadius: '50%',
+                        display: 'inline-block',
+                        animation: 'spinScreenLoader 1s linear infinite',
+                      }}
+                    />
+                    <span>Conectando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔄 Sincronizar y Comparar ahora</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </Surface>
+        </div>
+      )}
 
       {/* Showcase Poster Export */}
       <div style={{ padding: '0 14px 14px' }}>
@@ -740,12 +1079,21 @@ export default function ProfileScreen() {
 
             {prefetchStatus !== 'idle' && (
               <div style={{ marginTop: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 11,
+                    color: 'var(--muted)',
+                    marginBottom: 6,
+                  }}
+                >
                   <span>
-                    {prefetchStatus === 'fetching_cards' && "Obteniendo datos de las cartas..."}
-                    {prefetchStatus === 'prefetching_images' && `Descargando imágenes: ${prefetchCurrent} de ${prefetchTotal}`}
-                    {prefetchStatus === 'success' && "¡Completado! Todas las imágenes en caché"}
-                    {prefetchStatus === 'error' && "Error en la descarga. Intenta de nuevo."}
+                    {prefetchStatus === 'fetching_cards' && 'Obteniendo datos de las cartas...'}
+                    {prefetchStatus === 'prefetching_images' &&
+                      `Descargando imágenes: ${prefetchCurrent} de ${prefetchTotal}`}
+                    {prefetchStatus === 'success' && '¡Completado! Todas las imágenes en caché'}
+                    {prefetchStatus === 'error' && 'Error en la descarga. Intenta de nuevo.'}
                   </span>
                   {prefetchTotal > 0 && prefetchStatus === 'prefetching_images' && (
                     <span>{Math.round((prefetchCurrent / prefetchTotal) * 100)}%</span>
@@ -762,8 +1110,12 @@ export default function ProfileScreen() {
                   <div
                     style={{
                       height: '100%',
-                      background: prefetchStatus === 'error' ? 'var(--error)' : 'linear-gradient(90deg, var(--accent), #00BCD4)',
-                      width: prefetchTotal > 0 ? `${(prefetchCurrent / prefetchTotal) * 100}%` : '0%',
+                      background:
+                        prefetchStatus === 'error'
+                          ? 'var(--error)'
+                          : 'linear-gradient(90deg, var(--accent), #00BCD4)',
+                      width:
+                        prefetchTotal > 0 ? `${(prefetchCurrent / prefetchTotal) * 100}%` : '0%',
                       transition: 'width 200ms ease-out',
                     }}
                   />
@@ -777,8 +1129,8 @@ export default function ProfileScreen() {
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                background: isPrefetching 
-                  ? 'rgba(255,255,255,0.04)' 
+                background: isPrefetching
+                  ? 'rgba(255,255,255,0.04)'
                   : prefetchStatus === 'success'
                     ? 'rgba(52,199,89,0.1)'
                     : 'linear-gradient(135deg, rgba(123,90,217,0.12), rgba(0,188,212,0.12))',
@@ -802,15 +1154,18 @@ export default function ProfileScreen() {
             >
               {isPrefetching ? (
                 <>
-                  <span className="spinner-mini" style={{
-                    width: 14,
-                    height: 14,
-                    border: '2px solid rgba(255,255,255,0.2)',
-                    borderTopColor: 'var(--accent)',
-                    borderRadius: '50%',
-                    display: 'inline-block',
-                    animation: 'spinScreenLoader 1s linear infinite'
-                  }} />
+                  <span
+                    className="spinner-mini"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      borderTopColor: 'var(--accent)',
+                      borderRadius: '50%',
+                      display: 'inline-block',
+                      animation: 'spinScreenLoader 1s linear infinite',
+                    }}
+                  />
                   <span style={{ marginLeft: 8 }}>Descargando colección...</span>
                 </>
               ) : prefetchStatus === 'success' ? (
@@ -834,7 +1189,8 @@ export default function ProfileScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: 11,
-                  background: 'linear-gradient(135deg, rgba(255, 179, 0, 0.15), rgba(242, 201, 76, 0.15))',
+                  background:
+                    'linear-gradient(135deg, rgba(255, 179, 0, 0.15), rgba(242, 201, 76, 0.15))',
                   color: '#FFB300',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -875,7 +1231,8 @@ export default function ProfileScreen() {
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>
-                  Monitoreo en segundo plano de tu binder. Recibe notificaciones push si alguna carta sube o baja más del 20%.
+                  Monitoreo en segundo plano de tu binder. Recibe notificaciones push si alguna
+                  carta sube o baja más del 20%.
                 </div>
               </div>
             </div>
@@ -925,9 +1282,7 @@ export default function ProfileScreen() {
                 width: 36,
                 height: 36,
                 borderRadius: 11,
-                background: apiKeyConfigured
-                  ? 'rgba(52,199,89,0.15)'
-                  : 'rgba(242,153,74,0.15)',
+                background: apiKeyConfigured ? 'rgba(52,199,89,0.15)' : 'rgba(242,153,74,0.15)',
                 color: apiKeyConfigured ? 'var(--success)' : 'var(--warning)',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -985,7 +1340,11 @@ export default function ProfileScreen() {
           <ActionRow
             icon={<span style={{ fontSize: 16 }}>👁️</span>}
             label="Auto-Escaneo Inteligente (OpenCV)"
-            description={autoScanEnabled ? 'Captura automática al alinear la carta' : 'Desactivado (toca para capturar)'}
+            description={
+              autoScanEnabled
+                ? 'Captura automática al alinear la carta'
+                : 'Desactivado (toca para capturar)'
+            }
             onClick={handleToggleAutoScan}
           />
         </Surface>
@@ -1140,7 +1499,10 @@ export default function ProfileScreen() {
         <SectionTitle>Demo Boundaries & Privacy</SectionTitle>
         <Surface style={{ padding: 14 }}>
           <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>
-            CardDex es una demo personal: colección y preferencias viven en este navegador salvo que configures Supabase. El scanner no guarda video; una captura sólo sale del dispositivo si activas OCR de servidor. El asistente local no inventa datos y los precios son referencia, no consejo financiero. Passkey local no guarda contraseñas.
+            CardDex es una demo personal: colección y preferencias viven en este navegador salvo que
+            configures Supabase. El scanner no guarda video; una captura sólo sale del dispositivo
+            si activas OCR de servidor. El asistente local no inventa datos y los precios son
+            referencia, no consejo financiero. Passkey local no guarda contraseñas.
           </div>
         </Surface>
       </div>
@@ -1160,9 +1522,7 @@ export default function ProfileScreen() {
           >
             CardDex
           </div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-            Versión {APP_VERSION}
-          </div>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>Versión {APP_VERSION}</div>
           <p
             style={{
               margin: '12px 0 0',
@@ -1171,11 +1531,10 @@ export default function ProfileScreen() {
               color: 'var(--muted)',
             }}
           >
-            Proyecto personal sin fines comerciales para llevar el control de tu
-            colección de cartas Pokémon TCG. CardDex no está afiliado, asociado,
-            autorizado, respaldado por, ni vinculado oficialmente con Nintendo,
-            The Pokémon Company, Creatures Inc. ni Game Freak. Todas las marcas
-            y derechos pertenecen a sus respectivos propietarios. Los datos de
+            Proyecto personal sin fines comerciales para llevar el control de tu colección de cartas
+            Pokémon TCG. CardDex no está afiliado, asociado, autorizado, respaldado por, ni
+            vinculado oficialmente con Nintendo, The Pokémon Company, Creatures Inc. ni Game Freak.
+            Todas las marcas y derechos pertenecen a sus respectivos propietarios. Los datos de
             cartas y precios provienen de{' '}
             <a
               href="https://pokemontcg.io"
@@ -1198,6 +1557,235 @@ export default function ProfileScreen() {
         userId={user?.id || ''}
         onShowToast={showToast}
       />
+
+      {/* Merge Conflict / Deduplication Resolution Modal */}
+      {showMergeModal && remoteState && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(9, 11, 16, 0.85)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px 16px',
+          }}
+          onClick={() => setShowMergeModal(false)}
+        >
+          <Surface
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              background: 'var(--surface)',
+              border: '1px solid var(--hairline)',
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
+              borderRadius: 24,
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              color: 'var(--ink)',
+            }}
+            onClick={(e: any) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>
+                🔄 Fusión de Colecciones
+              </h3>
+              <button
+                onClick={() => setShowMergeModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  fontSize: 16,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
+              Detectamos diferencias entre la colección de este dispositivo y tu copia de seguridad
+              en la nube. Selecciona cómo deseas unificarlas:
+            </p>
+
+            {/* Collection stats side-by-side comparison */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 12,
+                background: 'rgba(255, 255, 255, 0.03)',
+                padding: 12,
+                borderRadius: 14,
+                border: '0.5px solid var(--hairline)',
+              }}
+            >
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>
+                  DISPOSITIVO LOCAL
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)', marginTop: 4 }}>
+                  {Object.keys(getCollection().cards || {}).length}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                  Cartas registradas
+                </div>
+              </div>
+              <div style={{ width: 1, background: 'var(--hairline)' }} />
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>
+                  COPIA EN LA NUBE
+                </div>
+                <div
+                  style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}
+                >
+                  {Object.keys(remoteState.cards || {}).length}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                  Cartas registradas
+                </div>
+              </div>
+            </div>
+
+            {/* Merge options list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Option 1: Smart Merge */}
+              <button
+                onClick={() => setMergeOption('smart')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: mergeOption === 'smart' ? 'var(--accent-tint)' : 'transparent',
+                  border: `2px solid ${mergeOption === 'smart' ? 'var(--accent)' : 'var(--hairline)'}`,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  transition: 'all 150ms ease',
+                }}
+              >
+                <div style={{ fontSize: 18, marginTop: 2 }}>🧠</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
+                    Fusión Automática Inteligente
+                  </div>
+                  <div
+                    style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}
+                  >
+                    Une ambas listas sumando las colecciones y conservando las ediciones más
+                    recientes de cada carta.
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Overwrite remote with local */}
+              <button
+                onClick={() => setMergeOption('local')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: mergeOption === 'local' ? 'rgba(52, 199, 89, 0.08)' : 'transparent',
+                  border: `2px solid ${mergeOption === 'local' ? 'var(--success)' : 'var(--hairline)'}`,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  transition: 'all 150ms ease',
+                }}
+              >
+                <div style={{ fontSize: 18, marginTop: 2 }}>⬆️</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
+                    Conservar Local (Subir a la Nube)
+                  </div>
+                  <div
+                    style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}
+                  >
+                    Reemplaza el binder de la nube con los datos de este dispositivo.
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 3: Overwrite local with remote */}
+              <button
+                onClick={() => setMergeOption('remote')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: mergeOption === 'remote' ? 'var(--accent-tint)' : 'transparent',
+                  border: `2px solid ${mergeOption === 'remote' ? 'var(--accent)' : 'var(--hairline)'}`,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  transition: 'all 150ms ease',
+                }}
+              >
+                <div style={{ fontSize: 18, marginTop: 2 }}>⬇️</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
+                    Conservar Nube (Descargar en Dispositivo)
+                  </div>
+                  <div
+                    style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}
+                  >
+                    Descarta los cambios locales y descarga tu copia de seguridad de la nube.
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Modal actions */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button
+                onClick={() => setShowMergeModal(false)}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  borderRadius: 12,
+                  border: '1px solid var(--hairline)',
+                  background: 'transparent',
+                  color: 'var(--ink)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmMerge}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  borderRadius: 12,
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(123, 90, 217, 0.2)',
+                }}
+              >
+                Confirmar Fusión
+              </button>
+            </div>
+          </Surface>
+        </div>
+      )}
     </div>
   );
 }
@@ -1253,9 +1841,7 @@ function ActionRow({
           width: 36,
           height: 36,
           borderRadius: 11,
-          background: destructive
-            ? 'rgba(255,59,48,0.10)'
-            : 'var(--accent-tint)',
+          background: destructive ? 'rgba(255,59,48,0.10)' : 'var(--accent-tint)',
           color: destructive ? 'var(--error)' : 'var(--accent)',
           display: 'inline-flex',
           alignItems: 'center',

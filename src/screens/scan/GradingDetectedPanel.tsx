@@ -54,19 +54,59 @@ export default function GradingDetectedPanel({
       {/* Header Info */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         {cardObj ? (
-          <div style={{ width: 50, height: 70, borderRadius: 6, overflow: 'hidden', background: '#111', flexShrink: 0 }}>
-            <img src={cardObj.images?.small} alt={cardObj.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div
+            style={{
+              width: 50,
+              height: 70,
+              borderRadius: 6,
+              overflow: 'hidden',
+              background: '#111',
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={cardObj.images?.small}
+              alt={cardObj.name}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
         ) : (
-          <div style={{ width: 50, height: 70, borderRadius: 6, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div
+            style={{
+              width: 50,
+              height: 70,
+              borderRadius: 6,
+              background: 'rgba(255,255,255,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
             🃏
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: '#FF9500', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+          <div
+            style={{
+              fontSize: 10,
+              color: '#FF9500',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: 1.2,
+            }}
+          >
             ✦ Certificado de Calificación IA
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             {gradingResult.cardName}
           </div>
           {cardObj && (
@@ -78,70 +118,100 @@ export default function GradingDetectedPanel({
       </div>
 
       {/* Main Grade Badge Row */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        background: 'rgba(255,255,255,0.03)',
-        border: '0.5px solid rgba(255,255,255,0.08)',
-        borderRadius: 16,
-        padding: '12px 16px',
-        gap: 16
-      }}>
-        {/* Holographic score circle */}
-        <div style={{
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #FF9500 0%, #FF2D55 100%)',
+      <div
+        style={{
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 0 16px rgba(255, 149, 0, 0.4)',
-          flexShrink: 0
-        }}>
-          <span style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{gradingResult.overallGrade.toFixed(1)}</span>
+          background: 'rgba(255,255,255,0.03)',
+          border: '0.5px solid rgba(255,255,255,0.08)',
+          borderRadius: 16,
+          padding: '12px 16px',
+          gap: 16,
+        }}
+      >
+        {/* Holographic score circle */}
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #FF9500 0%, #FF2D55 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 16px rgba(255, 149, 0, 0.4)',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
+            {gradingResult.overallGrade.toFixed(1)}
+          </span>
         </div>
 
         <div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Calificación General</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+            Calificación General
+          </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#FF9500', letterSpacing: -0.2 }}>
-            PSA {Math.round(gradingResult.overallGrade)} <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>({gradingResult.qualifier})</span>
+            PSA {Math.round(gradingResult.overallGrade)}{' '}
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>
+              ({gradingResult.qualifier})
+            </span>
           </div>
         </div>
       </div>
 
       {/* Subgrades grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 12,
-        background: 'rgba(255,255,255,0.01)',
-      }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 12,
+          background: 'rgba(255,255,255,0.01)',
+        }}
+      >
         {[
           { label: 'Centrado', value: gradingResult.centering },
           { label: 'Esquinas', value: gradingResult.corners },
           { label: 'Bordes', value: gradingResult.edges },
           { label: 'Superficie', value: gradingResult.surface },
         ].map((sub) => (
-          <div key={sub.label} style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '0.5px solid rgba(255,255,255,0.06)',
-            borderRadius: 12,
-            padding: '10px 12px',
-          }}>
+          <div
+            key={sub.label}
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '0.5px solid rgba(255,255,255,0.06)',
+              borderRadius: 12,
+              padding: '10px 12px',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{sub.label}</span>
-              <span style={{ fontSize: 12, fontWeight: 800, color: getSubGradeColor(sub.value) }}>{sub.value.toFixed(1)}</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+                {sub.label}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: getSubGradeColor(sub.value) }}>
+                {sub.value.toFixed(1)}
+              </span>
             </div>
             {/* mini progress bar */}
-            <div style={{ height: 4, width: '100%', background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${sub.value * 10}%`,
-                background: getSubGradeColor(sub.value),
-                borderRadius: 2
-              }} />
+            <div
+              style={{
+                height: 4,
+                width: '100%',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: 2,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${sub.value * 10}%`,
+                  background: getSubGradeColor(sub.value),
+                  borderRadius: 2,
+                }}
+              />
             </div>
           </div>
         ))}
@@ -149,25 +219,37 @@ export default function GradingDetectedPanel({
 
       {/* Issues detected list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 0.2 }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.5)',
+            fontWeight: 700,
+            letterSpacing: 0.2,
+          }}
+        >
           DETALLES Y ANOMALÍAS DETECTADAS:
         </div>
-        <div style={{
-          maxHeight: 80,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6
-        }}>
+        <div
+          style={{
+            maxHeight: 80,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
           {gradingResult.issues && gradingResult.issues.length > 0 ? (
             gradingResult.issues.map((issue: string, index: number) => (
-              <div key={index} style={{
-                display: 'flex',
-                gap: 8,
-                fontSize: 11.5,
-                color: 'rgba(255,255,255,0.85)',
-                lineHeight: 1.3
-              }}>
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  fontSize: 11.5,
+                  color: 'rgba(255,255,255,0.85)',
+                  lineHeight: 1.3,
+                }}
+              >
                 <span style={{ color: '#FF3B30' }}>•</span>
                 <span>{issue}</span>
               </div>
@@ -182,57 +264,106 @@ export default function GradingDetectedPanel({
 
       {/* TCG Meta Analysis Section */}
       {gradingResult.metaRating && (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(123,90,217,0.12) 0%, rgba(47,111,224,0.08) 100%)',
-          border: '1px solid rgba(123,90,217,0.3)',
-          borderRadius: 16,
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-        }}>
+        <div
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(123,90,217,0.12) 0%, rgba(47,111,224,0.08) 100%)',
+            border: '1px solid rgba(123,90,217,0.3)',
+            borderRadius: 16,
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 10, color: '#7B5AD9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+            <div
+              style={{
+                fontSize: 10,
+                color: '#7B5AD9',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: 1.2,
+              }}
+            >
               ✦ TCG Meta Analysis
             </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: gradingResult.metaRating.metaViability === 'Alta' ? 'rgba(52,199,89,0.15)' :
-                          gradingResult.metaRating.metaViability === 'Media' ? 'rgba(255,149,0,0.15)' :
-                          'rgba(255,59,48,0.15)',
-              borderRadius: 20,
-              padding: '4px 10px',
-            }}>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: gradingResult.metaRating.metaViability === 'Alta' ? '#34C759' :
-                       gradingResult.metaRating.metaViability === 'Media' ? '#FF9500' : '#FF3B30',
-              }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background:
+                  gradingResult.metaRating.metaViability === 'Alta'
+                    ? 'rgba(52,199,89,0.15)'
+                    : gradingResult.metaRating.metaViability === 'Media'
+                      ? 'rgba(255,149,0,0.15)'
+                      : 'rgba(255,59,48,0.15)',
+                borderRadius: 20,
+                padding: '4px 10px',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color:
+                    gradingResult.metaRating.metaViability === 'Alta'
+                      ? '#34C759'
+                      : gradingResult.metaRating.metaViability === 'Media'
+                        ? '#FF9500'
+                        : '#FF3B30',
+                }}
+              >
                 Viabilidad {gradingResult.metaRating.metaViability}
               </span>
             </div>
           </div>
           {/* Meta score bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 900, color: '#7B5AD9', lineHeight: 1, minWidth: 36 }}>
+            <span
+              style={{
+                fontSize: 22,
+                fontWeight: 900,
+                color: '#7B5AD9',
+                lineHeight: 1,
+                minWidth: 36,
+              }}
+            >
               {gradingResult.metaRating.metaScore.toFixed(1)}
             </span>
-            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${gradingResult.metaRating.metaScore * 10}%`,
-                background: 'linear-gradient(90deg, #7B5AD9, #2F6FE0)',
+            <div
+              style={{
+                flex: 1,
+                height: 6,
+                background: 'rgba(255,255,255,0.1)',
                 borderRadius: 3,
-                transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
-              }} />
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${gradingResult.metaRating.metaScore * 10}%`,
+                  background: 'linear-gradient(90deg, #7B5AD9, #2F6FE0)',
+                  borderRadius: 3,
+                  transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
+                }}
+              />
             </div>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>META SCORE</span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+              META SCORE
+            </span>
           </div>
           {/* Analysis text */}
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, fontStyle: 'italic' }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.75)',
+              lineHeight: 1.5,
+              fontStyle: 'italic',
+            }}
+          >
             {gradingResult.metaRating.metaAnalysis}
           </div>
         </div>
@@ -274,7 +405,7 @@ export default function GradingDetectedPanel({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6
+              gap: 6,
             }}
           >
             {saved ? '✓ Guardada con éxito' : 'Guardar con Calificación'}

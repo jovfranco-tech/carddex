@@ -28,7 +28,9 @@ export default function DeckBuilderModal({
 
   // Copilot chat state (post-generation)
   const [deckSpec, setDeckSpec] = useState<any>(null);
-  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatHistory, setChatHistory] = useState<
+    Array<{ role: 'user' | 'assistant'; content: string }>
+  >([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatStreamText, setChatStreamText] = useState('');
@@ -121,7 +123,8 @@ export default function DeckBuilderModal({
         setResolveStatus(`Buscando: ${card.name} (×${card.quantity})…`);
         try {
           const searchRes = await searchCards({ name: `"${card.name}"`, pageSize: 1 });
-          const found = searchRes.data?.[0] ?? (await searchCards({ name: card.name, pageSize: 1 })).data?.[0];
+          const found =
+            searchRes.data?.[0] ?? (await searchCards({ name: card.name, pageSize: 1 })).data?.[0];
           if (found) {
             for (let i = 0; i < card.quantity; i++) resolvedCardIds.push(found.id);
           }
@@ -150,10 +153,12 @@ export default function DeckBuilderModal({
       onSuccess(created.id);
       // Stay open in copilot mode instead of closing
       // onClose() — now we switch to chat mode
-      setChatHistory([{
-        role: 'assistant',
-        content: `¡Mazo **${newDeckName}** creado con éxito! 🎉 Tiene ${resolvedCardIds.length} cartas. ¿Quieres que lo refinemos juntos? Puedes preguntarme sobre sinergias, pedirme cambios de cartas o preguntar por estrategias.`
-      }]);
+      setChatHistory([
+        {
+          role: 'assistant',
+          content: `¡Mazo **${newDeckName}** creado con éxito! 🎉 Tiene ${resolvedCardIds.length} cartas. ¿Quieres que lo refinemos juntos? Puedes preguntarme sobre sinergias, pedirme cambios de cartas o preguntar por estrategias.`,
+        },
+      ]);
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         onShowToast(err.message || 'Error construyendo el mazo.');
@@ -212,22 +217,27 @@ export default function DeckBuilderModal({
             try {
               const parsed = JSON.parse(data);
               if (parsed.token) {
-                setChatStreamText(prev => prev + parsed.token);
+                setChatStreamText((prev) => prev + parsed.token);
               } else if (parsed.fullText) {
                 finalText = parsed.fullText;
               }
-            } catch { /* skip */ }
+            } catch {
+              /* skip */
+            }
           }
         }
       }
 
       const assistantMsg = finalText || chatStreamText;
-      setChatHistory(prev => [...prev, { role: 'assistant', content: assistantMsg }]);
+      setChatHistory((prev) => [...prev, { role: 'assistant', content: assistantMsg }]);
       setChatStreamText('');
       triggerHaptic('success');
     } catch (err: any) {
       onShowToast(err.message || 'Error en el copiloto de mazos.');
-      setChatHistory(prev => [...prev, { role: 'assistant', content: '❌ Error al contactar el copiloto. Intenta de nuevo.' }]);
+      setChatHistory((prev) => [
+        ...prev,
+        { role: 'assistant', content: '❌ Error al contactar el copiloto. Intenta de nuevo.' },
+      ]);
     } finally {
       setChatLoading(false);
       setChatStreamText('');
@@ -235,9 +245,13 @@ export default function DeckBuilderModal({
   };
 
   const phaseLabel =
-    phase === 'streaming' ? '✦ IA diseñando arquetipo…' :
-    phase === 'resolving' ? resolveStatus || 'Resolviendo cartas oficiales…' :
-    phase === 'saving' ? 'Guardando mazo en tu colección…' : '';
+    phase === 'streaming'
+      ? '✦ IA diseñando arquetipo…'
+      : phase === 'resolving'
+        ? resolveStatus || 'Resolviendo cartas oficiales…'
+        : phase === 'saving'
+          ? 'Guardando mazo en tu colección…'
+          : '';
 
   return (
     <div
@@ -267,10 +281,27 @@ export default function DeckBuilderModal({
         }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: 'var(--accent)' }}><SparklesIcon size={18} /></span>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--ink)', letterSpacing: -0.4 }}>
+            <span style={{ color: 'var(--accent)' }}>
+              <SparklesIcon size={18} />
+            </span>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 18,
+                fontWeight: 800,
+                color: 'var(--ink)',
+                letterSpacing: -0.4,
+              }}
+            >
               AI Deck Builder Copilot
             </h2>
           </div>
@@ -290,17 +321,19 @@ export default function DeckBuilderModal({
         {loading ? (
           <div style={{ padding: '20px 8px' }}>
             {/* Phase label */}
-            <div style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: 'var(--accent)',
-              textTransform: 'uppercase',
-              letterSpacing: 0.8,
-              marginBottom: 10,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'var(--accent)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
               <span
                 style={{
                   display: 'inline-block',
@@ -373,7 +406,7 @@ export default function DeckBuilderModal({
               {[
                 { key: 'streaming', label: '1. IA diseña' },
                 { key: 'resolving', label: '2. Resuelve cartas' },
-                { key: 'saving',    label: '3. Guarda mazo' },
+                { key: 'saving', label: '3. Guarda mazo' },
               ].map((s) => (
                 <div
                   key={s.key}
@@ -381,11 +414,13 @@ export default function DeckBuilderModal({
                     flex: 1,
                     height: 4,
                     borderRadius: 99,
-                    background: phase === s.key
-                      ? 'var(--accent)'
-                      : (phase === 'resolving' && s.key === 'streaming') || (phase === 'saving' && s.key !== 'saving')
-                        ? 'rgba(123,90,217,0.35)'
-                        : 'var(--border)',
+                    background:
+                      phase === s.key
+                        ? 'var(--accent)'
+                        : (phase === 'resolving' && s.key === 'streaming') ||
+                            (phase === 'saving' && s.key !== 'saving')
+                          ? 'rgba(123,90,217,0.35)'
+                          : 'var(--border)',
                     transition: 'background 400ms ease',
                   }}
                   title={s.label}
@@ -397,7 +432,15 @@ export default function DeckBuilderModal({
           <div style={{ display: 'flex', flexDirection: 'column', height: 360 }}>
             {/* Header chat mode */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: 'var(--accent)',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.8,
+                }}
+              >
                 ✦ Deck Copilot — Modo Refinamiento
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
@@ -423,9 +466,10 @@ export default function DeckBuilderModal({
                   style={{
                     alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                     maxWidth: '85%',
-                    background: msg.role === 'user'
-                      ? 'linear-gradient(135deg, #7B5AD9, #2F6FE0)'
-                      : 'var(--bg)',
+                    background:
+                      msg.role === 'user'
+                        ? 'linear-gradient(135deg, #7B5AD9, #2F6FE0)'
+                        : 'var(--bg)',
                     color: msg.role === 'user' ? '#fff' : 'var(--ink)',
                     borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     padding: '10px 14px',
@@ -453,15 +497,17 @@ export default function DeckBuilderModal({
                   }}
                 >
                   {chatStreamText}
-                  <span style={{
-                    display: 'inline-block',
-                    width: 2,
-                    height: 13,
-                    background: 'var(--accent)',
-                    marginLeft: 2,
-                    animation: 'blinkCursor 0.7s step-end infinite',
-                    verticalAlign: 'text-bottom',
-                  }} />
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 2,
+                      height: 13,
+                      background: 'var(--accent)',
+                      marginLeft: 2,
+                      animation: 'blinkCursor 0.7s step-end infinite',
+                      verticalAlign: 'text-bottom',
+                    }}
+                  />
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -498,7 +544,7 @@ export default function DeckBuilderModal({
                   cursor: chatLoading ? 'wait' : 'pointer',
                   fontSize: 13,
                   fontFamily: 'inherit',
-                  opacity: (!chatInput.trim() || chatLoading) ? 0.5 : 1,
+                  opacity: !chatInput.trim() || chatLoading ? 0.5 : 1,
                 }}
               >
                 {chatLoading ? '…' : '↑'}
@@ -507,8 +553,11 @@ export default function DeckBuilderModal({
           </div>
         ) : (
           <form onSubmit={handleGenerate}>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>
-              Escribe qué tipo de mazo te gustaría armar. La IA diseñará la lista de 60 cartas perfecta con sinergias avanzadas y la verás en tiempo real.
+            <p
+              style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}
+            >
+              Escribe qué tipo de mazo te gustaría armar. La IA diseñará la lista de 60 cartas
+              perfecta con sinergias avanzadas y la verás en tiempo real.
             </p>
             <textarea
               required

@@ -6,7 +6,7 @@
 
 export function getOptimizedImageUrl(url: string | undefined, width?: number): string {
   if (!url) return '';
-  
+
   // If it's already a local, blob, data, or local dev URL, serve it directly
   if (
     url.startsWith('/') ||
@@ -21,11 +21,11 @@ export function getOptimizedImageUrl(url: string | undefined, width?: number): s
   // Strip protocol to comply with weserv.nl query expectations
   const cleanUrl = url.replace(/^https?:\/\//, '');
   let optimizedUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&default=${encodeURIComponent(url)}`;
-  
+
   if (width) {
     optimizedUrl += `&w=${width}&fit=contain`;
   }
-  
+
   return optimizedUrl;
 }
 
@@ -101,7 +101,12 @@ export async function resizeImageFile(file: File, maxDim = 1000): Promise<File> 
  * (representing card edges against standard backgrounds like tables, desks, etc.).
  * Returns the cropped bounding box, adding margin to keep borders intact.
  */
-export function detectCardBoundingBox(canvas: HTMLCanvasElement): { x: number; y: number; w: number; h: number } {
+export function detectCardBoundingBox(canvas: HTMLCanvasElement): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
   const ctx = canvas.getContext('2d');
   if (!ctx) return { x: 0, y: 0, w: canvas.width, h: canvas.height };
 
@@ -122,7 +127,10 @@ export function detectCardBoundingBox(canvas: HTMLCanvasElement): { x: number; y
   };
 
   // Helper to calculate Euclidean color distance in RGB space
-  const colorDistance = (c1: { r: number; g: number; b: number }, c2: { r: number; g: number; b: number }) => {
+  const colorDistance = (
+    c1: { r: number; g: number; b: number },
+    c2: { r: number; g: number; b: number }
+  ) => {
     return Math.sqrt((c1.r - c2.r) ** 2 + (c1.g - c2.g) ** 2 + (c1.b - c2.b) ** 2);
   };
 
@@ -131,7 +139,7 @@ export function detectCardBoundingBox(canvas: HTMLCanvasElement): { x: number; y
   const bg = {
     r: Math.round(corners.reduce((sum, c) => sum + c.r, 0) / 4),
     g: Math.round(corners.reduce((sum, c) => sum + c.g, 0) / 4),
-    b: Math.round(corners.reduce((sum, c) => sum + c.b, 0) / 4)
+    b: Math.round(corners.reduce((sum, c) => sum + c.b, 0) / 4),
   };
 
   let top = 0;
@@ -139,7 +147,7 @@ export function detectCardBoundingBox(canvas: HTMLCanvasElement): { x: number; y
   let left = 0;
   let right = w - 1;
 
-  const THRESHOLD = 38; 
+  const THRESHOLD = 38;
   const GRID_STEP = 6;
 
   // 1. Scan Top to Bottom (sample columns at 25%, 50%, 75% width)
@@ -213,7 +221,7 @@ export function detectCardBoundingBox(canvas: HTMLCanvasElement): { x: number; y
     x: left,
     y: top,
     w: right - left,
-    h: bottom - top
+    h: bottom - top,
   };
 }
 
@@ -230,8 +238,13 @@ export async function compressForAI(base64: string, maxKB = 500): Promise<string
       let { width: w, height: h } = img;
 
       if (w > MAX_DIM || h > MAX_DIM) {
-        if (w > h) { h = Math.round((h * MAX_DIM) / w); w = MAX_DIM; }
-        else { w = Math.round((w * MAX_DIM) / h); h = MAX_DIM; }
+        if (w > h) {
+          h = Math.round((h * MAX_DIM) / w);
+          w = MAX_DIM;
+        } else {
+          w = Math.round((w * MAX_DIM) / h);
+          h = MAX_DIM;
+        }
       }
 
       // 1. Initial draw to temp canvas
@@ -239,7 +252,10 @@ export async function compressForAI(base64: string, maxKB = 500): Promise<string
       tempCanvas.width = w;
       tempCanvas.height = h;
       const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) { resolve(base64); return; }
+      if (!tempCtx) {
+        resolve(base64);
+        return;
+      }
       tempCtx.drawImage(img, 0, 0, w, h);
 
       // 2. Perform intelligent card cropping to remove background
@@ -250,7 +266,10 @@ export async function compressForAI(base64: string, maxKB = 500): Promise<string
       finalCanvas.width = crop.w;
       finalCanvas.height = crop.h;
       const finalCtx = finalCanvas.getContext('2d');
-      if (!finalCtx) { resolve(base64); return; }
+      if (!finalCtx) {
+        resolve(base64);
+        return;
+      }
       finalCtx.drawImage(tempCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
 
       // 4. Compress to target file size

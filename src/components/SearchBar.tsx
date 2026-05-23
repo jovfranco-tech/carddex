@@ -91,7 +91,7 @@ export default function SearchBar({
           minWidth: 0,
         }}
       />
-      
+
       {value && (
         <button
           type="button"
@@ -138,7 +138,7 @@ export default function SearchBar({
                   borderRadius: '50%',
                   border: '1.5px solid var(--border)',
                   borderTopColor: 'var(--accent)',
-                  animation: 'spinSearchLoader 0.6s linear infinite'
+                  animation: 'spinSearchLoader 0.6s linear infinite',
                 }}
               />
             ) : (

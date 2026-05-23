@@ -19,14 +19,16 @@ const STEPS = [
   {
     emoji: '📷',
     title: 'Escanea tus cartas',
-    description: 'Apunta la cámara a una carta para recibir sugerencias basadas en datos disponibles.',
+    description:
+      'Apunta la cámara a una carta para recibir sugerencias basadas en datos disponibles.',
     hint: 'También puedes buscar por nombre, revisar detalles y guardar cartas.',
     cta: 'Continuar',
   },
   {
     emoji: '✦',
     title: 'Asistente contextual',
-    description: 'Consulta datos de la carta, colección y precios disponibles sin prometer predicciones perfectas.',
+    description:
+      'Consulta datos de la carta, colección y precios disponibles sin prometer predicciones perfectas.',
     hint: 'CardDex está preparado para un LLM vía backend, sin keys expuestas en frontend.',
     cta: '¡Comenzar mi colección!',
   },
@@ -46,7 +48,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
     if (isLast) {
       // Mark onboarding as complete
-      try { localStorage.setItem(ONBOARDING_KEY, 'true'); } catch {}
+      try {
+        localStorage.setItem(ONBOARDING_KEY, 'true');
+      } catch {}
       onComplete();
       navigate('/scan');
       return;
@@ -61,7 +65,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
   const handleSkip = () => {
     triggerHaptic('light');
-    try { localStorage.setItem(ONBOARDING_KEY, 'true'); } catch {}
+    try {
+      localStorage.setItem(ONBOARDING_KEY, 'true');
+    } catch {}
     onComplete();
   };
 
@@ -186,9 +192,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               width: i === step ? 22 : 8,
               height: 8,
               borderRadius: 99,
-              background: i === step
-                ? 'linear-gradient(90deg, #7B5AD9, #2F6FE0)'
-                : 'rgba(255,255,255,0.18)',
+              background:
+                i === step ? 'linear-gradient(90deg, #7B5AD9, #2F6FE0)' : 'rgba(255,255,255,0.18)',
               transition: 'all 300ms ease',
             }}
           />
@@ -214,8 +219,12 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
           letterSpacing: 0,
           transition: 'transform 120ms ease, box-shadow 120ms ease',
         }}
-        onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-        onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.transform = 'scale(0.97)';
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
       >
         {current.cta}
       </button>

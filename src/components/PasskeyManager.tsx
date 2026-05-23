@@ -129,7 +129,14 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
   return (
     <div style={{ marginTop: 14 }}>
       <Surface style={{ padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
           <div style={{ flex: 1, minWidth: 0 }}>
             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
               Passkey local
@@ -231,11 +238,27 @@ export default function PasskeyManager({ userEmail, userName, onToast }: Passkey
                 ID
               </div>
             </div>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.4 }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 17,
+                fontWeight: 800,
+                color: '#fff',
+                letterSpacing: -0.4,
+              }}
+            >
               Passkey local demo
             </h3>
-            <p style={{ margin: '8px 0 24px', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-              Este prototipo sólo guarda un marcador local del dispositivo. El login real por passkey requiere verificación segura en backend.
+            <p
+              style={{
+                margin: '8px 0 24px',
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.6)',
+                lineHeight: 1.5,
+              }}
+            >
+              Este prototipo sólo guarda un marcador local del dispositivo. El login real por
+              passkey requiere verificación segura en backend.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button

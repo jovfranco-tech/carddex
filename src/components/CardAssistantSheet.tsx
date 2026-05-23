@@ -7,11 +7,7 @@ import type {
   AssistantIntent,
   SuggestedPrompt,
 } from '@/lib/cardAssistant';
-import {
-  SUGGESTED_PROMPTS,
-  answerCardQuestion,
-  answerSuggestedPrompt,
-} from '@/lib/cardAssistant';
+import { SUGGESTED_PROMPTS, answerCardQuestion, answerSuggestedPrompt } from '@/lib/cardAssistant';
 
 export interface CardAssistantSheetProps {
   open: boolean;
@@ -39,11 +35,7 @@ const SERVER_ASSISTANT_ENABLED = import.meta.env.VITE_CARD_ASSISTANT_MODE === 's
  * A real LLM can be enabled only through the serverless backend with
  * VITE_CARD_ASSISTANT_MODE=server; no model key is ever used in the browser.
  */
-export default function CardAssistantSheet({
-  open,
-  onClose,
-  context,
-}: CardAssistantSheetProps) {
+export default function CardAssistantSheet({ open, onClose, context }: CardAssistantSheetProps) {
   const [messages, setMessages] = useState<ChatItem[]>([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
@@ -58,7 +50,9 @@ export default function CardAssistantSheet({
         id: INITIAL_GREETING_ID,
         role: 'assistant',
         text: `Soy tu asistente demo para **${context.card.name}**. Respondo con los datos disponibles de la carta, precios públicos y tu colección local.`,
-        sources: [SERVER_ASSISTANT_ENABLED ? 'CardDex · Backend opcional' : 'CardDex · Asistente local'],
+        sources: [
+          SERVER_ASSISTANT_ENABLED ? 'CardDex · Backend opcional' : 'CardDex · Asistente local',
+        ],
       },
     ]);
     setInput('');
@@ -116,7 +110,7 @@ export default function CardAssistantSheet({
         }
 
         const data = await res.json();
-        
+
         setMessages((prev) => [
           ...prev,
           {
@@ -144,7 +138,7 @@ export default function CardAssistantSheet({
         setThinking(false);
       }
     },
-    [context, messages],
+    [context, messages]
   );
 
   const askPrompt = useCallback(
@@ -168,7 +162,7 @@ export default function CardAssistantSheet({
       }
       ask(prompt.label);
     },
-    [ask, context],
+    [ask, context]
   );
 
   const handleSubmit = () => ask(input);

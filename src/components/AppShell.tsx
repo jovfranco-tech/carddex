@@ -40,29 +40,65 @@ export default function AppShell({ children }: AppShellProps) {
             className={`sync-pill sync-status-${syncStatus}`}
             onClick={handleSyncClick}
             style={{
-              cursor: (syncStatus === 'error' || syncStatus === 'offline-pending') ? 'pointer' : 'default',
+              cursor:
+                syncStatus === 'error' || syncStatus === 'offline-pending' ? 'pointer' : 'default',
             }}
           >
             <div className="sync-icon">
               {syncStatus === 'syncing' && (
-                <svg className="spinner" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                <svg
+                  className="spinner"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
                   <circle cx="8" cy="8" r="6" stroke="rgba(47, 111, 224, 0.2)" />
                   <path d="M8 2a6 6 0 0 1 6 6" />
                 </svg>
               )}
               {syncStatus === 'synced' && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="var(--success)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M13.5 4.5L6.2 11.8L2.5 8.1" />
                 </svg>
               )}
               {syncStatus === 'error' && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="var(--error)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
                   <line x1="8" y1="4" x2="8" y2="9" />
                   <circle cx="8" cy="12" r="1" fill="var(--error)" stroke="none" />
                 </svg>
               )}
               {syncStatus === 'offline-pending' && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#FF9500" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="#FF9500"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="8" cy="8" r="6" />
                   <path d="M8 5v3h3" />
                 </svg>

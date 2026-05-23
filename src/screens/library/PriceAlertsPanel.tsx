@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { triggerHaptic } from '@/lib/haptic';
-import {
-  markAllAlertsAsRead,
-  clearAllPriceAlerts,
-  type PriceAlert,
-} from '@/lib/priceMonitor';
+import { markAllAlertsAsRead, clearAllPriceAlerts, type PriceAlert } from '@/lib/priceMonitor';
 
 interface PriceAlertsPanelProps {
   isOpen: boolean;
@@ -101,7 +97,14 @@ export default function PriceAlertsPanel({
           }}
         />
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}
+        >
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
             Alertas de Precios
           </h2>
@@ -161,7 +164,14 @@ export default function PriceAlertsPanel({
           }}
         >
           {alerts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)', fontSize: 13 }}>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: 'var(--muted)',
+                fontSize: 13,
+              }}
+            >
               No tienes alertas de precios en este momento.
             </div>
           ) : (
@@ -169,131 +179,193 @@ export default function PriceAlertsPanel({
               const isUp = alert.changePercent >= 0;
               return (
                 <React.Fragment key={alert.id}>
-                <div
-                  onClick={() => {
-                    onClose();
-                    triggerHaptic('light');
-                    onNavigate(`/card/${alert.cardId}`);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '12px 14px',
-                    borderRadius: 16,
-                    background: alert.read ? 'rgba(0, 0, 0, 0.02)' : 'rgba(123, 90, 217, 0.06)',
-                    border: alert.read ? '0.5px solid rgba(0, 0, 0, 0.05)' : '0.5px solid rgba(123, 90, 217, 0.2)',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s',
-                    boxShadow: alert.read ? 'none' : '0 4px 12px rgba(123, 90, 217, 0.04)',
-                    animation: 'alertReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
-                    animationDelay: `${index * 60}ms`,
-                  }}
-                >
-                  <img
-                    src={alert.cardImage}
-                    alt={alert.cardName}
-                    style={{
-                      width: 38,
-                      height: 53,
-                      borderRadius: 6,
-                      objectFit: 'cover',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                      flexShrink: 0,
+                  <div
+                    onClick={() => {
+                      onClose();
+                      triggerHaptic('light');
+                      onNavigate(`/card/${alert.cardId}`);
                     }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        {alert.cardName}
-                      </span>
-                      <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '12px 14px',
+                      borderRadius: 16,
+                      background: alert.read ? 'rgba(0, 0, 0, 0.02)' : 'rgba(123, 90, 217, 0.06)',
+                      border: alert.read
+                        ? '0.5px solid rgba(0, 0, 0, 0.05)'
+                        : '0.5px solid rgba(123, 90, 217, 0.2)',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                      boxShadow: alert.read ? 'none' : '0 4px 12px rgba(123, 90, 217, 0.04)',
+                      animation: 'alertReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
+                      animationDelay: `${index * 60}ms`,
+                    }}
+                  >
+                    <img
+                      src={alert.cardImage}
+                      alt={alert.cardName}
+                      style={{
+                        width: 38,
+                        height: 53,
+                        borderRadius: 6,
+                        objectFit: 'cover',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
                         style={{
-                          fontSize: 12,
-                          fontWeight: 800,
-                          color: isUp ? 'var(--success)' : 'var(--error)',
-                          whiteSpace: 'nowrap',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'baseline',
                         }}
                       >
-                        {isUp ? '▲' : '▼'} {Math.abs(alert.changePercent)}%
-                      </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: 'var(--ink)',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {alert.cardName}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 800,
+                            color: isUp ? 'var(--success)' : 'var(--error)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {isUp ? '▲' : '▼'} {Math.abs(alert.changePercent)}%
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginTop: 4,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                          Antes:{' '}
+                          <span style={{ textDecoration: 'line-through' }}>
+                            ${alert.oldPrice.toFixed(2)}
+                          </span>
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>
+                          Ahora: ${alert.newPrice.toFixed(2)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 4 }}>
+                        {new Date(alert.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}{' '}
+                        -{' '}
+                        {new Date(alert.timestamp).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </div>
+                      {/* AI Insight Button */}
+                      <button
+                        onClick={(e) => handleInsight(alert, e)}
+                        style={{
+                          marginTop: 8,
+                          padding: '5px 12px',
+                          background:
+                            insightCardId === alert.id && insightText
+                              ? 'rgba(123,90,217,0.15)'
+                              : 'rgba(123,90,217,0.08)',
+                          border: '0.5px solid rgba(123,90,217,0.3)',
+                          borderRadius: 20,
+                          color: '#7B5AD9',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: insightLoading && insightCardId === alert.id ? 'wait' : 'pointer',
+                          fontFamily: 'inherit',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          width: 'fit-content',
+                        }}
+                      >
+                        {insightLoading && insightCardId === alert.id ? (
+                          <>
+                            <span
+                              style={{
+                                animation: 'spin 1s linear infinite',
+                                display: 'inline-block',
+                              }}
+                            >
+                              ⟳
+                            </span>{' '}
+                            Analizando...
+                          </>
+                        ) : (
+                          <>✦ AI Insight</>
+                        )}
+                      </button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center' }}>
-                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                        Antes: <span style={{ textDecoration: 'line-through' }}>${alert.oldPrice.toFixed(2)}</span>
-                      </span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>
-                        Ahora: ${alert.newPrice.toFixed(2)}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 4 }}>
-                      {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(alert.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                    </div>
-                    {/* AI Insight Button */}
-                    <button
-                      onClick={(e) => handleInsight(alert, e)}
-                      style={{
-                        marginTop: 8,
-                        padding: '5px 12px',
-                        background: insightCardId === alert.id && insightText
-                          ? 'rgba(123,90,217,0.15)'
-                          : 'rgba(123,90,217,0.08)',
-                        border: '0.5px solid rgba(123,90,217,0.3)',
-                        borderRadius: 20,
-                        color: '#7B5AD9',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: insightLoading && insightCardId === alert.id ? 'wait' : 'pointer',
-                        fontFamily: 'inherit',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        width: 'fit-content',
-                      }}
-                    >
-                      {insightLoading && insightCardId === alert.id ? (
-                        <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> Analizando...</>
-                      ) : (
-                        <>✦ AI Insight</>
-                      )}
-                    </button>
                   </div>
-                </div>
-                {/* Insight expanded panel */}
-                {insightCardId === alert.id && insightText && (
-                  <div style={{
-                    margin: '4px 0 4px 50px',
-                    padding: '12px 14px',
-                    background: 'linear-gradient(135deg, rgba(123,90,217,0.06) 0%, rgba(47,111,224,0.04) 100%)',
-                    border: '0.5px solid rgba(123,90,217,0.2)',
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: 'var(--ink)',
-                    lineHeight: 1.55,
-                    position: 'relative',
-                  }}>
-                    <div style={{ fontSize: 10, color: '#7B5AD9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
-                      ✦ Análisis de Mercado IA
-                    </div>
-                    {insightText}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setInsightCardId(null); setInsightText(''); }}
+                  {/* Insight expanded panel */}
+                  {insightCardId === alert.id && insightText && (
+                    <div
                       style={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--muted)',
-                        cursor: 'pointer',
+                        margin: '4px 0 4px 50px',
+                        padding: '12px 14px',
+                        background:
+                          'linear-gradient(135deg, rgba(123,90,217,0.06) 0%, rgba(47,111,224,0.04) 100%)',
+                        border: '0.5px solid rgba(123,90,217,0.2)',
+                        borderRadius: 12,
                         fontSize: 12,
-                        padding: 2,
+                        color: 'var(--ink)',
+                        lineHeight: 1.55,
+                        position: 'relative',
                       }}
                     >
-                      ✕
-                    </button>
-                  </div>
-                )}
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: '#7B5AD9',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.8,
+                          marginBottom: 6,
+                        }}
+                      >
+                        ✦ Análisis de Mercado IA
+                      </div>
+                      {insightText}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInsightCardId(null);
+                          setInsightText('');
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--muted)',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          padding: 2,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </React.Fragment>
               );
             })
@@ -331,7 +403,8 @@ export default function PriceAlertsPanel({
 
 // Inject spin keyframe for the AI insight loading spinner
 const _spinStyle = document.createElement('style');
-_spinStyle.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+_spinStyle.textContent =
+  '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
 if (typeof document !== 'undefined' && !document.getElementById('carddex-spin-kf')) {
   _spinStyle.id = 'carddex-spin-kf';
   document.head.appendChild(_spinStyle);

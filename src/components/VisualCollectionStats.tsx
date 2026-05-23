@@ -90,7 +90,7 @@ export default function VisualCollectionStats({
       const isPkmn =
         c.supertype?.toLowerCase().includes('pokémon') ||
         c.supertype?.toLowerCase().includes('pokemon');
-      
+
       if (isPkmn) {
         const types = c.types && c.types.length > 0 ? c.types : ['Colorless'];
         types.forEach((t) => {
@@ -101,8 +101,7 @@ export default function VisualCollectionStats({
     });
 
     const total = totalPkmn || 1;
-    const sorted = Object.entries(counts)
-      .sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
     const R = 36;
     const C = 2 * Math.PI * R; // Circumference ~226.19
@@ -188,10 +187,7 @@ export default function VisualCollectionStats({
       }
     });
 
-    const maxCount = Math.max(
-      1,
-      ...Object.values(groups).map((g) => g.count)
-    );
+    const maxCount = Math.max(1, ...Object.values(groups).map((g) => g.count));
 
     return {
       total,
@@ -205,11 +201,11 @@ export default function VisualCollectionStats({
 
   // 4. Generate historical collection value for SVG Line Chart (6 weeks back)
   const historyData = useMemo(() => {
-    const currentValue = pricingTotals.usd || pricingTotals.eur || 120.00;
+    const currentValue = pricingTotals.usd || pricingTotals.eur || 120.0;
     const currencySym = pricingTotals.usd > 0 || pricingTotals.eur === 0 ? '$' : '€';
-    
+
     let rawPoints: { date: string; value: number }[] = [];
-    
+
     if (collection.history && collection.history.length >= 2) {
       rawPoints = collection.history;
     } else {
@@ -239,9 +235,22 @@ export default function VisualCollectionStats({
     }
 
     // Map raw points to SVG scale coordinates
-    const points = rawPoints.map(p => p.value);
-    
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const points = rawPoints.map((p) => p.value);
+
+    const monthNames = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
     const labels = rawPoints.map((p, idx) => {
       if (rawPoints.length <= 6) {
         try {
@@ -267,7 +276,7 @@ export default function VisualCollectionStats({
 
     const minVal = Math.min(...points) * 0.95;
     const maxVal = Math.max(...points) * 1.05;
-    const range = (maxVal - minVal) || 1;
+    const range = maxVal - minVal || 1;
 
     const coords = points.map((val, idx) => {
       const x = paddingX + (idx / (points.length - 1 || 1)) * (W - 2 * paddingX);
@@ -277,7 +286,7 @@ export default function VisualCollectionStats({
 
     let pathD = '';
     let areaD = `M ${coords[0].x} ${H - paddingY} `;
-    
+
     coords.forEach((c, idx) => {
       if (idx === 0) {
         pathD += `M ${c.x} ${c.y}`;
@@ -285,7 +294,7 @@ export default function VisualCollectionStats({
         const prev = coords[idx - 1];
         const cp1x = prev.x + (c.x - prev.x) / 3;
         const cp1y = prev.y;
-        const cp2x = prev.x + 2 * (c.x - prev.x) / 3;
+        const cp2x = prev.x + (2 * (c.x - prev.x)) / 3;
         const cp2y = c.y;
         pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${c.x} ${c.y}`;
       }
@@ -339,9 +348,9 @@ export default function VisualCollectionStats({
 
       const cardSeed = `${c.id}-${periodSeed}`;
       const rand = getSeededRandom(cardSeed);
-      
+
       // Drift between -15% and +20% (skewed slightly positive to mimic pokemon market trends)
-      const pctChange = (rand * 35) - 15; 
+      const pctChange = rand * 35 - 15;
       const currentPrice = p.value;
       const changeAmount = currentPrice * (pctChange / 100);
 
@@ -357,8 +366,11 @@ export default function VisualCollectionStats({
     // Sort by pctChange to get gainers and losers
     const sorted = [...items].sort((a, b) => b.pctChange - a.pctChange);
 
-    const gainers = sorted.filter(x => x.pctChange > 0).slice(0, 3);
-    const losers = [...sorted].reverse().filter(x => x.pctChange < 0).slice(0, 3);
+    const gainers = sorted.filter((x) => x.pctChange > 0).slice(0, 3);
+    const losers = [...sorted]
+      .reverse()
+      .filter((x) => x.pctChange < 0)
+      .slice(0, 3);
 
     return { gainers, losers };
   }, [ownedCards, isDeck]);
@@ -366,7 +378,20 @@ export default function VisualCollectionStats({
   const valueFormatted = formatCollectionValue(pricingTotals);
 
   const formattedChartData = useMemo(() => {
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const monthNames = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
     return historyData.rawPoints.map((p) => {
       try {
         const parts = p.date.split('-');
@@ -474,7 +499,8 @@ export default function VisualCollectionStats({
               {valueFormatted === '—' ? 'Sin precios' : valueFormatted}
             </div>
             <div style={{ fontSize: 9, color: 'rgba(255, 255, 255, 0.35)', lineHeight: 1.3 }}>
-              Basado en {pricingTotals.cardsWithPrice} de {ownedCards.length} cartas con valor de mercado disponible.
+              Basado en {pricingTotals.cardsWithPrice} de {ownedCards.length} cartas con valor de
+              mercado disponible.
             </div>
           </div>
         )}
@@ -549,9 +575,16 @@ export default function VisualCollectionStats({
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'types' && (
-          typeStats.segments.length === 0 ? (
-            <div style={{ color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center', fontSize: 13, padding: '20px 0' }}>
+        {activeTab === 'types' &&
+          (typeStats.segments.length === 0 ? (
+            <div
+              style={{
+                color: 'rgba(255, 255, 255, 0.4)',
+                textAlign: 'center',
+                fontSize: 13,
+                padding: '20px 0',
+              }}
+            >
               No hay Pokémon en la lista para analizar.
             </div>
           ) : (
@@ -560,7 +593,14 @@ export default function VisualCollectionStats({
               <div style={{ position: 'relative', width: 90, height: 90, flexShrink: 0 }}>
                 <svg width="90" height="90" viewBox="0 0 100 100">
                   {/* Background track circle */}
-                  <circle cx="50" cy="50" r="36" fill="transparent" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="12" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="36"
+                    fill="transparent"
+                    stroke="rgba(255, 255, 255, 0.03)"
+                    strokeWidth="12"
+                  />
                   {/* Segment circles */}
                   {typeStats.segments.map((seg) => (
                     <circle
@@ -590,7 +630,11 @@ export default function VisualCollectionStats({
                     justifyContent: 'center',
                   }}
                 >
-                  <span style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}>Tipos</span>
+                  <span
+                    style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}
+                  >
+                    Tipos
+                  </span>
                   <span style={{ fontSize: 14, color: '#FFF', fontWeight: 900 }}>
                     {Object.keys(typeStats.segments).length}
                   </span>
@@ -598,12 +642,34 @@ export default function VisualCollectionStats({
               </div>
 
               {/* Legends */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 110, overflowY: 'auto' }} className="no-scrollbar">
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  maxHeight: 110,
+                  overflowY: 'auto',
+                }}
+                className="no-scrollbar"
+              >
                 {typeStats.segments.slice(0, 5).map((seg) => (
-                  <div key={seg.type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+                  <div
+                    key={seg.type}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: 12,
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color }} />
-                      <span style={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 600 }}>{seg.label}</span>
+                      <div
+                        style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color }}
+                      />
+                      <span style={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 600 }}>
+                        {seg.label}
+                      </span>
                     </div>
                     <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
                       {seg.count} ({seg.percent}%)
@@ -611,24 +677,40 @@ export default function VisualCollectionStats({
                   </div>
                 ))}
                 {typeStats.segments.length > 5 && (
-                  <div style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.35)', paddingLeft: 14, fontWeight: 500 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: 'rgba(255, 255, 255, 0.35)',
+                      paddingLeft: 14,
+                      fontWeight: 500,
+                    }}
+                  >
                     + {typeStats.segments.length - 5} tipos adicionales
                   </div>
                 )}
               </div>
             </div>
-          )
-        )}
+          ))}
 
         {activeTab === 'rarity' && (
           /* Rarity Distribution bars */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {rarityStats.list.map((group) => (
               <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 600 }}>{group.label}</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 600 }}>
+                    {group.label}
+                  </span>
                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
-                    {group.count} <span style={{ fontSize: 10, fontWeight: 500 }}>({group.percent}%)</span>
+                    {group.count}{' '}
+                    <span style={{ fontSize: 10, fontWeight: 500 }}>({group.percent}%)</span>
                   </span>
                 </div>
                 {/* Progress bar container */}
@@ -662,7 +744,9 @@ export default function VisualCollectionStats({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}>Desempeño mensual</span>
+                <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}>
+                  Desempeño mensual
+                </span>
                 {monthlyPerf !== null ? (
                   <span
                     style={{
@@ -674,17 +758,23 @@ export default function VisualCollectionStats({
                       gap: 4,
                     }}
                   >
-                    {monthlyPerf >= 0 ? '▲' : '▼'} {monthlyPerf >= 0 ? '+' : ''}{monthlyPerf.toFixed(1)}%{' '}
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>(período)</span>
+                    {monthlyPerf >= 0 ? '▲' : '▼'} {monthlyPerf >= 0 ? '+' : ''}
+                    {monthlyPerf.toFixed(1)}%{' '}
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                      (período)
+                    </span>
                   </span>
                 ) : (
-                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>—</span>
+                  <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>
+                    —
+                  </span>
                 )}
               </div>
               <div style={{ textAlign: 'right', fontSize: 12 }}>
                 <span style={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: 600 }}>Máx: </span>
                 <span style={{ color: '#FFF', fontWeight: 700 }}>
-                  {historyData.currencySym}{Math.max(...historyData.points).toFixed(0)}
+                  {historyData.currencySym}
+                  {Math.max(...historyData.points).toFixed(0)}
                 </span>
               </div>
             </div>
@@ -705,14 +795,29 @@ export default function VisualCollectionStats({
               }}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={formattedChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <AreaChart
+                  data={formattedChartData}
+                  margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="historyColorGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'} stopOpacity={0} />
+                      <stop
+                        offset="5%"
+                        stopColor={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'}
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={(monthlyPerf ?? 0) >= 0 ? '#10B981' : '#EF4444'}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.04)" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="rgba(255, 255, 255, 0.04)"
+                  />
                   <XAxis
                     dataKey="formattedDate"
                     stroke="rgba(255, 255, 255, 0.3)"
@@ -731,20 +836,40 @@ export default function VisualCollectionStats({
                     content={({ active, payload }: any) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div style={{
-                            background: 'rgba(12, 14, 26, 0.9)',
-                            backdropFilter: 'blur(16px)',
-                            WebkitBackdropFilter: 'blur(16px)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            padding: '8px 12px',
-                            borderRadius: '12px',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                          }}>
-                            <p style={{ margin: 0, fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600 }}>
+                          <div
+                            style={{
+                              background: 'rgba(12, 14, 26, 0.9)',
+                              backdropFilter: 'blur(16px)',
+                              WebkitBackdropFilter: 'blur(16px)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              padding: '8px 12px',
+                              borderRadius: '12px',
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: '10px',
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                fontWeight: 600,
+                              }}
+                            >
                               {payload[0].payload.formattedDate || payload[0].payload.date}
                             </p>
-                            <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#FFF', fontWeight: 800 }}>
-                              {historyData.currencySym}{payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <p
+                              style={{
+                                margin: '2px 0 0',
+                                fontSize: '13px',
+                                color: '#FFF',
+                                fontWeight: 800,
+                              }}
+                            >
+                              {historyData.currencySym}
+                              {payload[0].value.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </p>
                           </div>
                         );
@@ -760,7 +885,7 @@ export default function VisualCollectionStats({
                     fillOpacity={1}
                     fill="url(#historyColorGrad)"
                     style={{
-                      filter: `drop-shadow(0 2px 8px ${(monthlyPerf ?? 0) >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'})`
+                      filter: `drop-shadow(0 2px 8px ${(monthlyPerf ?? 0) >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'})`,
                     }}
                   />
                 </AreaChart>
@@ -769,7 +894,7 @@ export default function VisualCollectionStats({
           </div>
         )}
       </div>
-      
+
       {/* Market Movers section */}
       {!isDeck && (marketMovers.gainers.length > 0 || marketMovers.losers.length > 0) && (
         <div
@@ -790,7 +915,15 @@ export default function VisualCollectionStats({
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13, color: '#A5B4FC', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  color: '#A5B4FC',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1.2,
+                }}
+              >
                 ✦ Movimientos de Mercado
               </span>
             </div>
@@ -828,16 +961,29 @@ export default function VisualCollectionStats({
                 gap: 10,
               }}
             >
-              <div style={{ fontSize: 11, color: '#34D399', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#34D399',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
                 ▲ Top Ganadores
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {marketMovers.gainers.map((mover: any) => {
                   const estimatedPriceObj = getEstimatedPrice(mover.card);
-                  const formattedPrice = estimatedPriceObj ? formatPrice({
-                    ...estimatedPriceObj,
-                    value: mover.currentPrice,
-                  }) : '—';
+                  const formattedPrice = estimatedPriceObj
+                    ? formatPrice({
+                        ...estimatedPriceObj,
+                        value: mover.currentPrice,
+                      })
+                    : '—';
 
                   return (
                     <div
@@ -863,7 +1009,15 @@ export default function VisualCollectionStats({
                         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
                         {mover.card.images?.small && (
                           <img
                             src={mover.card.images.small}
@@ -927,16 +1081,29 @@ export default function VisualCollectionStats({
                 gap: 10,
               }}
             >
-              <div style={{ fontSize: 11, color: '#F87171', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#F87171',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
                 ▼ Top Perdedores
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {marketMovers.losers.map((mover: any) => {
                   const estimatedPriceObj = getEstimatedPrice(mover.card);
-                  const formattedPrice = estimatedPriceObj ? formatPrice({
-                    ...estimatedPriceObj,
-                    value: mover.currentPrice,
-                  }) : '—';
+                  const formattedPrice = estimatedPriceObj
+                    ? formatPrice({
+                        ...estimatedPriceObj,
+                        value: mover.currentPrice,
+                      })
+                    : '—';
 
                   return (
                     <div
@@ -962,7 +1129,15 @@ export default function VisualCollectionStats({
                         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
                         {mover.card.images?.small && (
                           <img
                             src={mover.card.images.small}

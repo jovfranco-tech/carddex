@@ -9,17 +9,10 @@ export interface SurfaceProps {
   padding?: number | string;
 }
 
-
 /**
  * A white, rounded-card surface. The default visual block used throughout the app.
  */
-export default function Surface({
-  children,
-  onClick,
-  style,
-  as = 'div',
-  padding,
-}: SurfaceProps) {
+export default function Surface({ children, onClick, style, as = 'div', padding }: SurfaceProps) {
   const Tag = as;
   const composed: CSSProperties = {
     background: 'var(--surface)',

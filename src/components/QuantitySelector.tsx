@@ -7,7 +7,12 @@ export interface QuantitySelectorProps {
   max?: number;
 }
 
-export default function QuantitySelector({ value, onChange, min = 0, max = 999 }: QuantitySelectorProps) {
+export default function QuantitySelector({
+  value,
+  onChange,
+  min = 0,
+  max = 999,
+}: QuantitySelectorProps) {
   const dec = () => onChange(Math.max(min, value - 1));
   const inc = () => onChange(Math.min(max, value + 1));
   return (

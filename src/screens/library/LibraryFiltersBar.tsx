@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import Surface from '@/components/Surface';
 import Chip from '@/components/Chip';
 import { formatInt } from '@/lib/formatters';
-import {
-  ChevronDownIcon,
-  GridIcon,
-  ListIcon,
-  LayersIcon,
-  BookIcon,
-} from '@/components/icons';
+import { ChevronDownIcon, GridIcon, ListIcon, LayersIcon, BookIcon } from '@/components/icons';
 import { SORT_LABELS, type SortKey } from './libraryHelpers';
 import { RARITY_FILTERS } from '@/lib/rarity';
 
@@ -38,9 +32,10 @@ export default function LibraryFiltersBar({
   const [sortOpen, setSortOpen] = useState(false);
 
   return (
-    <>
+    <div className="container-query-filters">
       {/* Sort + view */}
       <div
+        className="filters-row"
         style={{
           padding: '0 14px 14px',
           display: 'flex',
@@ -105,8 +100,7 @@ export default function LibraryFiltersBar({
                   borderRadius: 9,
                   background: view === k ? 'var(--surface)' : 'transparent',
                   color: view === k ? 'var(--ink)' : 'var(--muted)',
-                  boxShadow:
-                    view === k ? '0 1px 2px rgba(15,20,40,0.08)' : 'none',
+                  boxShadow: view === k ? '0 1px 2px rgba(15,20,40,0.08)' : 'none',
                   border: 'none',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -162,11 +156,7 @@ export default function LibraryFiltersBar({
         className="no-scrollbar"
       >
         {RARITY_FILTERS.map((f) => (
-          <Chip
-            key={f.key}
-            active={rarityFilter === f.key}
-            onClick={() => setRarityFilter(f.key)}
-          >
+          <Chip key={f.key} active={rarityFilter === f.key} onClick={() => setRarityFilter(f.key)}>
             {f.label}
           </Chip>
         ))}
@@ -219,6 +209,6 @@ export default function LibraryFiltersBar({
           {formatInt(totalQuantity)} carta{totalQuantity === 1 ? '' : 's'}
         </span>
       </div>
-    </>
+    </div>
   );
 }

@@ -67,11 +67,11 @@ export default function SocialShareButton({
         cardImg.onload = () => {
           // Draw image with rounded corners and glowing shadow
           ctx.save();
-          
+
           // Outer card shadow/glow
           ctx.shadowColor = 'rgba(123, 90, 217, 0.4)';
           ctx.shadowBlur = 24;
-          
+
           // Round corners clip
           const cx = 160;
           const cy = 120;
@@ -90,7 +90,7 @@ export default function SocialShareButton({
           ctx.lineTo(cx, cy + radius);
           ctx.quadraticCurveTo(cx, cy, cx + radius, cy);
           ctx.closePath();
-          
+
           ctx.clip();
           ctx.drawImage(cardImg, cx, cy, cw, ch);
           ctx.restore();
@@ -104,7 +104,7 @@ export default function SocialShareButton({
           ctx.fillStyle = '#1D1B26';
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
           ctx.lineWidth = 2;
-          
+
           // Draw standard card shape
           const cx = 160;
           const cy = 120;
@@ -230,11 +230,10 @@ export default function SocialShareButton({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(fileUrl);
-        
+
         onToast('¡Ficha social descargada con éxito!');
         setGenerating(false);
       }, 'image/png');
-
     } catch (e) {
       console.error(e);
       onToast('Error generando la infografía');

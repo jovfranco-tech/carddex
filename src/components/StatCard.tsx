@@ -9,7 +9,13 @@ export interface StatCardProps {
   glyph?: ReactNode;
 }
 
-export default function StatCard({ label, value, suffix, accent = '#2F80ED', glyph }: StatCardProps) {
+export default function StatCard({
+  label,
+  value,
+  suffix,
+  accent = '#2F80ED',
+  glyph,
+}: StatCardProps) {
   return (
     <Surface style={{ padding: 14, flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -45,7 +51,9 @@ export default function StatCard({ label, value, suffix, accent = '#2F80ED', gly
         >
           {value}
         </span>
-        {suffix && <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{suffix}</span>}
+        {suffix && (
+          <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{suffix}</span>
+        )}
       </div>
     </Surface>
   );

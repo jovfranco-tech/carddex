@@ -38,15 +38,7 @@ describe('AISynergyFeed Component', () => {
     });
 
     render(
-      <AISynergyFeed
-        ownedCardNames={[
-          'Pikachu',
-          'Raichu',
-          'Jolteon',
-          'Zapdos',
-          'Electabuzz',
-        ]}
-      />
+      <AISynergyFeed ownedCardNames={['Pikachu', 'Raichu', 'Jolteon', 'Zapdos', 'Electabuzz']} />
     );
 
     // Initial load will trigger fetch
@@ -56,9 +48,7 @@ describe('AISynergyFeed Component', () => {
 
     expect(screen.getByText('🔗 Pikachu, Raichu')).toBeDefined();
     expect(screen.getByText('Gran combinación de daño.')).toBeDefined();
-    expect(
-      screen.getByText('💡 Recomendación: Jugar con cartas de soporte.')
-    ).toBeDefined();
+    expect(screen.getByText('💡 Recomendación: Jugar con cartas de soporte.')).toBeDefined();
   });
 
   it('reads from cache if valid and bypasses initial fetch', async () => {
@@ -79,13 +69,7 @@ describe('AISynergyFeed Component', () => {
 
     render(
       <AISynergyFeed
-        ownedCardNames={[
-          'Charizard',
-          'Ninetales',
-          'Growlithe',
-          'Arcanine',
-          'Flareon',
-        ]}
+        ownedCardNames={['Charizard', 'Ninetales', 'Growlithe', 'Arcanine', 'Flareon']}
       />
     );
 
@@ -101,21 +85,11 @@ describe('AISynergyFeed Component', () => {
     });
 
     render(
-      <AISynergyFeed
-        ownedCardNames={[
-          'Pikachu',
-          'Raichu',
-          'Jolteon',
-          'Zapdos',
-          'Electabuzz',
-        ]}
-      />
+      <AISynergyFeed ownedCardNames={['Pikachu', 'Raichu', 'Jolteon', 'Zapdos', 'Electabuzz']} />
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText('⚠️ Demasiadas solicitudes. Espera un momento.')
-      ).toBeDefined();
+      expect(screen.getByText('⚠️ Demasiadas solicitudes. Espera un momento.')).toBeDefined();
     });
   });
 
@@ -123,21 +97,11 @@ describe('AISynergyFeed Component', () => {
     (global.fetch as any).mockRejectedValue(new Error('Network Error'));
 
     render(
-      <AISynergyFeed
-        ownedCardNames={[
-          'Pikachu',
-          'Raichu',
-          'Jolteon',
-          'Zapdos',
-          'Electabuzz',
-        ]}
-      />
+      <AISynergyFeed ownedCardNames={['Pikachu', 'Raichu', 'Jolteon', 'Zapdos', 'Electabuzz']} />
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText('⚠️ No se pudieron obtener sinergias con IA.')
-      ).toBeDefined();
+      expect(screen.getByText('⚠️ No se pudieron obtener sinergias con IA.')).toBeDefined();
     });
   });
 });

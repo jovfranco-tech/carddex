@@ -1,15 +1,15 @@
 const TYPE_COLORS: Record<string, { color: string; glyph: string; nameEs: string }> = {
   Colorless: { color: '#B6B7C4', glyph: '○', nameEs: 'Incolor' },
-  Darkness:  { color: '#3D2A78', glyph: '◐', nameEs: 'Oscuridad' },
-  Dragon:    { color: '#B58A2C', glyph: '✺', nameEs: 'Dragón' },
-  Fairy:     { color: '#D363B9', glyph: '✧', nameEs: 'Hada' },
-  Fighting:  { color: '#8B4513', glyph: '✦', nameEs: 'Lucha' },
-  Fire:      { color: '#EB5757', glyph: '✸', nameEs: 'Fuego' },
-  Grass:     { color: '#27AE60', glyph: '✦', nameEs: 'Planta' },
+  Darkness: { color: '#3D2A78', glyph: '◐', nameEs: 'Oscuridad' },
+  Dragon: { color: '#B58A2C', glyph: '✺', nameEs: 'Dragón' },
+  Fairy: { color: '#D363B9', glyph: '✧', nameEs: 'Hada' },
+  Fighting: { color: '#8B4513', glyph: '✦', nameEs: 'Lucha' },
+  Fire: { color: '#EB5757', glyph: '✸', nameEs: 'Fuego' },
+  Grass: { color: '#27AE60', glyph: '✦', nameEs: 'Planta' },
   Lightning: { color: '#F2C94C', glyph: '⚡', nameEs: 'Eléctrico' },
-  Metal:     { color: '#8E92A0', glyph: '◫', nameEs: 'Metal' },
-  Psychic:   { color: '#7B5AD9', glyph: '✧', nameEs: 'Psíquico' },
-  Water:     { color: '#2F80ED', glyph: '◈', nameEs: 'Agua' },
+  Metal: { color: '#8E92A0', glyph: '◫', nameEs: 'Metal' },
+  Psychic: { color: '#7B5AD9', glyph: '✧', nameEs: 'Psíquico' },
+  Water: { color: '#2F80ED', glyph: '◈', nameEs: 'Agua' },
 };
 
 export interface TypeBadgeProps {

@@ -87,7 +87,7 @@ function subscribeLocale(fn: () => void): () => void {
 function translate(
   locale: SupportedLocale,
   key: string,
-  vars?: Record<string, string | number>,
+  vars?: Record<string, string | number>
 ): string {
   const bundle = LOCALES[locale];
   const fallback = LOCALES['es'];
@@ -110,9 +110,8 @@ export function useI18n() {
   const locale = useSyncExternalStore(subscribeLocale, getLocale, () => 'es' as SupportedLocale);
 
   const t = useCallback(
-    (key: string, vars?: Record<string, string | number>): string =>
-      translate(locale, key, vars),
-    [locale],
+    (key: string, vars?: Record<string, string | number>): string => translate(locale, key, vars),
+    [locale]
   );
 
   const setLocale = useCallback((next: SupportedLocale) => {

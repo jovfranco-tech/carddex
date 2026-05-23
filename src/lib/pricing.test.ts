@@ -15,7 +15,7 @@ function makeCard(
     tcg?: NonNullable<NonNullable<PokemonCard['tcgplayer']>['prices']>;
     cm?: NonNullable<NonNullable<PokemonCard['cardmarket']>['prices']>;
   } = {},
-  id = 'card-1',
+  id = 'card-1'
 ): PokemonCard {
   return {
     id,
@@ -130,7 +130,7 @@ describe('formatters', () => {
         source: 's',
         provider: 'tcgplayer',
         tier: 'normal',
-      }),
+      })
     ).toBe('$12.00');
     expect(
       formatPriceShort({
@@ -139,7 +139,7 @@ describe('formatters', () => {
         source: 's',
         provider: 'tcgplayer',
         tier: 'normal',
-      }),
+      })
     ).toMatch(/^\$\d+\.\dk$/);
     expect(formatPriceShort(null)).toBe('—');
   });

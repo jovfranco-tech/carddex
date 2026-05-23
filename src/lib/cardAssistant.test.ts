@@ -71,24 +71,18 @@ describe('answerCardQuestion intent routing', () => {
   it('routes "¿Vale la pena agregarla?" to recommend, not value', () => {
     // Regression test: "vale" used to swallow this into the value intent.
     const ctx = buildCardAssistantContext(PRICED_CARD);
-    expect(answerCardQuestion('¿Vale la pena agregarla?', ctx).intent).toBe(
-      'recommend',
-    );
+    expect(answerCardQuestion('¿Vale la pena agregarla?', ctx).intent).toBe('recommend');
   });
 
   it('routes "¿En qué expansión aparece?" to set', () => {
     const ctx = buildCardAssistantContext(makeCard());
-    expect(answerCardQuestion('¿En qué expansión aparece?', ctx).intent).toBe(
-      'set',
-    );
+    expect(answerCardQuestion('¿En qué expansión aparece?', ctx).intent).toBe('set');
   });
 
   it('routes "¿En qué otras expansiones aparece?" to similar, not set', () => {
     // Regression test: "expansión" used to swallow this into the set intent.
     const ctx = buildCardAssistantContext(makeCard());
-    expect(
-      answerCardQuestion('¿En qué otras expansiones aparece?', ctx).intent,
-    ).toBe('similar');
+    expect(answerCardQuestion('¿En qué otras expansiones aparece?', ctx).intent).toBe('similar');
   });
 
   it('falls back to general for free-form questions with no keyword hit', () => {
@@ -163,9 +157,7 @@ describe('answerOwned', () => {
     const ctxMany = buildCardAssistantContext(makeCard(), {
       collectionMeta: makeMeta({ quantity: 3 }),
     });
-    expect(answerCardQuestion('tengo esta carta', ctxMany).text).toMatch(
-      /3.*copias/,
-    );
+    expect(answerCardQuestion('tengo esta carta', ctxMany).text).toMatch(/3.*copias/);
   });
 
   it('surfaces favorite / wishlist / missing flags when set', () => {
@@ -180,9 +172,7 @@ describe('answerOwned', () => {
 
 describe('answerCategory', () => {
   it('reports the supertype + elemental type for Pokémon cards', () => {
-    const ctx = buildCardAssistantContext(
-      makeCard({ supertype: 'Pokémon', types: ['Fire'] }),
-    );
+    const ctx = buildCardAssistantContext(makeCard({ supertype: 'Pokémon', types: ['Fire'] }));
     const ans = answerCardQuestion('¿qué tipo de carta es?', ctx);
     expect(ans.intent).toBe('category');
     expect(ans.text).toMatch(/Pokémon/);
@@ -211,7 +201,7 @@ describe('answerAttacks', () => {
           { name: 'Thunder Shock', damage: '20', cost: ['Lightning'] },
           { name: 'Quick Attack', damage: '10' },
         ],
-      }),
+      })
     );
     const ans = answerCardQuestion('ataques', ctx);
     expect(ans.text).toContain('Thunder Shock');
@@ -238,7 +228,7 @@ describe('grounding invariants', () => {
     const ctx = buildCardAssistantContext(
       makeCard({
         set: { id: '', name: '', series: '' },
-      }),
+      })
     );
     const ans = answerCardQuestion('en qué expansión', ctx);
     // It still routes to "set" but should not fabricate a real-sounding name.

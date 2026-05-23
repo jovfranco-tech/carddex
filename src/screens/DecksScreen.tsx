@@ -45,7 +45,9 @@ export default function DecksScreen() {
       </h1>
 
       <Surface style={{ padding: 16, marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{t('decks.createNew')}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>
+          {t('decks.createNew')}
+        </div>
         <form onSubmit={handleCreate} style={{ display: 'flex', gap: 8 }}>
           <input
             type="text"
@@ -76,7 +78,15 @@ export default function DecksScreen() {
             <PlusIcon size={20} />
           </button>
         </form>
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid var(--border)', display: 'flex', justifyContent: 'center' }}>
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 14,
+            borderTop: '0.5px solid var(--border)',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
           <button
             type="button"
             onClick={() => setIsBuilderOpen(true)}
@@ -118,7 +128,7 @@ export default function DecksScreen() {
                   gap: 12,
                 }}
               >
-                <div 
+                <div
                   onClick={() => navigate(ROUTES.deckDetail(deck.id))}
                   style={{ flex: 1, cursor: 'pointer' }}
                 >

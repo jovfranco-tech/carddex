@@ -20,7 +20,9 @@ export default function PublicProfileScreen() {
     async function fetchProfile() {
       if (!userId) return;
       if (!isSupabaseConfigured()) {
-        setError('El perfil público requiere la base de datos de Supabase, la cual no está configurada.');
+        setError(
+          'El perfil público requiere la base de datos de Supabase, la cual no está configurada.'
+        );
         setLoading(false);
         return;
       }
@@ -95,13 +97,18 @@ export default function PublicProfileScreen() {
       {loading ? (
         <LoadingState variant="grid" count={6} />
       ) : error || !collection ? (
-        <ErrorState message={error ?? 'Perfil no encontrado.'} onRetry={() => window.location.reload()} />
+        <ErrorState
+          message={error ?? 'Perfil no encontrado.'}
+          onRetry={() => window.location.reload()}
+        />
       ) : (
         <div style={{ padding: '0 14px' }}>
           <Surface style={{ padding: 20, textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 40 }}>👤</div>
             <div style={{ fontSize: 20, fontWeight: 800, marginTop: 12 }}>Entrenador</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>ID: {userId?.slice(0, 8)}...</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
+              ID: {userId?.slice(0, 8)}...
+            </div>
           </Surface>
 
           <WishlistSection collection={collection} />
@@ -147,7 +154,9 @@ function WishlistSection({ collection }: { collection: CollectionState }) {
       </div>
 
       {cards.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
+        <div
+          style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}
+        >
           Este usuario no tiene cartas en su Wishlist.
         </div>
       ) : (

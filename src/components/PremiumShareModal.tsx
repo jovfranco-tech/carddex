@@ -173,10 +173,10 @@ export default function PremiumShareModal({
     ctx.shadowBlur = 15;
     // Draw stylish card emblem
     drawRoundRect(ctx, 60, 60, 45, 60, 8, true, false);
-    
+
     // Reset shadow
     ctx.shadowBlur = 0;
-    
+
     // Draw symbol inside emblem
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
@@ -204,7 +204,11 @@ export default function PremiumShareModal({
     ctx.shadowOffsetY = 0;
     ctx.fillStyle = '#9098A6';
     ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(`Contiene ${cardIds.length} cartas seleccionadas. Creado en CardDex Vercel.`, 60, 235);
+    ctx.fillText(
+      `Contiene ${cardIds.length} cartas seleccionadas. Creado en CardDex Vercel.`,
+      60,
+      235
+    );
 
     // --- Glassmorphic Box 1: Conteo de Categorías ---
     ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
@@ -261,7 +265,9 @@ export default function PremiumShareModal({
     ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('ELEMENTOS PREDOMINANTES', 85, 515);
 
-    const sortedTypes = Object.entries(activeTypes).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const sortedTypes = Object.entries(activeTypes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4);
     if (sortedTypes.length === 0) {
       ctx.fillStyle = '#6B7180';
       ctx.font = 'italic 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -311,7 +317,8 @@ export default function PremiumShareModal({
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    const priceText = 'El valor real de las cartas físicas puede variar según el estado de conservación, folio holográfico y fluctuación de la demanda de mercado en tiempo real.';
+    const priceText =
+      'El valor real de las cartas físicas puede variar según el estado de conservación, folio holográfico y fluctuación de la demanda de mercado en tiempo real.';
     wrapText(ctx, priceText, 440, 645, 280, 16);
 
     // --- Footer: High-fidelity QR and Code ---
@@ -324,7 +331,7 @@ export default function PremiumShareModal({
     const qrX = 90;
     const qrY = 785;
     const qrS = 120;
-    
+
     // Draw QR borders
     ctx.strokeStyle = 'rgba(47, 111, 224, 0.4)';
     ctx.lineWidth = 2;
@@ -356,12 +363,39 @@ export default function PremiumShareModal({
     // Random tech pixel dots
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     const randPoints = [
-      [55, 20], [65, 20], [75, 20], [55, 30], [75, 35], [85, 30],
-      [20, 55], [30, 55], [35, 65], [20, 75], [30, 85], [35, 85],
-      [55, 55], [65, 55], [75, 55], [85, 55], [55, 65], [75, 65],
-      [55, 75], [65, 85], [75, 85], [85, 75], [85, 85],
-      [55, 95], [65, 95], [75, 95], [95, 95], [95, 55], [95, 65],
-      [95, 15], [95, 25], [15, 95], [25, 95]
+      [55, 20],
+      [65, 20],
+      [75, 20],
+      [55, 30],
+      [75, 35],
+      [85, 30],
+      [20, 55],
+      [30, 55],
+      [35, 65],
+      [20, 75],
+      [30, 85],
+      [35, 85],
+      [55, 55],
+      [65, 55],
+      [75, 55],
+      [85, 55],
+      [55, 65],
+      [75, 65],
+      [55, 75],
+      [65, 85],
+      [75, 85],
+      [85, 75],
+      [85, 85],
+      [55, 95],
+      [65, 95],
+      [75, 95],
+      [95, 95],
+      [95, 55],
+      [95, 65],
+      [95, 15],
+      [95, 25],
+      [15, 95],
+      [25, 95],
     ];
     randPoints.forEach(([px, py]) => {
       ctx.fillRect(qrX + px, qrY + py, 6, 6);
@@ -430,7 +464,7 @@ export default function PremiumShareModal({
 
   const handleShare = async () => {
     if (!previewUrl || !canvasRef.current) return;
-    
+
     try {
       // 1. Convert Base64 URL to File Blob
       const blob = await new Promise<Blob | null>((resolve) =>
@@ -501,7 +535,9 @@ export default function PremiumShareModal({
         onClick={(e: MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>Compartir Tarjeta Mazo</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>
+            Compartir Tarjeta Mazo
+          </h3>
           <button
             onClick={onClose}
             className="modal-close-btn"
@@ -550,8 +586,17 @@ export default function PremiumShareModal({
           )}
         </div>
 
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '0 10px', lineHeight: 1.4 }}>
-          Generamos una infografía glassmorphic del mazo sin dependencias externas. Lista para Instagram, Twitter/X o WhatsApp.
+        <div
+          style={{
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.4)',
+            textAlign: 'center',
+            padding: '0 10px',
+            lineHeight: 1.4,
+          }}
+        >
+          Generamos una infografía glassmorphic del mazo sin dependencias externas. Lista para
+          Instagram, Twitter/X o WhatsApp.
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>

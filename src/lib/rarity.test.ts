@@ -35,9 +35,7 @@ describe('normalizeRarity', () => {
 
   it('routes Illustration / Special Illustration / Hyper rarities correctly', () => {
     expect(normalizeRarity('Illustration Rare')).toBe('Illustration Rare');
-    expect(normalizeRarity('Special Illustration Rare')).toBe(
-      'Special Illustration Rare',
-    );
+    expect(normalizeRarity('Special Illustration Rare')).toBe('Special Illustration Rare');
     expect(normalizeRarity('Hyper Rare')).toBe('Hyper Rare');
   });
 

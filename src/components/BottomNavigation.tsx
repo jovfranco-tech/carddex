@@ -20,12 +20,12 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { key: 'home',         label: 'Inicio',     path: '/',             icon: HomeIcon },
-  { key: 'scan',         label: 'Escanear',   path: '/scan',         icon: ScanIcon },
-  { key: 'library',      label: 'Colección',  path: '/library',      icon: LayersIcon },
-  { key: 'decks',        label: 'Mazos',      path: '/decks',        icon: DecksIcon },
-  { key: 'achievements', label: 'Logros',     path: '/achievements', icon: TrophyIcon },
-  { key: 'profile',      label: 'Perfil',     path: '/profile',      icon: UserIcon },
+  { key: 'home', label: 'Inicio', path: '/', icon: HomeIcon },
+  { key: 'scan', label: 'Escanear', path: '/scan', icon: ScanIcon },
+  { key: 'library', label: 'Colección', path: '/library', icon: LayersIcon },
+  { key: 'decks', label: 'Mazos', path: '/decks', icon: DecksIcon },
+  { key: 'achievements', label: 'Logros', path: '/achievements', icon: TrophyIcon },
+  { key: 'profile', label: 'Perfil', path: '/profile', icon: UserIcon },
 ];
 
 const SEEN_KEY = 'carddex.achievements.lastSeenCount';

@@ -48,7 +48,7 @@ class BackgroundImageQueue {
   public add(urls: string[]) {
     const newUrls = urls.filter((url) => !preloadedUrls.has(url) && !this.queue.includes(url));
     if (newUrls.length === 0) return;
-    
+
     this.queue.push(...newUrls);
     this.processNext();
   }
@@ -97,7 +97,7 @@ export async function triggerPredictivePreload() {
 
     // 1. Gather all unique card IDs from collection and decks
     const cardIds = new Set<string>();
-    
+
     // Add collection IDs (owned)
     Object.values(collection.cards)
       .filter((c) => c.owned)
@@ -128,8 +128,10 @@ export async function triggerPredictivePreload() {
     cachedIds.forEach((id) => {
       const card = getCachedCard(id);
       if (card?.images) {
-        if (card.images.small) imageUrlsToPrefetch.push(getOptimizedImageUrl(card.images.small, 110));
-        if (card.images.large) imageUrlsToPrefetch.push(getOptimizedImageUrl(card.images.large, 240));
+        if (card.images.small)
+          imageUrlsToPrefetch.push(getOptimizedImageUrl(card.images.small, 110));
+        if (card.images.large)
+          imageUrlsToPrefetch.push(getOptimizedImageUrl(card.images.large, 240));
       }
     });
 
@@ -141,7 +143,9 @@ export async function triggerPredictivePreload() {
     // Once fetched, the API will cache them in localStorage/memory.
     // The next execution trigger (or subsequent render) will pick them up and prefetch their images.
     if (uncachedIds.length > 0) {
-      logPreloaderWarning(`[Preloader] Pre-fetching metadata for ${uncachedIds.length} uncached cards.`);
+      logPreloaderWarning(
+        `[Preloader] Pre-fetching metadata for ${uncachedIds.length} uncached cards.`
+      );
       // We run this asynchronously in the background so it doesn't block the caller
       getCardsByIds(uncachedIds)
         .then((cards) => {

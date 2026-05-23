@@ -33,6 +33,7 @@ export default function CardTile({
   return (
     <button
       type="button"
+      className="scroll-reveal"
       onClick={onClick}
       aria-label={onClick ? `Ver detalle de ${card.name}` : card.name}
       tabIndex={onClick ? 0 : -1}

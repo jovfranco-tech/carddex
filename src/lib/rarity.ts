@@ -201,11 +201,7 @@ export function normalizeRarity(raw?: string | null): RarityGroup {
 
   // Holo EX — modern "ex" suffix + classic EX cards. Treat ' ex' as a
   // suffix-ish marker, not "appears anywhere".
-  if (
-    s.includes('rare holo ex') ||
-    s === 'rare ex' ||
-    /(^|\s)ex$/.test(s)
-  ) {
+  if (s.includes('rare holo ex') || s === 'rare ex' || /(^|\s)ex$/.test(s)) {
     return 'Rare Holo EX';
   }
 
@@ -249,10 +245,7 @@ export function compareRarity(a?: string | null, b?: string | null): number {
 }
 
 /** Check if a rarity matches one of the chip filters defined above. */
-export function rarityMatchesFilter(
-  raw: string | null | undefined,
-  filterKey: string,
-): boolean {
+export function rarityMatchesFilter(raw: string | null | undefined, filterKey: string): boolean {
   if (filterKey === 'all') return true;
   const filter = RARITY_FILTERS.find((f) => f.key === filterKey);
   if (!filter) return true;
