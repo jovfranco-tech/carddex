@@ -82,12 +82,12 @@ export default function LibraryFiltersBar({
           >
             {(
               [
-                ['grid', <GridIcon size={16} />, 'Vista cuadrícula'],
-                ['list', <ListIcon size={16} />, 'Vista lista'],
-                ['sets', <LayersIcon size={16} />, 'Vista por expansión'],
-                ['binder', <BookIcon size={16} />, 'Vista carpeta'],
+                ['grid', GridIcon, 'Vista cuadrícula'],
+                ['list', ListIcon, 'Vista lista'],
+                ['sets', LayersIcon, 'Vista por expansión'],
+                ['binder', BookIcon, 'Vista carpeta'],
               ] as const
-            ).map(([k, icon, label]) => (
+            ).map(([k, IconComp, label]) => (
               <button
                 key={k}
                 type="button"
@@ -107,7 +107,7 @@ export default function LibraryFiltersBar({
                   justifyContent: 'center',
                 }}
               >
-                {icon}
+                <IconComp size={16} />
               </button>
             ))}
           </div>

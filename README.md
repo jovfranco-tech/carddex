@@ -56,7 +56,7 @@ npm run test:run
 npm run preview
 ```
 
-There is no `npm run lint` script in this project yet.
+Use `npm run lint` for code quality and `npm run format` to format files.
 
 ## Environment Variables
 
@@ -136,7 +136,7 @@ e2e/            Playwright flows
 - Supabase Auth/profile rollout with clearer migration from local profile.
 - Authenticated backend rate limiting for expensive LLM/OCR endpoints after real auth lands.
 - More robust pagination/search filters for very large set browsing.
-- Add ESLint/format scripts to formalize lint checks.
+- CI/CD automated test & build check integrations before production deployment.
 
 ## License
 

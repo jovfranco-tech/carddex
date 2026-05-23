@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import Surface from '@/components/Surface';
@@ -120,9 +120,11 @@ export default function PublicProfileScreen() {
 }
 
 function WishlistSection({ collection }: { collection: CollectionState }) {
-  const wishlistIds = Object.values(collection.cards)
-    .filter((c) => c.wishlist)
-    .map((c) => c.cardId);
+  const wishlistIds = useMemo(() => {
+    return Object.values(collection.cards)
+      .filter((c) => c.wishlist)
+      .map((c) => c.cardId);
+  }, [collection.cards]);
 
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +145,7 @@ function WishlistSection({ collection }: { collection: CollectionState }) {
       }
     }
     load();
-  }, [wishlistIds.join(',')]);
+  }, [wishlistIds]);
 
   if (loading) return <LoadingState message="Cargando wishlist..." />;
 
