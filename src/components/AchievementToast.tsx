@@ -71,30 +71,44 @@ export default function AchievementToast({ achievement, onDismiss }: Achievement
               pointerEvents: 'none',
             }}
           >
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  position: 'absolute',
-                  width: 5,
-                  height: 5,
-                  borderRadius: '50%',
-                  background: [
-                    '#FFD700',
-                    '#FF6B6B',
-                    '#4ECDC4',
-                    '#FFE66D',
-                    '#A8E063',
-                    '#F7797D',
-                    '#FFECD2',
-                    '#C3E88D',
-                  ][i],
-                  left: `${10 + i * 12}%`,
-                  top: '50%',
-                  animation: `confettiPop${i % 4} 0.8s ease-out ${i * 60}ms both`,
-                }}
-              />
-            ))}
+            {[...Array(32)].map((_, i) => {
+              const angle = (i * (360 / 32) * Math.PI) / 180;
+              const distance = 25 + (i % 3) * 20;
+              const tx = Math.cos(angle) * distance;
+              const ty = Math.sin(angle) * distance - 8;
+              const rot = i * 45;
+              const width = 4 + (i % 3) * 2;
+              const height = 4 + (i % 2 === 0 ? 2 : 5);
+              const color = [
+                '#FFD700',
+                '#FF6B6B',
+                '#4ECDC4',
+                '#FFE66D',
+                '#A8E063',
+                '#F7797D',
+                '#C3E88D',
+                '#E0C3FC',
+              ][i % 8];
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    width,
+                    height,
+                    borderRadius: i % 2 === 0 ? '50%' : '1px',
+                    background: color,
+                    left: 32, // pop from behind trophy emoji
+                    top: '50%',
+                    transformOrigin: 'center',
+                    animation: `popConfettiOut 1s cubic-bezier(0.1, 0.8, 0.3, 1) ${i * 10}ms both`,
+                    ['--tx' as any]: `${tx}px`,
+                    ['--ty' as any]: `${ty}px`,
+                    ['--rot' as any]: `${rot}deg`,
+                  }}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -180,10 +194,11 @@ export default function AchievementToast({ achievement, onDismiss }: Achievement
           from { transform: scale(0.5) rotate(-15deg); opacity: 0; }
           to   { transform: scale(1) rotate(0deg); opacity: 1; }
         }
-        @keyframes confettiPop0 { to { transform: translate(-20px, -40px) rotate(120deg); opacity: 0; } }
-        @keyframes confettiPop1 { to { transform: translate(20px, -50px) rotate(-80deg); opacity: 0; } }
-        @keyframes confettiPop2 { to { transform: translate(-10px, -55px) rotate(200deg); opacity: 0; } }
-        @keyframes confettiPop3 { to { transform: translate(30px, -35px) rotate(-150deg); opacity: 0; } }
+        @keyframes popConfettiOut {
+          0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+          15% { transform: translate(var(--tx), var(--ty)) scale(1.2) rotate(var(--rot)); opacity: 1; }
+          100% { transform: translate(calc(var(--tx) * 1.4), calc(var(--ty) * 1.4 + 15px)) scale(0.4) rotate(calc(var(--rot) * 2.5)); opacity: 0; }
+        }
       `}</style>
     </>
   );

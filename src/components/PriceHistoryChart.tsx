@@ -15,7 +15,7 @@ interface PriceHistoryChartProps {
 }
 
 export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryChartProps) {
-  const data = useMemo(() => {
+  const { data, projPercent, isPositive } = useMemo(() => {
     const points = [];
     const today = new Date();
 
@@ -43,9 +43,52 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
       points.push({
         date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         Precio: parseFloat(currentPrice.toFixed(2)),
+        Proyección: null as number | null,
       });
     }
-    return points;
+
+    // Linear regression: y = mx + c
+    const n = points.length;
+    let sumX = 0;
+    let sumY = 0;
+    let sumXY = 0;
+    let sumXX = 0;
+    for (let j = 0; j < n; j++) {
+      sumX += j;
+      sumY += points[j].Precio;
+      sumXY += j * points[j].Precio;
+      sumXX += j * j;
+    }
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    // Link the last actual price point to the first projection point for continuity
+    points[points.length - 1].Proyección = points[points.length - 1].Precio;
+
+    const combinedData = [...points];
+    let lastProjectedPrice = points[points.length - 1].Precio;
+
+    for (let k = 1; k <= 7; k++) {
+      const projectedPrice = slope * (n - 1 + k) + intercept;
+      const date = new Date(today);
+      date.setDate(today.getDate() + k);
+      lastProjectedPrice = parseFloat(Math.max(0.01, projectedPrice).toFixed(2));
+      combinedData.push({
+        date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        Precio: null as any,
+        Proyección: lastProjectedPrice,
+      });
+    }
+
+    const finalActualPrice = points[points.length - 1].Precio;
+    const projPercent = ((lastProjectedPrice - finalActualPrice) / finalActualPrice) * 100;
+    const isPositive = projPercent >= 0;
+
+    return {
+      data: combinedData,
+      projPercent: Math.abs(projPercent).toFixed(1),
+      isPositive,
+    };
   }, [basePrice, cardName]);
 
   return (
@@ -77,19 +120,23 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
             color: 'var(--ink)',
           }}
         >
-          Tendencia de Mercado (30d)
+          Tendencia de Mercado (30d + 7d Proyección)
         </h4>
         <span
           style={{
             fontSize: 11,
-            color: 'var(--success)',
+            color: isPositive ? 'var(--success)' : 'var(--error)',
             fontWeight: 700,
-            background: 'rgba(52, 199, 89, 0.1)',
+            background: isPositive ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 69, 58, 0.1)',
             padding: '2px 8px',
             borderRadius: 999,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 2,
           }}
         >
-          ▲ +5.2%
+          {isPositive ? '▲' : '▼'} {isPositive ? '+' : '-'}
+          {projPercent}% (7d Proy.)
         </span>
       </div>
 
@@ -130,16 +177,25 @@ export default function PriceHistoryChart({ basePrice, cardName }: PriceHistoryC
                 color: '#fff',
                 fontFamily: 'inherit',
               }}
-              formatter={(value: any) => [`$${value}`, 'Precio']}
+              formatter={(value: any, name: any) => [`$${value}`, name]}
               labelStyle={{ fontWeight: 700, color: 'var(--muted)', fontSize: 9.5 }}
             />
             <Area
               type="monotone"
               dataKey="Precio"
               stroke="var(--accent)"
-              strokeWidth={2}
+              strokeWidth={2.5}
               fillOpacity={1}
               fill="url(#colorPrice)"
+            />
+            <Area
+              type="monotone"
+              dataKey="Proyección"
+              stroke="var(--accent)"
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              fillOpacity={0}
+              pointerEvents="none"
             />
           </AreaChart>
         </ResponsiveContainer>
