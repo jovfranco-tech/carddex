@@ -337,21 +337,16 @@ export default function TcgCardImage({
           onError={() => {
             const currentRawSrc = useLarge ? card.images?.large ?? card.images?.small : card.images?.small ?? card.images?.large;
             
-            if (!hasTriedFallback) {
-              setHasTriedFallback(true);
-              const fallbackRaw =
-                initialRawSrc === card.images?.large ? card.images?.small : card.images?.large;
-              if (fallbackRaw && fallbackRaw !== initialRawSrc) {
-                const fallbackOptimized = getOptimizedImageUrl(fallbackRaw, width);
-                getImageFromCache(fallbackOptimized).then((cached) => {
-                  if (cached) {
-                    setSrc(cached);
-                  } else {
-                    setSrc(fallbackOptimized);
-                  }
-                });
-              } else if (currentRawSrc && !currentRawSrc.startsWith('/')) {
-                // If there's no other size, try the secure backend image proxy
+            if (src && src.includes('images.weserv.nl')) {
+              // Fallback 1: If optimized weserv.nl fails, try the original direct unoptimized URL
+              if (currentRawSrc) {
+                setSrc(currentRawSrc);
+              } else {
+                setErrored(true);
+              }
+            } else if (src && currentRawSrc && src === currentRawSrc) {
+              // Fallback 2: If the direct URL also fails, try our secure backend image proxy
+              if (!currentRawSrc.startsWith('/') && !currentRawSrc.startsWith('data:')) {
                 const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`;
                 getImageFromCache(proxyUrl).then((cached) => {
                   if (cached) {
@@ -364,19 +359,8 @@ export default function TcgCardImage({
                 setErrored(true);
               }
             } else {
-              // If we already tried switching sizes via weserv, try our secure backend image proxy as ultimate fallback
-              if (currentRawSrc && !currentRawSrc.startsWith('/') && src && !src.startsWith('/api/image-proxy')) {
-                const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(currentRawSrc)}`;
-                getImageFromCache(proxyUrl).then((cached) => {
-                  if (cached) {
-                    setSrc(cached);
-                  } else {
-                    setSrc(proxyUrl);
-                  }
-                });
-              } else {
-                setErrored(true);
-              }
+              // Fallback 3: Everything failed, show the custom placeholder component
+              setErrored(true);
             }
           }}
         />
