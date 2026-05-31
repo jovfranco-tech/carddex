@@ -219,9 +219,9 @@ export default function ScanScreen() {
   const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('carddex_auto_scan_enabled');
-      return stored !== 'false';
+      return stored === 'true';
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -669,12 +669,13 @@ export default function ScanScreen() {
         const next = prev + step;
         if (next >= 100) {
           clearInterval(timer);
-          triggerHaptic('success');
           captureFrame().then((file) => {
             if (file) {
+              triggerHaptic('success');
               runScan({ type: 'file', file });
             } else {
-              runScan({ type: 'none' });
+              // Si el autoescaneo no tiene un frame físico real, cancelamos sin regalar cartas simuladas.
+              setAutoScanCountdown(0);
             }
           });
           return 0;

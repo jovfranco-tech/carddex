@@ -367,6 +367,11 @@ export async function fetchCloudCollection(): Promise<void> {
         } else {
           setSyncStatus('idle');
         }
+      } else if (error && error.code === 'PGRST116') {
+        // No remote collection exists yet (new user), upload local silently to initialize
+        const localState = getCollection();
+        syncToCloud(localState).catch(() => {});
+        setSyncStatus('idle');
       } else if (error) {
         setSyncStatus('error');
       } else {
