@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { CheckIcon } from './icons';
+import { CheckIcon, CloseIcon } from './icons';
 
 export interface SectionProps {
   title?: string;
@@ -77,9 +77,10 @@ export interface ToastProps {
   visible: boolean;
   onHide?: () => void;
   duration?: number;
+  type?: 'success' | 'error' | 'info';
 }
 
-export function Toast({ message, visible, onHide, duration = 1600 }: ToastProps) {
+export function Toast({ message, visible, onHide, duration = 1600, type }: ToastProps) {
   const [show, setShow] = useState(visible);
   // Keep the latest onHide in a ref so re-renders don't restart the timer.
   // (Inline arrow callers — e.g. `onHide={() => setX(null)}` — change identity
@@ -100,6 +101,18 @@ export function Toast({ message, visible, onHide, duration = 1600 }: ToastProps)
   }, [visible, duration]);
 
   if (!show) return null;
+
+  const isError =
+    type === 'error' ||
+    (!type && (
+      message.toLowerCase().includes('error') ||
+      message.toLowerCase().includes('failed') ||
+      message.toLowerCase().includes('fail') ||
+      message.toLowerCase().includes('incorrecto') ||
+      message.toLowerCase().includes('falló') ||
+      message.toLowerCase().includes('fallo')
+    ));
+
   return (
     <div
       style={{
@@ -134,14 +147,18 @@ export function Toast({ message, visible, onHide, duration = 1600 }: ToastProps)
             width: 22,
             height: 22,
             borderRadius: 999,
-            background: 'var(--success)',
+            background: isError ? 'var(--error)' : 'var(--success)',
             color: '#fff',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <CheckIcon size={14} />
+          {isError ? (
+            <CloseIcon size={12} strokeWidth={2.8} />
+          ) : (
+            <CheckIcon size={14} />
+          )}
         </span>
         {message}
       </div>
