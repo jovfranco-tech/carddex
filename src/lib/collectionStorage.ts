@@ -7,7 +7,8 @@ import {
   DEFAULT_SETTINGS,
   makeDefaultMeta,
 } from '@/types/collection';
-import { supabase } from './supabaseClient';
+import { auth, db } from './firebaseClient';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getEstimatedPrice } from './pricing';
 import type { PokemonCard } from '@/types/pokemon';
 import { saveCollectionBackupToDb, getCollectionBackupFromDb } from './indexedDb';
@@ -219,10 +220,8 @@ export async function flushSyncQueue() {
   const queue = getSyncQueue();
   if (queue.length === 0) return;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user) return;
+  const user = auth.currentUser;
+  if (!user) return;
 
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     setSyncStatus('offline-pending');
@@ -233,23 +232,19 @@ export async function flushSyncQueue() {
   const stateToSync = queue[queue.length - 1];
   const updatedAt = new Date().toISOString();
   try {
-    const { error } = await supabase
-      .from('collections')
-      .update({ state: stateToSync, updated_at: updatedAt })
-      .eq('user_id', session.user.id);
+    await setDoc(doc(db, 'collections', user.uid), {
+      state: stateToSync,
+      updated_at: updatedAt
+    }, { merge: true });
 
-    if (error) {
-      setSyncStatus('error');
-    } else {
-      safeWrite(KEYS.syncQueue, []);
-      localStorage.setItem(KEYS.lastSyncTimestamp, updatedAt);
-      setSyncStatus('synced');
-      setTimeout(() => {
-        if (currentSyncStatus === 'synced') {
-          setSyncStatus('idle');
-        }
-      }, 2500);
-    }
+    safeWrite(KEYS.syncQueue, []);
+    localStorage.setItem(KEYS.lastSyncTimestamp, updatedAt);
+    setSyncStatus('synced');
+    setTimeout(() => {
+      if (currentSyncStatus === 'synced') {
+        setSyncStatus('idle');
+      }
+    }, 2500);
   } catch {
     logStorageWarning('[Cloud Sync] Failed to flush sync queue.');
     setSyncStatus('error');
@@ -257,10 +252,8 @@ export async function flushSyncQueue() {
 }
 
 export async function syncToCloud(state: CollectionState) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (session?.user) {
+  const user = auth.currentUser;
+  if (user) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       addToSyncQueue(state);
       setSyncStatus('offline-pending');
@@ -270,24 +263,19 @@ export async function syncToCloud(state: CollectionState) {
     setSyncStatus('syncing');
     const updatedAt = new Date().toISOString();
     try {
-      const { error } = await supabase
-        .from('collections')
-        .update({ state, updated_at: updatedAt })
-        .eq('user_id', session.user.id);
+      await setDoc(doc(db, 'collections', user.uid), {
+        state,
+        updated_at: updatedAt
+      }, { merge: true });
 
-      if (error) {
-        addToSyncQueue(state);
-        setSyncStatus('offline-pending');
-      } else {
-        localStorage.setItem(KEYS.lastSyncTimestamp, updatedAt);
-        setSyncStatus('synced');
-        // Reset to idle after 2.5 seconds to allow UI animations to complete smoothly
-        setTimeout(() => {
-          if (currentSyncStatus === 'synced') {
-            setSyncStatus('idle');
-          }
-        }, 2500);
-      }
+      localStorage.setItem(KEYS.lastSyncTimestamp, updatedAt);
+      setSyncStatus('synced');
+      // Reset to idle after 2.5 seconds to allow UI animations to complete smoothly
+      setTimeout(() => {
+        if (currentSyncStatus === 'synced') {
+          setSyncStatus('idle');
+        }
+      }, 2500);
     } catch {
       logStorageWarning('[Cloud Sync] Failed to sync collection, queueing.');
       addToSyncQueue(state);
@@ -306,19 +294,15 @@ export function replaceCollection(state: CollectionState): void {
 }
 
 export async function fetchCloudCollection(): Promise<void> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (session?.user) {
+  const user = auth.currentUser;
+  if (user) {
     setSyncStatus('syncing');
     try {
-      const { data, error } = await supabase
-        .from('collections')
-        .select('state, updated_at')
-        .eq('user_id', session.user.id)
-        .single();
+      const docRef = doc(db, 'collections', user.uid);
+      const docSnap = await getDoc(docRef);
 
-      if (!error && data) {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
         const remoteUpdatedAt = data.updated_at;
         const lastSync = localStorage.getItem(KEYS.lastSyncTimestamp);
 
@@ -367,14 +351,10 @@ export async function fetchCloudCollection(): Promise<void> {
         } else {
           setSyncStatus('idle');
         }
-      } else if (error && error.code === 'PGRST116') {
+      } else {
         // No remote collection exists yet (new user), upload local silently to initialize
         const localState = getCollection();
         syncToCloud(localState).catch(() => {});
-        setSyncStatus('idle');
-      } else if (error) {
-        setSyncStatus('error');
-      } else {
         setSyncStatus('idle');
       }
     } catch {

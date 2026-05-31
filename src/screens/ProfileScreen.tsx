@@ -26,7 +26,9 @@ import { isServerOcrEnabled } from '@/lib/cardRecognition';
 import { formatInt } from '@/lib/formatters';
 import { prefersMXN, setPrefersMXN, getEstimatedPrice } from '@/lib/pricing';
 import { useAuth } from '@/lib/authContext';
-import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { auth, db, isFirebaseConfigured } from '@/lib/firebaseClient';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import CollectionShareModal from '@/components/CollectionShareModal';
 import PasskeyManager from '@/components/PasskeyManager';
 import {
@@ -78,22 +80,12 @@ export default function ProfileScreen() {
     triggerHaptic('light');
 
     try {
-      const { data, error } = await supabase
-        .from('collections')
-        .select('state, updated_at')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching remote collection:', error);
-        showToast('Error al obtener la colección en la nube.');
-        setIsSyncingManual(false);
-        return;
-      }
+      const docRef = doc(db, 'collections', user.uid);
+      const docSnap = await getDoc(docRef);
 
       const localState = getCollection();
 
-      if (!data || !data.state) {
+      if (!docSnap.exists()) {
         // No remote collection exists yet, upload local
         await syncToCloud(localState);
         showToast('¡Colección sincronizada por primera vez en la nube! 🚀');
@@ -101,7 +93,16 @@ export default function ProfileScreen() {
         return;
       }
 
-      const remoteCollection = data.state;
+      const data = docSnap.data();
+      const remoteCollection = data?.state;
+
+      if (!remoteCollection) {
+        await syncToCloud(localState);
+        showToast('¡Colección sincronizada por primera vez en la nube! 🚀');
+        setIsSyncingManual(false);
+        return;
+      }
+
       const localCardCount = Object.keys(localState.cards || {}).length;
       const remoteCardCount = Object.keys(remoteCollection.cards || {}).length;
 
@@ -281,13 +282,14 @@ export default function ProfileScreen() {
       return;
     }
     setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: authEmail,
-      password: authPassword,
-    });
-    setAuthLoading(false);
-    if (error) showToast(error.message);
-    else showToast(t('profile.sessionStarted') || 'Sesión iniciada');
+    try {
+      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      showToast(t('profile.sessionStarted') || 'Sesión iniciada');
+    } catch (err: any) {
+      showToast(err.message || 'Error al iniciar sesión');
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -297,21 +299,26 @@ export default function ProfileScreen() {
       return;
     }
     setAuthLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: authEmail,
-      password: authPassword,
-      options: {
-        data: { full_name: authName },
-      },
-    });
-    setAuthLoading(false);
-    if (error) showToast(error.message);
-    else showToast(t('profile.accountCreated') || 'Cuenta creada y sesión iniciada');
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, { displayName: authName.trim() });
+      }
+      showToast(t('profile.accountCreated') || 'Cuenta creada y sesión iniciada');
+    } catch (err: any) {
+      showToast(err.message || 'Error al registrarse');
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    showToast(t('profile.loggedOut') || 'Sesión cerrada');
+    try {
+      await signOut(auth);
+      showToast(t('profile.loggedOut') || 'Sesión cerrada');
+    } catch (err: any) {
+      showToast(err.message || 'Error al cerrar sesión');
+    }
   };
 
   const handleBiometricLogin = async () => {
@@ -330,16 +337,16 @@ export default function ProfileScreen() {
       setIsEditingName(false);
       return;
     }
+    if (!auth.currentUser) return;
     setAuthLoading(true);
-    const { error } = await supabase.auth.updateUser({
-      data: { full_name: editNameValue.trim() },
-    });
-    setAuthLoading(false);
-    if (error) {
-      showToast(error.message);
-    } else {
+    try {
+      await updateProfile(auth.currentUser, { displayName: editNameValue.trim() });
       showToast(t('profile.nameUpdated') || 'Nombre actualizado');
       setIsEditingName(false);
+    } catch (err: any) {
+      showToast(err.message || 'Error al actualizar el nombre');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -348,7 +355,7 @@ export default function ProfileScreen() {
 
   const handleShareProfile = async () => {
     if (!user) return;
-    const url = `${window.location.origin}/u/${user.id}`;
+    const url = `${window.location.origin}/u/${user.uid}`;
     try {
       await navigator.clipboard.writeText(url);
       showToast(t('profile.linkCopied') || 'Enlace copiado al portapapeles');
@@ -554,7 +561,7 @@ export default function ProfileScreen() {
       {/* Profile card */}
       <div style={{ padding: '0 14px 14px' }}>
         <Surface style={{ padding: 20, textAlign: 'center' }}>
-          {!isSupabaseConfigured() ? (
+          {!isFirebaseConfigured() ? (
             <div style={{ padding: '20px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>CD</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>
@@ -562,7 +569,7 @@ export default function ProfileScreen() {
               </div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, lineHeight: 1.5 }}>
                 Tu colección se guarda en este navegador. Perfiles públicos y sincronización
-                requieren Supabase configurado en servidor.
+                requieren Firebase configurado en servidor.
               </div>
               <div
                 style={{
@@ -715,7 +722,7 @@ export default function ProfileScreen() {
                   fontWeight: 800,
                 }}
               >
-                {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
+                {(user.displayName?.[0] || user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
               </div>
               <div
                 style={{
@@ -761,10 +768,10 @@ export default function ProfileScreen() {
                   </div>
                 ) : (
                   <>
-                    <span>{user.user_metadata?.full_name || user.email}</span>
+                    <span>{user.displayName || user.user_metadata?.full_name || user.email}</span>
                     <button
                       onClick={() => {
-                        setEditNameValue(user.user_metadata?.full_name || '');
+                        setEditNameValue(user.displayName || user.user_metadata?.full_name || '');
                         setIsEditingName(true);
                       }}
                       style={{
@@ -833,7 +840,7 @@ export default function ProfileScreen() {
               </button>
               <PasskeyManager
                 userEmail={user?.email || undefined}
-                userName={user?.user_metadata?.full_name || undefined}
+                userName={user?.displayName || user?.user_metadata?.full_name || undefined}
                 onToast={showToast}
               />
             </>
@@ -1553,8 +1560,8 @@ export default function ProfileScreen() {
         onClose={() => setIsShareModalOpen(false)}
         summary={summary}
         showcaseCards={getShowcaseCards()}
-        username={user?.user_metadata?.full_name || user?.email || 'Mi Colección'}
-        userId={user?.id || ''}
+        username={user?.displayName || user?.user_metadata?.full_name || user?.email || 'Mi Colección'}
+        userId={user?.uid || ''}
         onShowToast={showToast}
       />
 

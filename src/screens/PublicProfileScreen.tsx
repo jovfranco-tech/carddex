@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { db, isFirebaseConfigured } from '@/lib/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
 import Surface from '@/components/Surface';
 import CardTile from '@/components/CardTile';
 import LoadingState from '@/components/LoadingState';
@@ -20,25 +21,23 @@ export default function PublicProfileScreen() {
   useEffect(() => {
     async function fetchProfile() {
       if (!userId) return;
-      if (!isSupabaseConfigured()) {
+      if (!isFirebaseConfigured()) {
         setError(
-          'El perfil público requiere la base de datos de Supabase, la cual no está configurada.'
+          'El perfil público requiere la base de datos de Firebase, la cual no está configurada.'
         );
         setLoading(false);
         return;
       }
       try {
-        const { data, error } = await supabase
-          .from('collections')
-          .select('state')
-          .eq('user_id', userId)
-          .single();
+        const docRef = doc(db, 'collections', userId);
+        const docSnap = await getDoc(docRef);
 
-        if (error) {
+        if (!docSnap.exists()) {
           throw new Error('No se pudo encontrar el perfil público o es privado.');
         }
 
-        setCollection(data.state as CollectionState);
+        const data = docSnap.data();
+        setCollection(data?.state as CollectionState);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {

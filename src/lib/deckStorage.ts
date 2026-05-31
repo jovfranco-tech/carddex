@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+
 
 export interface Deck {
   id: string;
