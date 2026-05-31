@@ -288,6 +288,10 @@ function Detail({
     [card, meta, similar.data]
   );
 
+  useEffect(() => {
+    sessionStorage.setItem('carddex.activeCardId', card.id);
+  }, [card.id]);
+
   const heroBgTint = card.types?.[0] ? `${typeColor(card.types[0])}28` : 'rgba(47,111,224,0.15)';
   const setName = card.set?.name ?? '—';
   const setSeries = card.set?.series ?? '';
@@ -358,7 +362,7 @@ function Detail({
           width={250}
           hero
           large
-          viewTransitionName={`card-image-${card.id}`}
+          viewTransitionName="card-image-active"
         />
         {isCustom && <CustomImageUploader onImageUploaded={handleCustomImageUploaded} />}
       </div>

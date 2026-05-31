@@ -275,10 +275,29 @@ a {
 /* ─── Premium View Transitions & Animations ───────────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(root) {
-    animation: 220ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
+    animation: 180ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
   }
   ::view-transition-new(root) {
-    animation: 280ms cubic-bezier(0, 0, 0.2, 1) both fade-in;
+    animation: 240ms cubic-bezier(0, 0, 0.2, 1) both fade-in;
+  }
+  
+  /* Morphing transition pseudo-elements for cards */
+  ::view-transition-old(card-image-active) {
+    animation: 180ms ease-out both fade-out;
+  }
+  ::view-transition-new(card-image-active) {
+    animation: 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both morph-scale;
+  }
+}
+
+@keyframes morph-scale {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 

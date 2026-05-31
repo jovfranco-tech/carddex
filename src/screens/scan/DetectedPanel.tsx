@@ -8,9 +8,16 @@ interface DetectedPanelProps {
   confidence: number;
   onView: () => void;
   onWrong: () => void;
+  onChat?: () => void;
 }
 
-export default function DetectedPanel({ result, confidence, onView, onWrong }: DetectedPanelProps) {
+export default function DetectedPanel({
+  result,
+  confidence,
+  onView,
+  onWrong,
+  onChat,
+}: DetectedPanelProps) {
   const card = result.card!;
   const isVectorMatch = result.source === 'vector_match';
   const isOffline = result.source === 'offline_fallback';
@@ -206,24 +213,48 @@ export default function DetectedPanel({ result, confidence, onView, onWrong }: D
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
           <button
             onClick={onWrong}
             style={{
-              padding: '8px 12px',
-              background: 'rgba(255,255,255,0.08)',
-              color: '#fff',
-              border: '0.5px solid rgba(255,255,255,0.12)',
+              padding: '8px 10px',
+              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(255,255,255,0.7)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
               borderRadius: 10,
               fontSize: 12,
               fontWeight: 600,
               fontFamily: 'inherit',
               cursor: 'pointer',
               letterSpacing: -0.1,
+              whiteSpace: 'nowrap',
             }}
           >
             No es esta
           </button>
+          {onChat && (
+            <button
+              onClick={onChat}
+              style={{
+                padding: '8px 10px',
+                background: 'rgba(123, 90, 217, 0.12)',
+                color: '#a29bfe',
+                border: '0.5px solid rgba(123, 90, 217, 0.25)',
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                letterSpacing: -0.1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>✦</span> Chat IA
+            </button>
+          )}
           <button
             onClick={onView}
             style={{
@@ -233,11 +264,12 @@ export default function DetectedPanel({ result, confidence, onView, onWrong }: D
               color: 'var(--scanner-bg)',
               border: 'none',
               borderRadius: 10,
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 700,
               fontFamily: 'inherit',
               cursor: 'pointer',
               letterSpacing: -0.1,
+              whiteSpace: 'nowrap',
             }}
           >
             Ver detalle

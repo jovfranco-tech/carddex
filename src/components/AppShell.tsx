@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import BottomNavigation from './BottomNavigation';
 import { useSyncStatus } from '../lib/hooks';
@@ -31,6 +31,23 @@ export default function AppShell({ children }: AppShellProps) {
       triggerCustomCardsSync();
     }
   };
+
+  const [showUpdateToast, setShowUpdateToast] = useState(false);
+  const [updateFn, setUpdateFn] = useState<(() => void) | null>(null);
+
+  useEffect(() => {
+    const handlePwaUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail.update === 'function') {
+        setUpdateFn(() => detail.update);
+        setShowUpdateToast(true);
+        triggerHaptic('success');
+      }
+    };
+
+    window.addEventListener('carddex:pwa-update', handlePwaUpdate);
+    return () => window.removeEventListener('carddex:pwa-update', handlePwaUpdate);
+  }, []);
 
   return (
     <div className="shell-wrap">
@@ -119,6 +136,27 @@ export default function AppShell({ children }: AppShellProps) {
           </div>
         </div>
         {!hideNav && <BottomNavigation />}
+
+        {showUpdateToast && (
+          <div className="pwa-toast">
+            <div className="pwa-toast-content">
+              <span className="pwa-toast-emoji">✨</span>
+              <div className="pwa-toast-text">
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>¡Nueva versión disponible!</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Actualiza CardDex para ver los últimos cambios.</div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                if (updateFn) updateFn();
+              }}
+              className="pwa-toast-btn"
+            >
+              Actualizar
+            </button>
+          </div>
+        )}
       </div>
       <style>{`
         .shell-wrap {
@@ -224,6 +262,56 @@ export default function AppShell({ children }: AppShellProps) {
               0 24px 60px rgba(0, 0, 0, 0.45);
             border: 8px solid #1c1f27;
           }
+        }
+        .pwa-toast {
+          position: absolute;
+          bottom: ${hideNav ? '20px' : 'calc(94px + env(safe-area-inset-bottom, 0px))'};
+          left: 16px;
+          right: 16px;
+          z-index: 1100;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 16px;
+          border-radius: 20px;
+          background: rgba(18, 22, 33, 0.85);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
+          animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .pwa-toast-content {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex: 1;
+          min-width: 0;
+        }
+        .pwa-toast-emoji {
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+        .pwa-toast-text {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .pwa-toast-btn {
+          background: linear-gradient(135deg, #7b5ad9, #2f6fe0);
+          color: #ffffff;
+          border: none;
+          font-size: 12.5px;
+          font-weight: 800;
+          padding: 8px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          flex-shrink: 0;
+          box-shadow: 0 4px 12px rgba(123, 90, 217, 0.3);
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .pwa-toast-btn:active {
+          transform: scale(0.95);
         }
       `}</style>
     </div>

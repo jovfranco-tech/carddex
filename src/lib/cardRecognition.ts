@@ -78,11 +78,9 @@ export interface RecognitionResult {
   /** True when the result was produced from the simulated demo cycle. */
   simulated: boolean;
 
-  /**
-   * Detected card language code (ISO 639-1 or short label, e.g. "EN", "ES",
-   * "JP"). Currently always null in MVP — real OCR will populate it in v2.
-   */
   detectedLanguage: string | null;
+  /** Optional batch of multiple cards recognized simultaneously in a single image. */
+  batchResults?: RecognitionResult[];
 }
 
 /** Input the recognizer accepts. For now we accept files, frames, or seeds. */
@@ -557,6 +555,167 @@ function getNumberQuery(rawNum: string): string {
   return `(${variantQueries.join(' OR ')})`;
 }
 
+export async function resolveCardDetails(
+  seed: string,
+  ocrNumber?: string,
+  detectedLanguage?: string | null,
+  englishNumber?: string | null,
+  englishSetHint?: string | null,
+  signal?: AbortSignal
+): Promise<RecognitionResult> {
+  if (!seed) return buildEmptyResult('no_match');
+
+  const cacheKey = seed.toLowerCase() + (ocrNumber ? `-${ocrNumber}` : '');
+  const cached = seedCache.get(cacheKey);
+  if (cached) {
+    return buildRecognitionResultFromApiCard(cached, {
+      confidence: 0.92,
+      source: 'api_lookup',
+      simulated: false,
+      detectedLanguage,
+    });
+  }
+
+  try {
+    // Si la carta no es en inglés (ej. japonés) e identificamos un número equivalente, lo usamos
+    let targetNumber = ocrNumber;
+    if (detectedLanguage && detectedLanguage !== 'EN' && englishNumber) {
+      targetNumber = englishNumber;
+    }
+
+    const rawNumberPart = targetNumber ? targetNumber.split('/')[0].trim() : '';
+    const numberQuery = rawNumberPart ? getNumberQuery(rawNumberPart) : '';
+
+    // Si identificamos un set equivalente, intentamos buscar su ID oficial
+    let targetSetId: string | null = null;
+    if (englishSetHint) {
+      try {
+        const sets = await getSets({ signal });
+        const hint = englishSetHint.toLowerCase().trim();
+        const matchedSet = sets.find(
+          (s) =>
+            s.name.toLowerCase().includes(hint) ||
+            hint.includes(s.name.toLowerCase()) ||
+            s.id.toLowerCase() === hint
+        );
+        if (matchedSet) {
+          targetSetId = matchedSet.id;
+        }
+      } catch (err) {
+        // Set hint lookup is best-effort.
+      }
+    }
+
+    const cleanSeed = seed.replace(/["\\]/g, '').trim();
+    const seedWords = cleanSeed.split(/\s+/).filter(Boolean);
+    const nameQuery = seedWords.length > 0 ? seedWords.map((w) => `name:*${w}*`).join(' AND ') : '';
+    const firstWordQuery = seedWords.length > 0 ? `name:*${seedWords[0]}*` : '';
+
+    let res: any = { data: [] };
+
+    // Capa 1: Búsqueda precisa (Nombre + Número + Set)
+    if (nameQuery && numberQuery && targetSetId) {
+      const q = `${nameQuery} AND ${numberQuery} AND set.id:${targetSetId}`;
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal }
+      );
+    }
+
+    // Capa 1.5: Nombre + Set (Si falló la Capa 1 pero teníamos Set. Útil si el número de la carta japonesa/extranjera difiere del número occidental)
+    if (res.data.length === 0 && nameQuery && targetSetId) {
+      const q = `${nameQuery} AND set.id:${targetSetId}`;
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal }
+      );
+    }
+
+    // Capa 2: Nombre + Número (Si falló la Capa 1 o no teníamos Set)
+    if (res.data.length === 0 && nameQuery && numberQuery) {
+      const q = `${nameQuery} AND ${numberQuery}`;
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal }
+      );
+    }
+
+    // Capa 3: Nombre completo (Si falló la Capa 2 o no teníamos Número)
+    if (res.data.length === 0 && nameQuery) {
+      const q = nameQuery;
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal }
+      );
+    }
+
+    // Capa 4: Primer término del nombre (Si falló la Capa 3 - súper robusto)
+    if (res.data.length === 0 && firstWordQuery) {
+      const q = firstWordQuery;
+      res = await searchCards(
+        { q, pageSize: 4, orderBy: '-set.releaseDate' },
+        { signal }
+      );
+    }
+
+    if (res.data.length === 0) {
+      // Fallback: search locally in the catalog or custom cards since custom cards are not in the official Pokemon TCG API
+      const cleanSeedLower = seed.toLowerCase().trim();
+      const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
+      const localMatch = OFFLINE_CARD_CATALOG.find((card: PokemonCard) => {
+        const nameMatch =
+          card.name.toLowerCase().includes(cleanSeedLower) ||
+          cleanSeedLower.includes(card.name.toLowerCase());
+        if (!nameMatch) return false;
+
+        if (ocrNumber) {
+          const cleanOcrNum = ocrNumber.split('/')[0].replace(/^[0]+/, '').trim();
+          const cleanCardNum = card.number.replace(/^[0]+/, '').trim();
+          return cleanOcrNum === cleanCardNum;
+        }
+        return true;
+      });
+
+      if (localMatch) {
+        seedCache.set(cacheKey, localMatch);
+        return buildRecognitionResultFromApiCard(localMatch, {
+          confidence: 0.95,
+          source: 'api_lookup',
+          simulated: false,
+          detectedLanguage,
+        });
+      }
+
+      return buildEmptyResult('no_match');
+    }
+
+    // Prefer a card that has a market price + a usable image
+    const detected =
+      res.data.find(
+        (c: any) =>
+          Boolean(c.images?.large || c.images?.small) && Boolean(c.tcgplayer || c.cardmarket)
+      ) ?? res.data[0];
+
+    seedCache.set(cacheKey, detected);
+    return buildRecognitionResultFromApiCard(detected, {
+      confidence: targetNumber ? 0.98 : 0.85,
+      source: 'api_lookup',
+      simulated: false,
+      detectedLanguage,
+    });
+  } catch (err) {
+    if (
+      err &&
+      typeof err === 'object' &&
+      'aborted' in err &&
+      (err as { aborted: boolean }).aborted
+    ) {
+      throw err;
+    }
+    return buildEmptyResult('network');
+  }
+}
+
 export async function recognizeCardFromImage(
   input: RecognitionInput,
   opts: RecognizeOptions = {}
@@ -566,14 +725,12 @@ export async function recognizeCardFromImage(
   let detectedLanguage: string | null = null;
   let englishNumber: string | null = null;
   let englishSetHint: string | null = null;
+  let cardsList: any[] = [];
 
   if (input.type === 'seed') {
     seed = input.name;
   } else if (input.type === 'file' || input.type === 'frame') {
     // 1. Convert file/frame to Base64
-    const file = input.type === 'file' ? input.file : input.bitmap; // Wait, input.bitmap is ImageBitmap, we need a File or Blob.
-    // In ScanScreen.tsx, we pass `{ type: 'file', file }` for both live camera frames and gallery picker!
-    // So it's always type === 'file'.
     if (input.type !== 'file') {
       seed = nextDemoName();
     } else {
@@ -677,6 +834,10 @@ export async function recognizeCardFromImage(
         detectedLanguage = ocrData.language ?? null;
         englishNumber = ocrData.englishNumber ?? null;
         englishSetHint = ocrData.englishSetHint ?? null;
+
+        if (ocrData.cards && Array.isArray(ocrData.cards)) {
+          cardsList = ocrData.cards;
+        }
       } catch (err) {
         if (
           err &&
@@ -721,158 +882,36 @@ export async function recognizeCardFromImage(
     seed = nextDemoName();
   }
 
-  // Si no tenemos seed a estas alturas (por ejemplo si falló algo), usamos fallback
   if (!seed) seed = nextDemoName();
 
-  const cacheKey = seed.toLowerCase() + (ocrNumber ? `-${ocrNumber}` : '');
-  const cached = seedCache.get(cacheKey);
-  if (cached) {
-    return buildRecognitionResultFromApiCard(cached, {
-      confidence: 0.92,
-      source: 'api_lookup',
-      simulated: false,
-      detectedLanguage,
-    });
+  if (cardsList.length > 0) {
+    const resolvedCards = await Promise.all(
+      cardsList.map((c) =>
+        resolveCardDetails(
+          c.cardName,
+          c.number,
+          c.language ?? detectedLanguage,
+          c.englishNumber,
+          c.englishSetHint,
+          opts.signal
+        )
+      )
+    );
+
+    const successfulResolved = resolvedCards.filter((r) => r.card !== null);
+    const primaryResult = successfulResolved[0] || resolvedCards[0] || buildEmptyResult('no_match');
+    primaryResult.batchResults = resolvedCards;
+    return primaryResult;
   }
 
-  try {
-    // Si la carta no es en inglés (ej. japonés) e identificamos un número equivalente, lo usamos
-    let targetNumber = ocrNumber;
-    if (detectedLanguage && detectedLanguage !== 'EN' && englishNumber) {
-      targetNumber = englishNumber;
-    }
-
-    const rawNumberPart = targetNumber ? targetNumber.split('/')[0].trim() : '';
-    const numberQuery = rawNumberPart ? getNumberQuery(rawNumberPart) : '';
-
-    // Si identificamos un set equivalente, intentamos buscar su ID oficial
-    let targetSetId: string | null = null;
-    if (englishSetHint) {
-      try {
-        const sets = await getSets({ signal: opts.signal });
-        const hint = englishSetHint.toLowerCase().trim();
-        const matchedSet = sets.find(
-          (s) =>
-            s.name.toLowerCase().includes(hint) ||
-            hint.includes(s.name.toLowerCase()) ||
-            s.id.toLowerCase() === hint
-        );
-        if (matchedSet) {
-          targetSetId = matchedSet.id;
-        }
-      } catch (err) {
-        // Set hint lookup is best-effort.
-      }
-    }
-
-    const cleanSeed = seed.replace(/["\\]/g, '').trim();
-    const seedWords = cleanSeed.split(/\s+/).filter(Boolean);
-    const nameQuery = seedWords.length > 0 ? seedWords.map((w) => `name:*${w}*`).join(' AND ') : '';
-    const firstWordQuery = seedWords.length > 0 ? `name:*${seedWords[0]}*` : '';
-
-    let res: any = { data: [] };
-
-    // Capa 1: Búsqueda precisa (Nombre + Número + Set)
-    if (nameQuery && numberQuery && targetSetId) {
-      const q = `${nameQuery} AND ${numberQuery} AND set.id:${targetSetId}`;
-      res = await searchCards(
-        { q, pageSize: 4, orderBy: '-set.releaseDate' },
-        { signal: opts.signal }
-      );
-    }
-
-    // Capa 1.5: Nombre + Set (Si falló la Capa 1 pero teníamos Set. Útil si el número de la carta japonesa/extranjera difiere del número occidental)
-    if (res.data.length === 0 && nameQuery && targetSetId) {
-      const q = `${nameQuery} AND set.id:${targetSetId}`;
-      res = await searchCards(
-        { q, pageSize: 4, orderBy: '-set.releaseDate' },
-        { signal: opts.signal }
-      );
-    }
-
-    // Capa 2: Nombre + Número (Si falló la Capa 1 o no teníamos Set)
-    if (res.data.length === 0 && nameQuery && numberQuery) {
-      const q = `${nameQuery} AND ${numberQuery}`;
-      res = await searchCards(
-        { q, pageSize: 4, orderBy: '-set.releaseDate' },
-        { signal: opts.signal }
-      );
-    }
-
-    // Capa 3: Nombre completo (Si falló la Capa 2 o no teníamos Número)
-    if (res.data.length === 0 && nameQuery) {
-      const q = nameQuery;
-      res = await searchCards(
-        { q, pageSize: 4, orderBy: '-set.releaseDate' },
-        { signal: opts.signal }
-      );
-    }
-
-    // Capa 4: Primer término del nombre (Si falló la Capa 3 - súper robusto)
-    if (res.data.length === 0 && firstWordQuery) {
-      const q = firstWordQuery;
-      res = await searchCards(
-        { q, pageSize: 4, orderBy: '-set.releaseDate' },
-        { signal: opts.signal }
-      );
-    }
-
-    if (res.data.length === 0) {
-      // Fallback: search locally in the catalog or custom cards since custom cards are not in the official Pokemon TCG API
-      const cleanSeedLower = seed.toLowerCase().trim();
-      const { OFFLINE_CARD_CATALOG } = await import('./offlineCardCatalog');
-      const localMatch = OFFLINE_CARD_CATALOG.find((card: PokemonCard) => {
-        const nameMatch =
-          card.name.toLowerCase().includes(cleanSeedLower) ||
-          cleanSeedLower.includes(card.name.toLowerCase());
-        if (!nameMatch) return false;
-
-        if (ocrNumber) {
-          const cleanOcrNum = ocrNumber.split('/')[0].replace(/^[0]+/, '').trim();
-          const cleanCardNum = card.number.replace(/^[0]+/, '').trim();
-          return cleanOcrNum === cleanCardNum;
-        }
-        return true;
-      });
-
-      if (localMatch) {
-        seedCache.set(cacheKey, localMatch);
-        return buildRecognitionResultFromApiCard(localMatch, {
-          confidence: 0.95,
-          source: 'api_lookup',
-          simulated: false,
-          detectedLanguage,
-        });
-      }
-
-      return buildEmptyResult('no_match');
-    }
-
-    // Prefer a card that has a market price + a usable image
-    const detected =
-      res.data.find(
-        (c: any) =>
-          Boolean(c.images?.large || c.images?.small) && Boolean(c.tcgplayer || c.cardmarket)
-      ) ?? res.data[0];
-
-    seedCache.set(cacheKey, detected);
-    return buildRecognitionResultFromApiCard(detected, {
-      confidence: targetNumber ? 0.98 : 0.85,
-      source: 'api_lookup',
-      simulated: false,
-      detectedLanguage,
-    });
-  } catch (err) {
-    if (
-      err &&
-      typeof err === 'object' &&
-      'aborted' in err &&
-      (err as { aborted: boolean }).aborted
-    ) {
-      throw err;
-    }
-    return buildEmptyResult('network');
-  }
+  return resolveCardDetails(
+    seed,
+    ocrNumber,
+    detectedLanguage,
+    englishNumber,
+    englishSetHint,
+    opts.signal
+  );
 }
 
 /**

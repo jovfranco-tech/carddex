@@ -244,6 +244,22 @@ export default function ProfileScreen() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    return localStorage.getItem('carddex.theme') || 'system';
+  });
+
+  const handleThemeChange = (theme: string) => {
+    triggerHaptic('light');
+    setCurrentTheme(theme);
+    localStorage.setItem('carddex.theme', theme);
+    if (theme === 'dark' || theme === 'light') {
+      document.documentElement.setAttribute('data-theme', theme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
+
   const [hasPasskeyStored, setHasPasskeyStored] = useState(false);
   const [biometricScanning, setBiometricScanning] = useState(false);
 
@@ -1043,6 +1059,113 @@ export default function ProfileScreen() {
               Generar
             </button>
           </div>
+
+          {user && (
+            <>
+              <div style={{ height: 1, background: 'var(--hairline)', margin: '14px 0' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 11,
+                    background: 'rgba(123, 90, 217, 0.12)',
+                    color: 'var(--purple)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span>📱</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                      letterSpacing: -0.2,
+                    }}
+                  >
+                    Código QR Showcase
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                    Muestra tu código QR en tu vitrina física para compartir al instante.
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setIsQrModalOpen(true);
+                  }}
+                  style={{
+                    background: 'var(--accent-tint)',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    padding: '8px 16px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Ver QR
+                </button>
+              </div>
+            </>
+          )}
+        </Surface>
+      </div>
+
+      {/* Ajustes de Tema */}
+      <div style={{ padding: '0 14px 14px' }}>
+        <SectionTitle>Ajustes de Tema</SectionTitle>
+        <Surface style={{ padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', letterSpacing: -0.2 }}>
+                Tema Visual
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                Personaliza la apariencia de tu vitrina.
+              </div>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                background: 'var(--bg)',
+                border: '0.5px solid var(--border)',
+                borderRadius: 12,
+                padding: 3,
+                gap: 2,
+              }}
+            >
+              {['system', 'light', 'dark'].map((t) => {
+                const label = t === 'system' ? 'Sistema' : t === 'light' ? 'Claro' : 'Oscuro';
+                const active = currentTheme === t;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => handleThemeChange(t)}
+                    style={{
+                      background: active ? 'var(--surface)' : 'transparent',
+                      color: active ? 'var(--ink)' : 'var(--muted)',
+                      border: 'none',
+                      borderRadius: 9,
+                      padding: '6px 12px',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: active ? 'var(--shadow-1)' : 'none',
+                      transition: 'all 150ms ease',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </Surface>
       </div>
 
@@ -1555,6 +1678,94 @@ export default function ProfileScreen() {
           </p>
         </Surface>
       </div>
+      {isQrModalOpen && user && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.25s ease-out',
+          }}
+          onClick={() => setIsQrModalOpen(false)}
+        >
+          <Surface
+            style={{
+              padding: 24,
+              maxWidth: 340,
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: 'var(--shadow-3)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, color: 'var(--ink)' }}>
+              Código QR de Vitrina
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+              Comparte tu binder digital al instante en eventos presenciales
+            </div>
+            <div
+              style={{
+                background: '#ffffff',
+                padding: 16,
+                borderRadius: 20,
+                display: 'inline-flex',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                marginBottom: 20,
+              }}
+            >
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`${window.location.origin}/u/${user.uid}`)}`}
+                alt="QR Code Showcase"
+                style={{ width: 180, height: 180, display: 'block' }}
+              />
+            </div>
+            <div
+              style={{
+                fontSize: 11.5,
+                color: 'var(--muted)',
+                background: 'var(--bg)',
+                padding: '10px 14px',
+                borderRadius: 12,
+                wordBreak: 'break-all',
+                marginBottom: 20,
+                fontFamily: 'monospace',
+              }}
+            >
+              {`${window.location.origin}/u/${user.uid}`}
+            </div>
+            <button
+              onClick={() => setIsQrModalOpen(false)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'var(--ink)',
+                color: 'var(--canvas)',
+                border: 'none',
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: 'pointer',
+              }}
+            >
+              Cerrar
+            </button>
+          </Surface>
+        </div>
+      )}
+
       <CollectionShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}

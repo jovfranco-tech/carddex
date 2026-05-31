@@ -241,10 +241,7 @@ export default function HomeScreen() {
     };
   }, [totalValue, collection.history]);
 
-  /* --------------------------------------------------------------------- */
-  /* Empty state — no collection AND no active search                       */
-  /* --------------------------------------------------------------------- */
-
+  const activeCardId = sessionStorage.getItem('carddex.activeCardId');
   const isEmpty = collectionIds.length === 0 && !trimmed;
 
   /* --------------------------------------------------------------------- */
@@ -583,8 +580,11 @@ export default function HomeScreen() {
                         card={c}
                         meta={collection.cards[c.id]}
                         width={104}
-                        onClick={() => navigate(`/card/${c.id}`)}
-                        viewTransitionName={`card-image-${c.id}`}
+                        onClick={() => {
+                          sessionStorage.setItem('carddex.activeCardId', c.id);
+                          navigate(`/card/${c.id}`);
+                        }}
+                        viewTransitionName={c.id === activeCardId ? 'card-image-active' : undefined}
                       />
                     ))}
                   </div>
@@ -829,13 +829,16 @@ export default function HomeScreen() {
                       <div
                         key={c.id}
                         style={{ width: 110, flexShrink: 0, cursor: 'pointer' }}
-                        onClick={() => navigate(`/card/${c.id}`)}
+                        onClick={() => {
+                          sessionStorage.setItem('carddex.activeCardId', c.id);
+                          navigate(`/card/${c.id}`);
+                        }}
                       >
                         <CardTile
                           card={c}
                           meta={collection.cards[c.id]}
                           width={110}
-                          viewTransitionName={`card-image-${c.id}`}
+                          viewTransitionName={c.id === activeCardId ? 'card-image-active' : undefined}
                         />
                         <div
                           style={{
@@ -897,7 +900,10 @@ export default function HomeScreen() {
                         label={t('home.rarestCard') || 'Carta más rara'}
                         title={insights.rarest.name}
                         sub={rarityLabel(insights.rarest.rarity)}
-                        onClick={() => navigate(`/card/${insights.rarest!.id}`)}
+                        onClick={() => {
+                          sessionStorage.setItem('carddex.activeCardId', insights.rarest!.id);
+                          navigate(`/card/${insights.rarest!.id}`);
+                        }}
                       />
                     )}
                     {insights.mostValuable && (
@@ -908,7 +914,10 @@ export default function HomeScreen() {
                           const p = getEstimatedPrice(insights.mostValuable);
                           return p ? formatPrice(p) : '—';
                         })()}
-                        onClick={() => navigate(`/card/${insights.mostValuable!.id}`)}
+                        onClick={() => {
+                          sessionStorage.setItem('carddex.activeCardId', insights.mostValuable!.id);
+                          navigate(`/card/${insights.mostValuable!.id}`);
+                        }}
                       />
                     )}
                     {insights.bestSet && (

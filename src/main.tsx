@@ -8,8 +8,25 @@ import { initTelemetry } from '@/lib/telemetry';
 // Initialize global runtime monitoring
 initTelemetry();
 
-// Register PWA service worker
-registerSW({ immediate: true });
+// Register PWA service worker with reload trigger support
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    window.dispatchEvent(
+      new CustomEvent('carddex:pwa-update', {
+        detail: {
+          update: () => {
+            updateSW(true);
+          },
+        },
+      })
+    );
+  },
+  onOfflineReady() {
+    // eslint-disable-next-line no-console
+    console.log('CardDex PWA offline ready.');
+  },
+});
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {

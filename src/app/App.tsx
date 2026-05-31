@@ -186,6 +186,14 @@ export default function App() {
     // Initialize dynamic theme accent colors
     initThemeAccent();
 
+    // Load dynamic theme preference
+    const savedTheme = localStorage.getItem('carddex.theme') || 'system';
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+
     // Generate/update price alerts in background when app boots
     initializeCollectionStorage().finally(() => {
       checkAndGeneratePriceAlerts();

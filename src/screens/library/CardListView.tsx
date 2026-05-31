@@ -45,6 +45,7 @@ function SetGroupCard({
   onCard,
   onFilter,
 }: SetGroupCardProps) {
+  const activeCardId = sessionStorage.getItem('carddex.activeCardId');
   const pct = printedTotal > 0 ? Math.round((cards.length / printedTotal) * 100) : 0;
   return (
     <div
@@ -108,8 +109,11 @@ function SetGroupCard({
               card={c}
               meta={collection.cards[c.id]}
               width={72}
-              onClick={() => onCard(c.id)}
-              viewTransitionName={`card-image-${c.id}`}
+              onClick={() => {
+                sessionStorage.setItem('carddex.activeCardId', c.id);
+                onCard(c.id);
+              }}
+              viewTransitionName={c.id === activeCardId ? 'card-image-active' : undefined}
             />
           </div>
         ))}
@@ -208,6 +212,7 @@ export default function CardListView({
   onSetFilter,
 }: CardListViewProps) {
   const navigate = useViewTransitionNavigate();
+  const activeCardId = sessionStorage.getItem('carddex.activeCardId');
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -302,9 +307,12 @@ export default function CardListView({
               card={c}
               meta={collection.cards[c.id]}
               width={96}
-              onClick={() => navigate(`/card/${c.id}`)}
+              onClick={() => {
+                sessionStorage.setItem('carddex.activeCardId', c.id);
+                navigate(`/card/${c.id}`);
+              }}
               showMissingState={!onlyMine}
-              viewTransitionName={`card-image-${c.id}`}
+              viewTransitionName={c.id === activeCardId ? 'card-image-active' : undefined}
             />
           )}
         />
@@ -366,9 +374,12 @@ export default function CardListView({
                       card={card}
                       meta={collection.cards[card.id]}
                       width={92}
-                      onClick={() => navigate(`/card/${card.id}`)}
+                      onClick={() => {
+                        sessionStorage.setItem('carddex.activeCardId', card.id);
+                        navigate(`/card/${card.id}`);
+                      }}
                       showMissingState={!onlyMine}
-                      viewTransitionName={`card-image-${card.id}`}
+                      viewTransitionName={card.id === activeCardId ? 'card-image-active' : undefined}
                     />
                     <div className="pocket-reflection" />
                   </div>
@@ -519,7 +530,10 @@ export default function CardListView({
           <div style={{ paddingBottom: 8 }}>
             <Surface
               as="button"
-              onClick={() => navigate(`/card/${c.id}`)}
+              onClick={() => {
+                sessionStorage.setItem('carddex.activeCardId', c.id);
+                navigate(`/card/${c.id}`);
+              }}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -528,7 +542,11 @@ export default function CardListView({
                 padding: 10,
               }}
             >
-              <TcgCardImage card={c} width={48} viewTransitionName={`card-image-${c.id}`} />
+              <TcgCardImage
+                card={c}
+                width={48}
+                viewTransitionName={c.id === activeCardId ? 'card-image-active' : undefined}
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{

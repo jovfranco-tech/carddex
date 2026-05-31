@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TcgCardImage from '@/components/TcgCardImage';
 import RarityBadge from '@/components/RarityBadge';
@@ -11,7 +11,9 @@ import {
   SearchIcon,
 } from '@/components/icons';
 import { searchCards, isAbortError } from '@/lib/pokemonTcgApi';
-import { useDebounced } from '@/lib/hooks';
+import { useDebounced, useCollection } from '@/lib/hooks';
+import CardAssistantSheet from '@/components/CardAssistantSheet';
+import { buildCardAssistantContext } from '@/lib/cardAssistant';
 import { getEstimatedPrice, formatPriceShort } from '@/lib/pricing';
 import {
   isServerOcrEnabled,
@@ -129,11 +131,21 @@ function fileToBase64(file: File): Promise<string> {
 
 export default function ScanScreen() {
   const navigate = useNavigate();
+  const collection = useCollection();
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const serverOcrEnabled = isServerOcrEnabled();
   const [state, setState] = useState<ScanState>('idle');
   const [flash, setFlash] = useState(false);
   const [confidence, setConfidence] = useState(0);
   const [result, setResult] = useState<RecognitionResult | null>(null);
+
+  const assistantContext = useMemo(() => {
+    if (!result?.card) return null;
+    return buildCardAssistantContext(result.card, {
+      collectionMeta: collection.cards[result.card.id],
+    });
+  }, [result?.card, collection]);
+
   const [error, setError] = useState<string | null>(null);
   const [correctOpen, setCorrectOpen] = useState(false);
   const [blurWarning, setBlurWarning] = useState(false);
@@ -569,31 +581,6 @@ export default function ScanScreen() {
           return;
         }
 
-        if (isMulticardMode) {
-          // Simular escaneo de 2 o 3 cartas populares del catálogo offline
-          const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
-          const charizard =
-            OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv3-125') || OFFLINE_CARD_CATALOG[0];
-          const pikachu =
-            OFFLINE_CARD_CATALOG.find((c) => c.id === 'cel25-25') || OFFLINE_CARD_CATALOG[1];
-          const mewtwo =
-            OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv4-58') || OFFLINE_CARD_CATALOG[2];
-          const cardsToDetect = [charizard, pikachu, mewtwo].filter(Boolean);
-
-          // Simulamos un retraso de 1.2 segundos para la experiencia visual premium
-          const elapsed = Date.now() - start;
-          if (elapsed < 1200) {
-            await new Promise((r) => window.setTimeout(r, 1200 - elapsed));
-          }
-          window.clearInterval(tick);
-
-          setConfidence(98);
-          setDetectedMulticards(cardsToDetect);
-          setState('detected');
-          triggerHaptic('success');
-          return;
-        }
-
         const recognition = await recognizeCardFromImage(input, { languageHint: scanLanguage });
 
         // We still use a minimum of 800ms to ensure the visual feedback shows
@@ -603,6 +590,38 @@ export default function ScanScreen() {
           await new Promise((r) => window.setTimeout(r, 800 - elapsed));
         }
         window.clearInterval(tick);
+
+        if (isMulticardMode) {
+          if (recognition.batchResults && recognition.batchResults.length > 0) {
+            const detectedList = recognition.batchResults
+              .map((r) => r.card)
+              .filter((c): c is PokemonCard => c !== null);
+
+            if (detectedList.length > 0) {
+              setConfidence(98);
+              setDetectedMulticards(detectedList);
+              setState('detected');
+              triggerHaptic('success');
+              return;
+            }
+          }
+
+          // Fallback to offline catalog simulation ONLY if the recognition returned no cards (like in simulated dev mode offline)
+          const { OFFLINE_CARD_CATALOG } = await import('@/lib/offlineCardCatalog');
+          const charizard =
+            OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv3-125') || OFFLINE_CARD_CATALOG[0];
+          const pikachu =
+            OFFLINE_CARD_CATALOG.find((c) => c.id === 'cel25-25') || OFFLINE_CARD_CATALOG[1];
+          const mewtwo =
+            OFFLINE_CARD_CATALOG.find((c) => c.id === 'sv4-58') || OFFLINE_CARD_CATALOG[2];
+          const cardsToDetect = [charizard, pikachu, mewtwo].filter(Boolean);
+
+          setConfidence(98);
+          setDetectedMulticards(cardsToDetect);
+          setState('detected');
+          triggerHaptic('success');
+          return;
+        }
 
         if (!recognition.card || !recognition.highConfidence) {
           setConfidence(Math.round(recognition.confidence * 100));
@@ -1313,6 +1332,7 @@ export default function ScanScreen() {
             confidence={confidence}
             onView={() => navigate(`/card/${encodeURIComponent(result.card!.id)}`)}
             onWrong={() => setCorrectOpen(true)}
+            onChat={() => setIsAssistantOpen(true)}
           />
         )}
         {state === 'detected' && isGradingMode && gradingResult && (
@@ -1575,6 +1595,13 @@ export default function ScanScreen() {
           }}
         />
       )}
+
+      {/* Card assistant chatbot sheet */}
+      <CardAssistantSheet
+        open={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        context={assistantContext}
+      />
       <style>{`
         @keyframes pulseViewfinder {
           0% { opacity: 0.4; }

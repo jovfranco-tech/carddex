@@ -58,9 +58,52 @@
   --shell-max: 440px;
 }
 
-/* Automated Responsive Dark Mode */
+/* Dynamic Theme Classes */
+html[data-theme="dark"] {
+  --bg: #090a0f;
+  --surface: #14161f;
+  --surface-elev: #1c1e2a;
+
+  --ink: #f2f3f7;
+  --ink-2: #e1e3e8;
+  --ink-3: #c5c9d6;
+  --muted: #8c93a6;
+  --muted-2: #7b8194;
+  --muted-3: #6c7283;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --hairline: rgba(255, 255, 255, 0.06);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+html[data-theme="light"] {
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --surface-elev: #fbfcfe;
+
+  --ink: #0e1220;
+  --ink-2: #1b1f2a;
+  --ink-3: #3f4554;
+  --muted: #5b6170;
+  --muted-2: #6b7180;
+  --muted-3: #757b8a;
+
+  --border: rgba(15, 20, 40, 0.08);
+  --border-soft: rgba(15, 20, 40, 0.05);
+  --hairline: rgba(15, 20, 40, 0.06);
+
+  --shadow-1: 0 1px 2px rgba(15, 20, 40, 0.04), 0 4px 16px rgba(15, 20, 40, 0.04);
+  --shadow-2: 0 4px 12px rgba(15, 20, 40, 0.08);
+  --shadow-3: 0 10px 30px rgba(15, 20, 40, 0.18);
+}
+
+/* Automated Responsive Dark Mode (Only if no manual override is active) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme="light"]) {
     --bg: #090a0f;
     --surface: #14161f;
     --surface-elev: #1c1e2a;

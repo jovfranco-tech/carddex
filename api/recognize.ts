@@ -101,19 +101,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const setListContext = await getSetListContext();
 
-    let systemInstruction = 'Eres un experto en Pokémon TCG. Analiza la imagen de la carta proporcionada. Si la carta está en un idioma distinto al inglés (ej. japonés, español), traduce e identifica la versión oficial equivalente en inglés para que coincida con la base de datos occidental de Pokémon TCG.\n\n' +
+    let systemInstruction = 'Eres un experto en Pokémon TCG. Analiza la imagen proporcionada. Esta imagen puede contener una sola carta o hasta 4 cartas distintas de Pokémon TCG distribuidas en la misma escena. Si una carta está en un idioma distinto al inglés (ej. japonés, español), traduce e identifica la versión oficial equivalente en inglés para que coincida con la base de datos occidental de Pokémon TCG.\n\n' +
       'Para ayudarte a identificar el set correcto, aquí tienes la lista de los sets oficiales recientes en inglés de la base de datos. Úsala para relacionar el logotipo/símbolo de set de la carta física o el código de set impreso en el borde inferior con el ID de set correspondiente en inglés:\n' +
       setListContext + '\n\n' +
       'Instrucciones de extracción:\n' +
       '1. Si la carta física es en español, francés, italiano u otro idioma occidental, su número de carta impreso y el set son exactamente iguales al inglés, solo traduce el nombre de la carta al inglés.\n' +
       '2. Si la carta es en japonés, intenta deducir la carta correspondiente en inglés. Si conoces el set y el número equivalente en inglés, devuélvelos. Si no conoces el número equivalente exacto de la carta japonesa en inglés, pon null en "englishNumber" pero pon el set equivalente correcto en "englishSetHint" (usando el nombre de set o ID de la lista anterior).\n' +
-      '3. En "englishSetHint", proporciona el nombre del set en inglés o el ID del set de la lista anterior (ej. "Journey Together", "sv9", "me3"). Si es inglés o no lo sabes, pon null.\n\n' +
-      'Devuelve ÚNICAMENTE un objeto JSON con las siguientes claves:\n' +
-      '- "cardName": Nombre oficial de la carta traducido al inglés (ej. "Charizard ex", "Mewtwo ex", "Boss\'s Orders").\n' +
-      '- "number": El número de la carta tal cual viene impreso en la carta física (ej. "026/071" o "4/102").\n' +
-      '- "language": El código de idioma detectado (ej. "JP", "EN", "ES", "FR", etc.).\n' +
-      '- "englishNumber": El número equivalente de la carta en la versión en inglés si es una carta no inglesa (ej. para cartas japonesas, "062/193" o "62"). Si es inglés o no lo sabes, pon null.\n' +
-      '- "englishSetHint": El nombre del set equivalente en inglés o su ID (ej. "Journey Together", "sv9", "me3"). Si es inglés o no lo sabes, pon null.\n\n' +
+      '3. En "englishSetHint", proporciona el nombre del set equivalente en inglés o su ID del set de la lista anterior (ej. "Journey Together", "sv9", "me3"). Si es inglés o no lo sabes, pon null.\n\n' +
+      'Devuelve ÚNICAMENTE un objeto JSON con las siguientes claves a nivel de raíz (que representarán a la primera carta detectada o la única en la imagen, para mantener compatibilidad):\n' +
+      '- "cardName": Nombre oficial de la primera carta traducido al inglés (ej. "Charizard ex", "Mewtwo ex", "Boss\'s Orders").\n' +
+      '- "number": El número de la primera carta tal cual viene impreso en la carta física (ej. "026/071" o "4/102").\n' +
+      '- "language": El código de idioma detectado para la primera carta (ej. "JP", "EN", "ES", "FR", etc.).\n' +
+      '- "englishNumber": El número equivalente de la primera carta en la versión en inglés si es no inglesa (ej. "062/193"). Si es inglés o no lo sabes, pon null.\n' +
+      '- "englishSetHint": El nombre del set equivalente en inglés o su ID para la primera carta. Si es inglés o no lo sabes, pon null.\n' +
+      '- "cards": Un arreglo (lista) que contiene TODAS las cartas detectadas en la imagen (hasta 4). Cada elemento de este arreglo debe ser un objeto con los mismos campos descritos arriba ("cardName", "number", "language", "englishNumber", "englishSetHint"). Si solo hay una carta, el arreglo contendrá exactamente un elemento.\n\n' +
       'No incluyas markdown (como ```json), solo el JSON raw puro y válido.';
 
     const safeLanguageHint = ['EN', 'ES', 'JP', 'AUTO'].includes(String(languageHint))
