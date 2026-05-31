@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
-import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+import { getServerAiKey, getServerAiEndpoint, mapModel, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 20, windowMs: 60_000 });
 
@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'cardName, oldPrice, newPrice y changePercent son requeridos' });
   }
 
-  const apiKey = getServerOpenAiKey();
+  const apiKey = getServerAiKey();
   if (!apiKey) {
     return res.status(503).json(serverAiUnavailable('El servicio LLM'));
   }
@@ -49,14 +49,14 @@ IMPORTANTE: No digas que consultaste fuentes externas, resultados recientes o da
 ¿Por qué crees que ocurrió este cambio de precio?`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${getServerAiEndpoint()}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: mapModel('gpt-4o-mini'),
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

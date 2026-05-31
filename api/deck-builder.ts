@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
-import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+import { getServerAiKey, getServerAiEndpoint, mapModel, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
 
@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const safePrompt = String(prompt).slice(0, 500);
 
-  const apiKey = getServerOpenAiKey();
+  const apiKey = getServerAiKey();
   if (!apiKey) {
     return res.status(503).json(serverAiUnavailable('El servicio LLM'));
   }
@@ -60,14 +60,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    const openAIRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIRes = await fetch(`${getServerAiEndpoint()}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: mapModel('gpt-4o-mini'),
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: safePrompt },

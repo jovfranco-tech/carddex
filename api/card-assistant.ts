@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
-import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+import { getServerAiKey, getServerAiEndpoint, mapModel, serverAiUnavailable } from './_serverAi.js';
 
 /** 30 requests per hour per IP — enough for normal use, stops abuse. */
 const limiter = createRateLimiter({ maxRequests: 30, windowMs: 60 * 60 * 1000 });
@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         content: String(m.content || m.text || '').slice(0, 500),
       }));
 
-    const apiKey = getServerOpenAiKey();
+    const apiKey = getServerAiKey();
     if (!apiKey) {
       return res.status(503).json(serverAiUnavailable('El asistente LLM'));
     }
@@ -106,14 +106,14 @@ INSTRUCCIONES:
       ...sanitisedMessages,
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${getServerAiEndpoint()}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: mapModel('gpt-4o-mini'),
         messages: openAiMessages,
         max_tokens: 350,
         temperature: 0.4,

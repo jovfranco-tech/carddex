@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
-import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+import { getServerAiKey, getServerAiEndpoint, mapModel, serverAiUnavailable } from './_serverAi.js';
 
 const limiter = createRateLimiter({ maxRequests: 15, windowMs: 60_000 });
 
@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'currentDeck y userMessage son requeridos' });
   }
 
-  const apiKey = getServerOpenAiKey();
+  const apiKey = getServerAiKey();
   if (!apiKey) {
     return res.status(503).json(serverAiUnavailable('El servicio LLM'));
   }
@@ -72,14 +72,14 @@ Si NO hay cambios que aplicar en esta respuesta, no incluyas el bloque JSON.`;
 
     messages.push({ role: 'user', content: safeMessage });
 
-    const openAIRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openAIRes = await fetch(`${getServerAiEndpoint()}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: mapModel('gpt-4o-mini'),
         messages,
         max_tokens: 600,
         temperature: 0.7,

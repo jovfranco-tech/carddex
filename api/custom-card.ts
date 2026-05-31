@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from './types.js';
 import { createRateLimiter } from './_rateLimiter.js';
-import { getServerOpenAiKey, serverAiUnavailable } from './_serverAi.js';
+import { getServerAiKey, getServerAiEndpoint, mapModel, serverAiUnavailable } from './_serverAi.js';
 
 // Custom card generation is expensive (GPT + DALL-E): 5 req/min
 const limiter = createRateLimiter({ maxRequests: 5, windowMs: 60_000 });
@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const safeCardA = String(cardA || '').slice(0, 60);
     const safeCardB = String(cardB || '').slice(0, 60);
 
-    const apiKey = getServerOpenAiKey();
+    const apiKey = getServerAiKey();
     if (!apiKey) {
       return res.status(503).json(serverAiUnavailable('El servicio LLM'));
     }
@@ -104,14 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     Devuelve ÚNICAMENTE el objeto JSON sin marcas de Markdown.`;
 
-    const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const gptResponse = await fetch(`${getServerAiEndpoint()}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: mapModel('gpt-4o-mini'),
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: statsInstruction }],
         max_tokens: 400,
@@ -133,20 +133,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : `Pokémon card illustration of ${safeName}, a ${safeType} type Pokémon, in ${safeStyle} style. ${safeArtPrompt || 'Vibrant colors, digital art, high quality, epic pokemon scene'}. Isolated artwork suitable for a card frame, high contrast, clean graphics.`;
 
     let imageUrl = '';
-    try {
-      const dallResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'dall-e-2',
-          prompt: imagePrompt,
-          n: 1,
-          size: '512x512',
-        }),
-      });
+    const openAiKey = process.env.OPENAI_API_KEY?.trim();
+    if (openAiKey) {
+      try {
+        const dallResponse = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${openAiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'dall-e-2',
+            prompt: imagePrompt,
+            n: 1,
+            size: '512x512',
+          }),
+        });
 
       if (dallResponse.ok) {
         const dallData = await dallResponse.json();
@@ -167,11 +169,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             imageUrl = tempUrl;
           }
         }
-      } else {
+        } else {
+          // Fall back to themed image.
+        }
+      } catch {
         // Fall back to themed image.
       }
-    } catch {
-      // Fall back to themed image.
     }
 
     // Fallback image if DALL-E failed
